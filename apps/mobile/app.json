@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "OYNA",
+    "slug": "oyna",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "oyna",
+    "userInterfaceStyle": "dark",
+    "ios": { "supportsTablet": false, "bundleIdentifier": "kz.oyna.app" },
+    "android": { "package": "kz.oyna.app", "adaptiveIcon": { "backgroundColor": "#111014" } },
+    "plugins": ["expo-router"],
+    "experiments": { "typedRoutes": true }
+  }
+}
+

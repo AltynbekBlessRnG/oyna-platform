@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: oyna-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oyna
+      POSTGRES_PASSWORD: oyna
+      POSTGRES_DB: oyna
+    ports:
+      - "5432:5432"
+    volumes:
+      - oyna-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oyna -d oyna"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  oyna-postgres-data:
+
