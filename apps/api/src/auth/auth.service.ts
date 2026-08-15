@@ -48,7 +48,7 @@ export class AuthService {
     if (suppliedBuffer.length !== expectedBuffer.length || !timingSafeEqual(suppliedBuffer, expectedBuffer)) throw new UnauthorizedException("Invalid token");
     const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as TokenPayload;
     if (payload.exp < Math.floor(Date.now() / 1000)) throw new UnauthorizedException("Token expired");
-    return { id: payload.id, phone: payload.phone, name: payload.name };
+    return { id: payload.id, phone: payload.phone, name: payload.name, role: payload.role ?? "player" };
   }
 
   private normalizePhone(rawPhone: string): string {
@@ -62,14 +62,14 @@ export class AuthService {
     if (!this.database.configured) {
       const existing = this.users.get(phone);
       if (existing) return existing;
-      const user = { id: randomUUID(), phone, name };
+      const user = { id: randomUUID(), phone, name, role: "player" as const };
       this.users.set(phone, user);
       return user;
     }
-    const result = await this.database.query<{ id: string; phone: string; name: string }>(
+    const result = await this.database.query<{ id: string; phone: string; name: string; role: AuthUser["role"] }>(
       `INSERT INTO users (id, phone, name) VALUES ($1, $2, $3)
        ON CONFLICT (phone) DO UPDATE SET name = COALESCE(NULLIF(users.name, ''), EXCLUDED.name), updated_at = NOW()
-       RETURNING id, phone, name`,
+       RETURNING id, phone, name, role`,
       [randomUUID(), phone, name]
     );
     return result.rows[0];

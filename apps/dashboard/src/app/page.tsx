@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApprovalSection } from "@/components/approval-section";
+import { TournamentSection } from "@/components/tournament-section";
 
 const metrics: DashboardMetric[] = [
   { label: "Выручка сегодня", value: "186 400 ₸", change: "+12.4%", trend: "up" },
@@ -32,7 +33,7 @@ export default function DashboardPage() {
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Основные показатели">
           {metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
         </section>
-        <section className="mt-6"><ApprovalSection /></section>
+        <section className="mt-6 grid gap-6 xl:grid-cols-2"><ApprovalSection /><TournamentSection /></section>
         <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
           <BookingsTable bookings={bookings} />
           <div className="space-y-6">

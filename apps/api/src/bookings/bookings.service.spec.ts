@@ -6,7 +6,7 @@ import { BookingsService } from "./bookings.service";
 
 describe("BookingsService", () => {
   const service = new BookingsService(new ClubsService(), new DatabaseService());
-  const user: AuthUser = { id: "user-1", phone: "+77000000000", name: "Арман" };
+  const user: AuthUser = { id: "user-1", phone: "+77000000000", name: "Арман", role: "player" };
   const startAt = "2030-07-21T18:00:00.000Z";
 
   it("creates a pending booking and calculates its total", async () => {
@@ -35,4 +35,3 @@ describe("BookingsService", () => {
     expect(cancelled.status).toBe("cancelled");
   });
 });
-

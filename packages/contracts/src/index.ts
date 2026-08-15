@@ -102,7 +102,34 @@ export interface AuthUser {
   id: string;
   phone: string;
   name: string;
+  role: UserRole;
 }
+
+export type UserRole = "player" | "club_admin" | "moderator" | "platform_admin";
+
+export interface GameSummary { id: string; slug: string; name: string; steamAppId?: number; teamSize: number; active: boolean; }
+export interface PlayerProfile {
+  id: string; nickname: string; name: string; avatarUrl?: string; city?: string; bio?: string; favoriteGameIds: string[];
+  visibility: { city: boolean; steam: boolean; analytics: boolean };
+  steam?: { steamId: string; personaName?: string; avatarUrl?: string; profileUrl?: string; isPublic: boolean; playtimeMinutes?: number; syncedAt?: string };
+  analytics: { completedBookings: number; clubHours: number; tournaments: number; matches: number; wins: number; podiums: number };
+}
+export interface UpdateProfileRequest { nickname?: string; avatarUrl?: string; city?: string; bio?: string; favoriteGameIds?: string[]; visibility?: Partial<PlayerProfile["visibility"]>; }
+export interface ChatChannel { id: string; gameId: string; scope: "country" | "city"; city?: string; name: string; }
+export interface ChatMessage {
+  id: string; channelId: string; author: Pick<PlayerProfile, "id" | "nickname" | "avatarUrl">; text: string;
+  replyToId?: string; imageUrl?: string; deletedAt?: string; createdAt: string;
+}
+export interface NotificationItem { id: string; type: "chat_reply" | "team_invite" | "tournament_registration" | "match_scheduled" | "match_result"; title: string; body: string; href?: string; readAt?: string; createdAt: string; }
+export type TournamentStatus = "draft" | "published" | "registration_closed" | "in_progress" | "completed" | "cancelled";
+export type RegistrationStatus = "pending" | "approved" | "waitlisted" | "rejected" | "withdrawn";
+export interface TeamSummary { id: string; gameId: string; name: string; logoUrl?: string; captainId: string; memberIds: string[]; }
+export interface TournamentSummary {
+  id: string; clubId: string; gameId: string; name: string; description: string; rules: string; kind: "solo" | "team";
+  capacity: 4 | 8 | 16 | 32; status: TournamentStatus; registrationStartsAt: string; registrationEndsAt: string; startsAt: string;
+  entryFeeText?: string; prizeText?: string; registeredCount: number;
+}
+export interface TournamentMatch { id: string; tournamentId: string; round: number; position: number; participantAId?: string; participantBId?: string; scoreA?: number; scoreB?: number; winnerId?: string; status: "pending" | "awaiting_confirmation" | "disputed" | "completed"; }
 
 export interface AuthSession {
   accessToken: string;

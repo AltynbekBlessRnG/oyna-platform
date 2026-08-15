@@ -1,4 +1,4 @@
-import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ClubSummary, ClubZone, CreateBookingRequest, RequestCodeResponse } from "@oyna/contracts";
+import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubSummary, ClubZone, CreateBookingRequest, GameSummary, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
 import { demoClubs } from "@/data/demo-clubs";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -28,7 +28,7 @@ export async function verifyLoginCode(challengeId: string, code: string, name: s
   if (challengeId.startsWith("demo:")) {
     if (code !== "0000") throw new Error("Неверный код");
     const phone = challengeId.slice(5);
-    return { accessToken: `demo-token:${phone}`, user: { id: `demo-user:${phone}`, phone, name: name.trim() || "Игрок OYNA" } };
+    return { accessToken: `demo-token:${phone}`, user: { id: `demo-user:${phone}`, phone, name: name.trim() || "Игрок OYNA", role: "player" } };
   }
   const response = await fetch(`${apiUrl}/auth/verify-code`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ challengeId, code, name }) });
   if (!response.ok) throw new Error("Неверный или просроченный код");
@@ -149,3 +149,18 @@ export async function cancelBooking(id: string): Promise<BookingReceipt> {
   if (!response.ok) throw new Error("Booking cannot be cancelled");
   return (await response.json()) as BookingReceipt;
 }
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${apiUrl}${path}`, { ...init, headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers ?? {}) } });
+  if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+  return response.status === 204 ? undefined as T : await response.json() as T;
+}
+export const getGames = () => api<GameSummary[]>("/games");
+export const getChatChannels = (city="Алматы") => api<ChatChannel[]>(`/chat/channels?city=${encodeURIComponent(city)}`);
+export const getChatMessages = (channelId:string) => api<ChatMessage[]>(`/chat/channels/${channelId}/messages`);
+export const sendChatMessage = (channelId:string,text:string) => api<ChatMessage>(`/chat/channels/${channelId}/messages`,{method:"POST",body:JSON.stringify({text})});
+export const getTournaments = (gameId?:string) => api<TournamentSummary[]>(`/tournaments${gameId?`?gameId=${encodeURIComponent(gameId)}`:""}`);
+export const registerTournament = (id:string,teamId?:string) => api<{status:string}>(`/tournaments/${id}/register`,{method:"POST",body:JSON.stringify({teamId})});
+export const getMyProfile = () => api<PlayerProfile>("/profiles/me");
+export const updateMyProfile = (value:UpdateProfileRequest) => api<PlayerProfile>("/profiles/me",{method:"PATCH",body:JSON.stringify(value)});
+export const requestAccountDeletion = () => api<{deletionScheduledAt:string}>("/account/deletion/request",{method:"POST"});
