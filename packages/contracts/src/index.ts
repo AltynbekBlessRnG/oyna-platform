@@ -15,6 +15,8 @@ export interface ClubSummary {
   tags: string[];
   equipment: string;
   accent: string;
+  phone?: string;
+  openingHours?: string;
 }
 
 export interface DashboardMetric {
@@ -120,7 +122,7 @@ export interface ChatMessage {
   id: string; channelId: string; author: Pick<PlayerProfile, "id" | "nickname" | "avatarUrl">; text: string;
   replyToId?: string; imageUrl?: string; deletedAt?: string; createdAt: string;
 }
-export interface NotificationItem { id: string; type: "chat_reply" | "team_invite" | "tournament_registration" | "match_scheduled" | "match_result"; title: string; body: string; href?: string; readAt?: string; createdAt: string; }
+export interface NotificationItem { id: string; type: "chat_reply" | "team_invite" | "tournament_registration" | "match_scheduled" | "match_result" | "booking_status"; title: string; body: string; href?: string; readAt?: string; createdAt: string; }
 export type TournamentStatus = "draft" | "published" | "registration_closed" | "in_progress" | "completed" | "cancelled";
 export type RegistrationStatus = "pending" | "approved" | "waitlisted" | "rejected" | "withdrawn";
 export interface TeamSummary { id: string; gameId: string; name: string; logoUrl?: string; captainId: string; memberIds: string[]; }
@@ -130,6 +132,55 @@ export interface TournamentSummary {
   entryFeeText?: string; prizeText?: string; registeredCount: number;
 }
 export interface TournamentMatch { id: string; tournamentId: string; round: number; position: number; participantAId?: string; participantBId?: string; scoreA?: number; scoreB?: number; winnerId?: string; status: "pending" | "awaiting_confirmation" | "disputed" | "completed"; }
+
+export interface UpdateClubRequest {
+  name?: string;
+  address?: string;
+  city?: string;
+  status?: ClubStatus;
+  tags?: string[];
+  equipment?: string;
+  accent?: string;
+  phone?: string;
+  openingHours?: string;
+}
+
+export interface UpsertZoneRequest {
+  id: string;
+  name: string;
+  description: string;
+  pricePerHour: number;
+  seatCount: number;
+}
+
+export interface ClubAdminView {
+  club: ClubSummary;
+  zones: ClubZone[];
+}
+
+export type ClubMemberRole = "admin" | "moderator";
+
+export interface ClubMember {
+  clubId: string;
+  userId: string;
+  name: string;
+  phone: string;
+  role: ClubMemberRole;
+  createdAt: string;
+}
+
+export interface AddClubMemberRequest {
+  phone: string;
+  name?: string;
+  role?: ClubMemberRole;
+}
+
+export interface ManagedClub {
+  id: string;
+  name: string;
+  city: string;
+  role: ClubMemberRole;
+}
 
 export interface AuthSession {
   accessToken: string;

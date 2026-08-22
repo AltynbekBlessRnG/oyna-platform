@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
-import { createSeats, ZONES } from "./bookings.data";
+import { NotificationsService } from "../social/notifications.service";
+import { createSeats } from "./bookings.data";
 
 interface BookingRow {
   id: string;
@@ -29,16 +30,16 @@ export class BookingsService {
 
   constructor(
     private readonly clubsService: ClubsService,
-    private readonly database: DatabaseService
+    private readonly database: DatabaseService,
+    private readonly notifications: NotificationsService
   ) {}
 
-  findZones(clubId: string): ClubZone[] {
-    this.clubsService.findOne(clubId);
-    return ZONES.filter((zone) => zone.clubId === clubId);
+  findZones(clubId: string): Promise<ClubZone[]> {
+    return this.clubsService.findZones(clubId);
   }
 
   async getAvailability(clubId: string, zoneId: string, startAt: string, durationHours: number): Promise<AvailabilitySnapshot> {
-    const zone = this.findZone(clubId, zoneId);
+    const zone = await this.findZone(clubId, zoneId);
     this.validateSchedule(startAt, durationHours);
     const reservedSeatIds = new Set(await this.findReservedSeatIds(clubId, zoneId, startAt, durationHours));
     return {
@@ -51,7 +52,7 @@ export class BookingsService {
   }
 
   async create(request: CreateBookingRequest, user: AuthUser): Promise<BookingReceipt> {
-    const zone = this.findZone(request.clubId, request.zoneId);
+    const zone = await this.findZone(request.clubId, request.zoneId);
     if (request.seatIds.length === 0) throw new BadRequestException("Select at least one seat");
     const uniqueSeatIds = [...new Set(request.seatIds)];
     if (uniqueSeatIds.length !== request.seatIds.length) throw new BadRequestException("Duplicate seats are not allowed");
@@ -85,7 +86,7 @@ export class BookingsService {
     if (!this.database.configured) {
       const booking = this.memoryBookings.get(id);
       if (!booking) throw new NotFoundException("Booking not found");
-      return booking;
+      return this.stripInternal(booking);
     }
     const result = await this.database.query<BookingRow>("SELECT * FROM bookings WHERE id = $1", [id]);
     if (!result.rows[0]) throw new NotFoundException("Booking not found");
@@ -94,16 +95,16 @@ export class BookingsService {
 
   async findForUser(userId: string): Promise<BookingReceipt[]> {
     if (!this.database.configured) {
-      return [...this.memoryBookings.values()].filter((booking) => booking.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return [...this.memoryBookings.values()].filter((booking) => booking.userId === userId).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((booking) => this.stripInternal(booking));
     }
     const result = await this.database.query<BookingRow>("SELECT * FROM bookings WHERE user_id = $1 ORDER BY created_at DESC", [userId]);
     return result.rows.map((row) => this.mapRow(row));
   }
 
   async findForClub(clubId: string): Promise<BookingReceipt[]> {
-    this.clubsService.findOne(clubId);
+    await this.clubsService.findOne(clubId);
     if (!this.database.configured) {
-      return [...this.memoryBookings.values()].filter((booking) => booking.clubId === clubId).sort((a, b) => a.startAt.localeCompare(b.startAt));
+      return [...this.memoryBookings.values()].filter((booking) => booking.clubId === clubId).sort((a, b) => a.startAt.localeCompare(b.startAt)).map((booking) => this.stripInternal(booking));
     }
     const result = await this.database.query<BookingRow>("SELECT * FROM bookings WHERE club_id = $1 ORDER BY start_at ASC", [clubId]);
     return result.rows.map((row) => this.mapRow(row));
@@ -117,7 +118,7 @@ export class BookingsService {
       if (!this.canCancel(booking)) throw new ConflictException("Booking can no longer be cancelled");
       const updated = { ...booking, status: "cancelled" as const, updatedAt: new Date().toISOString() };
       this.memoryBookings.set(id, updated);
-      return updated;
+      return this.stripInternal(updated);
     }
     const result = await this.database.query<BookingRow>(
       `UPDATE bookings SET status = 'cancelled', updated_at = NOW()
@@ -129,18 +130,41 @@ export class BookingsService {
     return this.mapRow(result.rows[0]);
   }
 
-  async updateStatus(id: string, status: Extract<BookingStatus, "confirmed" | "cancelled" | "completed">): Promise<BookingReceipt> {
+  async updateStatus(clubId: string, id: string, status: Extract<BookingStatus, "confirmed" | "cancelled" | "completed">): Promise<BookingReceipt> {
     if (!["confirmed", "cancelled", "completed"].includes(status)) throw new BadRequestException("Unsupported booking status");
     if (!this.database.configured) {
       const booking = this.memoryBookings.get(id);
-      if (!booking) throw new NotFoundException("Booking not found");
+      if (!booking || booking.clubId !== clubId) throw new NotFoundException("Booking not found");
       const updated = { ...booking, status, updatedAt: new Date().toISOString() };
       this.memoryBookings.set(id, updated);
-      return updated;
+      const receipt = this.stripInternal(updated);
+      await this.notifyPlayer(booking.userId, receipt);
+      return receipt;
     }
-    const result = await this.database.query<BookingRow>("UPDATE bookings SET status = $2, updated_at = NOW() WHERE id = $1 RETURNING *", [id, status]);
+    const result = await this.database.query<BookingRow>(
+      "UPDATE bookings SET status = $3, updated_at = NOW() WHERE id = $1 AND club_id = $2 RETURNING *",
+      [id, clubId, status]
+    );
     if (!result.rows[0]) throw new NotFoundException("Booking not found");
-    return this.mapRow(result.rows[0]);
+    const updated = this.mapRow(result.rows[0]);
+    await this.notifyPlayer(result.rows[0].user_id, updated);
+    return updated;
+  }
+
+  /** Игрок узнаёт решение клуба сразу: запись в центре уведомлений плюс push на зарегистрированные устройства. */
+  private async notifyPlayer(userId: string, booking: BookingReceipt): Promise<void> {
+    const titles: Record<string, string> = {
+      confirmed: "Бронь подтверждена",
+      cancelled: "Бронь отклонена",
+      completed: "Визит завершён"
+    };
+    const title = titles[booking.status];
+    if (!title) return;
+    const club = await this.clubsService.findOne(booking.clubId).catch(() => undefined);
+    const start = new Date(booking.startAt);
+    const when = `${start.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}, ${start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+    const body = `${club?.name ?? "Клуб"} · ${booking.zoneName} · ${when} · места ${booking.seatLabels.join(", ")}`;
+    await this.notifications.create(userId, { type: "booking_status", title, body, href: `/bookings?id=${booking.id}` });
   }
 
   private async createInDatabase(receipt: BookingReceipt, user: AuthUser): Promise<BookingReceipt> {
@@ -186,11 +210,8 @@ export class BookingsService {
     return result.rows.flatMap((row) => row.seat_ids);
   }
 
-  private findZone(clubId: string, zoneId: string): ClubZone {
-    this.clubsService.findOne(clubId);
-    const zone = ZONES.find((item) => item.clubId === clubId && item.id === zoneId);
-    if (!zone) throw new NotFoundException("Zone not found");
-    return zone;
+  private findZone(clubId: string, zoneId: string): Promise<ClubZone> {
+    return this.clubsService.findZone(clubId, zoneId);
   }
 
   private validateSchedule(startAt: string, durationHours: number): void {
@@ -208,6 +229,12 @@ export class BookingsService {
     const bookingStart = new Date(booking.startAt).getTime();
     const bookingEnd = bookingStart + booking.durationHours * 3_600_000;
     return requestedStart < bookingEnd && requestedEnd > bookingStart;
+  }
+
+  /** Внутренние поля временного хранилища не должны уезжать клиенту: в SQL-режиме их отсекает mapRow. */
+  private stripInternal(booking: BookingReceipt & { userId: string; playerPhone: string }): BookingReceipt {
+    const { userId: _userId, playerPhone: _playerPhone, ...receipt } = booking;
+    return receipt;
   }
 
   private mapRow(row: BookingRow): BookingReceipt {

@@ -9,12 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ApprovalQueueProps {
+  clubId: string;
   initialBookings: BookingReceipt[];
 }
 
 const STATUS_LABELS: Record<BookingStatus, string> = { pending: "Ожидает", confirmed: "Подтверждено", cancelled: "Отменено", completed: "Завершено" };
 
-export function ApprovalQueue({ initialBookings }: ApprovalQueueProps) {
+export function ApprovalQueue({ clubId, initialBookings }: ApprovalQueueProps) {
   const [bookings, setBookings] = useState(initialBookings);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -25,10 +26,10 @@ export function ApprovalQueue({ initialBookings }: ApprovalQueueProps) {
     setError("");
     startTransition(async () => {
       try {
-        const updated = await updateBookingStatus(id, status);
+        const updated = await updateBookingStatus(clubId, id, status);
         setBookings((current) => current.map((booking) => booking.id === id ? updated : booking));
-      } catch {
-        setError("API недоступен. Запусти сервер OYNA и повтори действие.");
+      } catch (cause) {
+        setError(cause instanceof Error && cause.message ? cause.message : "API недоступен. Запусти сервер OYNA и повтори действие.");
       } finally {
         setPendingId(null);
       }

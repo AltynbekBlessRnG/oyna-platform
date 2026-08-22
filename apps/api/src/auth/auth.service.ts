@@ -39,6 +39,19 @@ export class AuthService {
     return { accessToken: this.signToken(user), user };
   }
 
+  /** Находит или создаёт пользователя по номеру: нужен для выдачи прав администратора клуба. */
+  async ensureUser(rawPhone: string, name?: string): Promise<AuthUser> {
+    return this.upsertUser(this.normalizePhone(rawPhone), name?.trim() || "Администратор клуба");
+  }
+
+  async grantRole(userId: string, role: AuthUser["role"]): Promise<void> {
+    if (!this.database.configured) {
+      for (const [phone, user] of this.users) if (user.id === userId) this.users.set(phone, { ...user, role });
+      return;
+    }
+    await this.database.query("UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1", [userId, role]);
+  }
+
   verifyToken(token: string): AuthUser {
     const [encodedPayload, signature] = token.split(".");
     if (!encodedPayload || !signature) throw new UnauthorizedException("Invalid token");

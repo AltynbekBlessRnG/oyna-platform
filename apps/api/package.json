@@ -7,7 +7,8 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "seed": "nest build && node --env-file-if-exists=../../.env --env-file-if-exists=.env dist/seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",

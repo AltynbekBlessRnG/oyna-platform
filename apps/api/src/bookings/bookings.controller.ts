@@ -1,6 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import type { AuthUser, AvailabilitySnapshot, BookingReceipt, ClubZone, CreateBookingRequest, UpdateBookingStatusRequest } from "@oyna/contracts";
-import { AdminGuard } from "../auth/admin.guard";
+import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { BookingsService } from "./bookings.service";
@@ -10,7 +10,7 @@ export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
   @Get("clubs/:clubId/zones")
-  findZones(@Param("clubId") clubId: string): ClubZone[] {
+  findZones(@Param("clubId") clubId: string): Promise<ClubZone[]> {
     return this.bookingsService.findZones(clubId);
   }
 
@@ -52,14 +52,14 @@ export class BookingsController {
   }
 
   @Get("admin/clubs/:clubId/bookings")
-  @UseGuards(AdminGuard)
+  @UseGuards(ClubAdminGuard)
   findForClub(@Param("clubId") clubId: string): Promise<BookingReceipt[]> {
     return this.bookingsService.findForClub(clubId);
   }
 
-  @Patch("admin/bookings/:id/status")
-  @UseGuards(AdminGuard)
-  updateStatus(@Param("id") id: string, @Body() request: UpdateBookingStatusRequest): Promise<BookingReceipt> {
-    return this.bookingsService.updateStatus(id, request.status);
+  @Patch("admin/clubs/:clubId/bookings/:id/status")
+  @UseGuards(ClubAdminGuard)
+  updateStatus(@Param("clubId") clubId: string, @Param("id") id: string, @Body() request: UpdateBookingStatusRequest): Promise<BookingReceipt> {
+    return this.bookingsService.updateStatus(clubId, id, request.status);
   }
 }

@@ -7,13 +7,12 @@ export class ClubsController {
   constructor(private readonly clubsService: ClubsService) {}
 
   @Get()
-  findAll(): ClubSummary[] {
+  findAll(): Promise<ClubSummary[]> {
     return this.clubsService.findAll();
   }
 
   @Get(":id")
-  findOne(@Param("id") id: string): ClubSummary {
+  findOne(@Param("id") id: string): Promise<ClubSummary> {
     return this.clubsService.findOne(id);
   }
 }
-

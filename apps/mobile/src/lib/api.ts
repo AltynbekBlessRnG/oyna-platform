@@ -1,4 +1,4 @@
-import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubSummary, ClubZone, CreateBookingRequest, GameSummary, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
+import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubSummary, ClubZone, CreateBookingRequest, GameSummary, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
 import { demoClubs } from "@/data/demo-clubs";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -82,7 +82,7 @@ export async function getAvailability(clubId: string, zoneId: string, startAt: s
         id: `${clubId}-${zoneId}-${String(index + 1).padStart(2, "0")}`,
         label: String(index + 1).padStart(2, "0"),
         row: index < Math.ceil(zone.seatCount / 2) ? "A" : "B",
-        status: (index + 1) % 7 === 0 ? "occupied" : "available"
+        status: "available"
       }))
     };
   }
@@ -153,7 +153,8 @@ export async function cancelBooking(id: string): Promise<BookingReceipt> {
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, { ...init, headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers ?? {}) } });
   if (!response.ok) throw new Error(`API request failed: ${response.status}`);
-  return response.status === 204 ? undefined as T : await response.json() as T;
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 export const getGames = () => api<GameSummary[]>("/games");
 export const getChatChannels = (city="Алматы") => api<ChatChannel[]>(`/chat/channels?city=${encodeURIComponent(city)}`);
@@ -164,3 +165,6 @@ export const registerTournament = (id:string,teamId?:string) => api<{status:stri
 export const getMyProfile = () => api<PlayerProfile>("/profiles/me");
 export const updateMyProfile = (value:UpdateProfileRequest) => api<PlayerProfile>("/profiles/me",{method:"PATCH",body:JSON.stringify(value)});
 export const requestAccountDeletion = () => api<{deletionScheduledAt:string}>("/account/deletion/request",{method:"POST"});
+export const getNotifications = () => api<NotificationItem[]>("/notifications");
+export const markNotificationRead = (id: string) => api<void>(`/notifications/${id}/read`, { method: "PATCH" });
+export const registerPushDevice = (token: string, platform: string) => api<void>("/notifications/devices", { method: "POST", body: JSON.stringify({ token, platform }) });

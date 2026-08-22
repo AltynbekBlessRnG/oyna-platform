@@ -2,6 +2,7 @@ import type { AuthSession } from "@oyna/contracts";
 import * as SecureStore from "expo-secure-store";
 import { createContext, type PropsWithChildren, useContext, useEffect, useState } from "react";
 import { setAccessToken } from "@/lib/api";
+import { registerForPushNotifications } from "@/notifications/push";
 
 const SESSION_KEY = "oyna.auth.session.v1";
 
@@ -26,6 +27,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setAccessToken(restored?.accessToken ?? null);
       setSession(restored);
       setReady(true);
+      if (restored) void registerForPushNotifications();
     });
     return () => { active = false; };
   }, []);
@@ -34,6 +36,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setAccessToken(nextSession.accessToken);
     setSession(nextSession);
     await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(nextSession));
+    void registerForPushNotifications();
   }
 
   async function logout(): Promise<void> {

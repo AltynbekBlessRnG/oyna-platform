@@ -1,0 +1,23 @@
+[
+  {
+    "club": {
+      "id": "example-club",
+      "name": "Название клуба",
+      "address": "улица и дом",
+      "city": "Алматы",
+      "status": "available",
+      "tags": ["24/7", "VIP"],
+      "equipment": "RTX 4070 · 240 Hz",
+      "accent": "#b8ff45",
+      "phone": "+77010000000",
+      "openingHours": "Круглосуточно",
+      "rating": 0,
+      "reviewCount": 0,
+      "distanceKm": 0
+    },
+    "zones": [
+      { "id": "standard", "name": "Standard", "description": "RTX 4060 · 180 Hz", "pricePerHour": 800, "seatCount": 12 },
+      { "id": "vip", "name": "VIP", "description": "RTX 4070 · 240 Hz", "pricePerHour": 1300, "seatCount": 6 }
+    ]
+  }
+]

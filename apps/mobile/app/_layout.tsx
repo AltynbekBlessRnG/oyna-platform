@@ -15,6 +15,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false, gestureEnabled: false }} />
           <Stack.Screen name="bookings" options={{ title: "Мои бронирования", headerBackTitle: "Назад" }} />
+          <Stack.Screen name="notifications" options={{ title: "Уведомления", headerBackTitle: "Назад" }} />
           <Stack.Screen name="community" options={{ title: "Игровое сообщество", headerBackTitle: "Назад" }} />
           <Stack.Screen name="chat/[id]" options={{ title: "Чат", headerBackTitle: "Назад" }} />
           <Stack.Screen name="tournaments" options={{ title: "Турниры", headerBackTitle: "Назад" }} />

@@ -45,6 +45,38 @@ CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications (user_id, cre
 CREATE TABLE IF NOT EXISTS push_devices (token TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, platform TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT TRUE, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
 CREATE INDEX IF NOT EXISTS push_devices_user_idx ON push_devices (user_id) WHERE enabled;
 
+CREATE TABLE IF NOT EXISTS clubs (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  address TEXT NOT NULL,
+  city TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'available' CHECK (status IN ('available', 'busy', 'offline')),
+  tags TEXT[] NOT NULL DEFAULT '{}',
+  equipment TEXT NOT NULL DEFAULT '',
+  accent TEXT NOT NULL DEFAULT '#b8ff45',
+  phone TEXT,
+  opening_hours TEXT,
+  rating NUMERIC(2,1) NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
+  review_count INTEGER NOT NULL DEFAULT 0 CHECK (review_count >= 0),
+  distance_km NUMERIC(4,1) NOT NULL DEFAULT 0 CHECK (distance_km >= 0),
+  published BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS club_zones (
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  price_per_hour INTEGER NOT NULL CHECK (price_per_hour >= 0),
+  seat_count INTEGER NOT NULL CHECK (seat_count BETWEEN 1 AND 200),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (club_id, id)
+);
+
+CREATE INDEX IF NOT EXISTS club_memberships_user_idx ON club_memberships (user_id);
+
 CREATE TABLE IF NOT EXISTS bookings (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id),

@@ -1,53 +1,123 @@
-import type { BookingSummary, DashboardMetric } from "@oyna/contracts";
-import { Bell, CalendarPlus, ChevronDown, MonitorCheck } from "lucide-react";
+import type { BookingReceipt, BookingSummary, DashboardMetric } from "@oyna/contracts";
+import { Bell, CalendarPlus, MonitorCheck } from "lucide-react";
+import Link from "next/link";
+import { ApprovalQueue } from "@/components/approval-queue";
 import { BookingsTable } from "@/components/bookings-table";
 import { MetricCard } from "@/components/metric-card";
 import { Sidebar } from "@/components/sidebar";
+import { TournamentSection } from "@/components/tournament-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApprovalSection } from "@/components/approval-section";
-import { TournamentSection } from "@/components/tournament-section";
+import { loadActiveClub, loadClubBookings, loadClubView } from "@/lib/api";
 
-const metrics: DashboardMetric[] = [
-  { label: "Выручка сегодня", value: "186 400 ₸", change: "+12.4%", trend: "up" },
-  { label: "Загрузка сейчас", value: "78%", change: "+8 мест", trend: "up" },
-  { label: "Бронирования", value: "34", change: "+6 сегодня", trend: "up" },
-  { label: "Средний чек", value: "3 240 ₸", change: "−2.1%", trend: "down" }
-];
+const MONEY = new Intl.NumberFormat("ru-KZ");
 
-const bookings: BookingSummary[] = [
-  { id: "OY-2841", playerName: "Арман С.", zone: "VIP", seats: 5, startsAt: "19:00", durationHours: 3, amount: 18000, status: "confirmed" },
-  { id: "OY-2845", playerName: "Данияр К.", zone: "Standard", seats: 2, startsAt: "19:30", durationHours: 4, amount: 7200, status: "pending" },
-  { id: "OY-2848", playerName: "Айша М.", zone: "Bootcamp", seats: 5, startsAt: "21:00", durationHours: 5, amount: 32500, status: "confirmed" }
-];
+function isToday(value: string): boolean {
+  const date = new Date(value);
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+}
 
-export default function DashboardPage() {
+function isRunningNow(booking: BookingReceipt): boolean {
+  const start = new Date(booking.startAt).getTime();
+  return start <= Date.now() && start + booking.durationHours * 3_600_000 > Date.now() && ["pending", "confirmed"].includes(booking.status);
+}
+
+function buildMetrics(bookings: BookingReceipt[], busySeats: number, totalSeats: number): DashboardMetric[] {
+  const today = bookings.filter((booking) => isToday(booking.startAt));
+  const paid = today.filter((booking) => ["confirmed", "completed"].includes(booking.status));
+  const revenue = paid.reduce((sum, booking) => sum + booking.totalAmount, 0);
+  const pending = today.filter((booking) => booking.status === "pending").length;
+  const load = totalSeats ? Math.round((busySeats / totalSeats) * 100) : 0;
+  return [
+    { label: "Выручка сегодня", value: `${MONEY.format(revenue)} ₸`, change: `${paid.length} подтверждено`, trend: revenue > 0 ? "up" : "flat" },
+    { label: "Загрузка сейчас", value: `${load}%`, change: `${busySeats} из ${totalSeats} мест`, trend: load > 0 ? "up" : "flat" },
+    { label: "Бронирования сегодня", value: String(today.length), change: pending ? `${pending} ожидают` : "все обработаны", trend: pending ? "down" : "flat" },
+    {
+      label: "Средний чек",
+      value: `${MONEY.format(paid.length ? Math.round(revenue / paid.length) : 0)} ₸`,
+      change: "за сегодня",
+      trend: "flat"
+    }
+  ];
+}
+
+function toSummary(booking: BookingReceipt): BookingSummary {
+  return {
+    id: booking.id,
+    playerName: booking.playerName,
+    zone: booking.zoneName,
+    seats: booking.seatIds.length,
+    startsAt: new Date(booking.startAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }),
+    durationHours: booking.durationHours,
+    amount: booking.totalAmount,
+    status: booking.status
+  };
+}
+
+export default async function DashboardPage() {
+  const { club } = await loadActiveClub();
+  const [{ bookings, offline }, view] = await Promise.all([loadClubBookings(club.id), loadClubView(club.id)]);
+
+  const busySeats = bookings.filter(isRunningNow).reduce((sum, booking) => sum + booking.seatIds.length, 0);
+  const totalSeats = view?.club.totalSeats ?? view?.zones.reduce((sum, zone) => sum + zone.seatCount, 0) ?? 0;
+  const upcoming = bookings
+    .filter((booking) => new Date(booking.startAt).getTime() > Date.now() - 3_600_000 && booking.status !== "cancelled")
+    .sort((first, second) => first.startAt.localeCompare(second.startAt))
+    .slice(0, 8);
+
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar active="overview" />
       <main className="min-w-0 flex-1 p-4 md:p-8">
-        <header className="mb-8 flex items-center justify-between gap-4">
-          <div><p className="text-sm text-muted-foreground">Vertex Arena · Алматы</p><h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">Добрый день, Тимур</h1></div>
-          <div className="flex items-center gap-2"><Button variant="secondary" size="icon" aria-label="Уведомления"><Bell className="size-4" /></Button><Button variant="secondary">Клуб открыт <span className="size-2 rounded-full bg-emerald-400" /><ChevronDown className="size-4" /></Button></div>
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">{view?.club.name ?? club.name} · {view?.club.city ?? club.city}</p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">Кабинет клуба</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="icon" aria-label="Уведомления"><Bell className="size-4" /></Button>
+            <Button variant="secondary" asChild><Link href="/settings"><MonitorCheck className="size-4" />Настройки клуба</Link></Button>
+          </div>
         </header>
+        {offline ? (
+          <p role="status" className="mb-6 rounded-xl bg-amber-400/10 px-4 py-3 text-sm text-amber-300">
+            API недоступен — показаны демонстрационные данные. Запустите <span className="font-mono">pnpm dev:api</span>, чтобы увидеть реальные брони.
+          </p>
+        ) : null}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Основные показатели">
-          {metrics.map((metric) => <MetricCard key={metric.label} metric={metric} />)}
+          {buildMetrics(bookings, busySeats, totalSeats).map((metric) => <MetricCard key={metric.label} metric={metric} />)}
         </section>
-        <section className="mt-6 grid gap-6 xl:grid-cols-2"><ApprovalSection /><TournamentSection /></section>
+        <section className="mt-6 grid gap-6 xl:grid-cols-2">
+          <ApprovalQueue clubId={club.id} initialBookings={bookings} />
+          <TournamentSection />
+        </section>
         <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_320px]">
-          <BookingsTable bookings={bookings} />
+          <BookingsTable bookings={upcoming.map(toSummary)} subtitle={new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} />
           <div className="space-y-6">
             <Card>
               <CardHeader><CardTitle>Загрузка клуба</CardTitle></CardHeader>
               <CardContent>
-                <div className="mb-3 flex items-end justify-between"><span className="font-mono text-3xl font-bold">47<span className="text-base text-muted-foreground"> / 60</span></span><span className="text-sm text-primary">78%</span></div>
-                <div className="h-2 overflow-hidden rounded-full bg-secondary"><div className="h-full w-[78%] rounded-full bg-primary" /></div>
-                <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-xl bg-secondary p-3"><strong className="block font-mono text-base">8</strong><span className="text-muted-foreground">Свободно</span></div><div className="rounded-xl bg-secondary p-3"><strong className="block font-mono text-base">5</strong><span className="text-muted-foreground">Бронь</span></div><div className="rounded-xl bg-secondary p-3"><strong className="block font-mono text-base">0</strong><span className="text-muted-foreground">Сервис</span></div></div>
+                <div className="mb-3 flex items-end justify-between">
+                  <span className="font-mono text-3xl font-bold">{busySeats}<span className="text-base text-muted-foreground"> / {totalSeats}</span></span>
+                  <span className="text-sm text-primary">{totalSeats ? Math.round((busySeats / totalSeats) * 100) : 0}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${totalSeats ? Math.round((busySeats / totalSeats) * 100) : 0}%` }} />
+                </div>
+                <div className="mt-5 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="rounded-xl bg-secondary p-3"><strong className="block font-mono text-base">{Math.max(0, totalSeats - busySeats)}</strong><span className="text-muted-foreground">Свободно</span></div>
+                  <div className="rounded-xl bg-secondary p-3"><strong className="block font-mono text-base">{bookings.filter((booking) => booking.status === "pending").length}</strong><span className="text-muted-foreground">Заявки</span></div>
+                  <div className="rounded-xl bg-secondary p-3"><strong className="block font-mono text-base">{view?.zones.length ?? 0}</strong><span className="text-muted-foreground">Зоны</span></div>
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle>Быстрые действия</CardTitle></CardHeader>
-              <CardContent className="grid gap-2"><Button className="justify-start"><CalendarPlus className="size-4" />Добавить бронь</Button><Button variant="secondary" className="justify-start"><MonitorCheck className="size-4" />Схема мест</Button></CardContent>
+              <CardContent className="grid gap-2">
+                <Button className="justify-start" asChild><Link href="/settings"><CalendarPlus className="size-4" />Зоны, цены и места</Link></Button>
+                <Button variant="secondary" className="justify-start" asChild><Link href="/login">Сменить администратора</Link></Button>
+              </CardContent>
             </Card>
           </div>
         </section>

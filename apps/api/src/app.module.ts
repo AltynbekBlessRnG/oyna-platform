@@ -7,7 +7,9 @@ import { BookingsService } from "./bookings/bookings.service";
 import { AuthController } from "./auth/auth.controller";
 import { AuthService } from "./auth/auth.service";
 import { AuthGuard } from "./auth/auth.guard";
-import { AdminGuard } from "./auth/admin.guard";
+import { AdminIdentityGuard, ClubAdminGuard, PlatformAdminGuard } from "./auth/club-admin.guard";
+import { ClubsAdminController } from "./clubs/clubs.admin.controller";
+import { ClubAccessService } from "./clubs/club-access.service";
 import { DatabaseService } from "./database/database.service";
 import { ConfigModule } from "@nestjs/config";
 import { ProfilesController } from "./social/profiles.controller";
@@ -22,7 +24,7 @@ import { ChatGateway } from "./social/chat.gateway";
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ["../../.env", ".env"] })],
-  controllers: [HealthController, ClubsController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController],
-  providers: [DatabaseService, ClubsService, AuthService, AuthGuard, AdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService],
+  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController],
+  providers: [DatabaseService, ClubsService, ClubAccessService, AuthService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService],
 })
 export class AppModule {}
