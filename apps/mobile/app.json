@@ -6,10 +6,24 @@
     "orientation": "portrait",
     "scheme": "oyna",
     "userInterfaceStyle": "dark",
-    "ios": { "supportsTablet": false, "bundleIdentifier": "kz.oyna.app" },
-    "android": { "package": "kz.oyna.app", "adaptiveIcon": { "backgroundColor": "#111014" } },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true }
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "kz.oyna.app",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "kz.oyna.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#111014"
+      },
+      "versionCode": 1
+    },
+    "plugins": [
+      "expo-router",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
-
