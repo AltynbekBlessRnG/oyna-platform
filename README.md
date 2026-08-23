@@ -44,6 +44,20 @@ pnpm dev:dashboard
 pnpm dev:mobile
 ```
 
+### PostgreSQL без Docker
+
+Если Docker не установлен или нет прав root, локальную базу поднимает скрипт:
+
+```bash
+./scripts/local-postgres.sh install   # скачать PostgreSQL и создать кластер
+./scripts/local-postgres.sh start     # запустить
+./scripts/local-postgres.sh stop      # остановить
+```
+
+Бинарники кладутся в `~/.local/share/oyna/pgsql`, данные — в `~/.local/share/oyna/data`,
+подключение совпадает с `.env.example`. Это вариант для разработки: клубу и production
+нужен managed PostgreSQL.
+
 При наличии `DATABASE_URL` API автоматически создаёт таблицы PostgreSQL. Без базы проект продолжает работать на временном in-memory хранилище.
 
 - Вход по телефону: в development используется код `0000`.

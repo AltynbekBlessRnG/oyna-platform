@@ -12,7 +12,8 @@ API=${API_URL:-http://localhost:4000/api}
 KEY=${CLUB_ADMIN_KEY:-pilot-admin}
 CLUB=${CLUB_ID:-vertex-arena}
 ZONE=${ZONE_ID:-vip}
-PHONE=${SMOKE_PHONE:-+77011234567}
+# Служебный номер: не должен совпадать с номером настоящего администратора клуба.
+PHONE=${SMOKE_PHONE:-+77000000001}
 pass=0
 fail=0
 

@@ -127,7 +127,7 @@ OYNA — единое мобильное приложение для компь�
 
 - Node.js LTS (проверено на Node 26);
 - pnpm (`npm i -g pnpm`, если его нет в PATH);
-- Docker + Docker Compose — для PostgreSQL;
+- PostgreSQL: Docker Compose (`pnpm db:up`) либо `./scripts/local-postgres.sh install` без root;
 - Git;
 - Expo Go на телефоне или Android emulator.
 
@@ -172,15 +172,21 @@ Seed идемпотентен: повторный запуск обновляе�
 - API build и общий TypeScript typecheck по всем четырём пакетам: успешно;
 - dashboard production build: успешно (маршруты `/`, `/login`, `/settings`);
 - Expo Android export: успешно (на Windows);
-- сквозной smoke-тест `scripts/pilot-smoke.sh` против запущенного API: 18 из 18;
+- сквозной smoke-тест `scripts/pilot-smoke.sh` против запущенного API: 18 из 18,
+  и отдельно против настоящего PostgreSQL 18.4: тоже 18 из 18;
+- схема, seed и выдача прав администратору проверены на настоящем PostgreSQL 18.4;
+- роли проверены живьём: администратор клуба видит и правит только свой клуб,
+  чужой отдаёт 403; выдача и отзыв прав работают только у владельца платформы;
+- защита зоны с будущими бронями проверена на базе: удаление и уменьшение мест дают 409;
 - кабинет проверен против живого API: обзор, настройки и вход отдают реальные данные клуба;
 - SQL схемы, seed и административных запросов проверен на движке PostgreSQL 17 через PGlite,
   включая идемпотентность схемы и расчёт свободных мест.
 
 Что не проверено:
 
-- PostgreSQL в Docker: на машине нет ни Docker, ни podman, ни локального Postgres,
-  поэтому SQL проверялся через PGlite, а не против настоящего сервера;
+- PostgreSQL именно в Docker: Docker на машине не установлен, а пароль sudo неизвестен,
+  поэтому база поднята без root через `./scripts/local-postgres.sh`
+  (настоящий PostgreSQL 18.4 в `~/.local/share/oyna`);
 - реальное подключение SENET/SmartShell/LANGAME;
 - push на настоящем телефоне: в Expo Go с SDK 53 remote push недоступны, нужен dev-билд
   и `extra.eas.projectId` в `app.json`;
@@ -204,7 +210,6 @@ Seed идемпотентен: повторный запуск обновляе�
 
 Ближайшие задачи:
 
-- проверить запуск PostgreSQL в Docker и прогнать seed против настоящей базы;
 - добавить SMS-провайдера вместо console OTP (Mobizon, SMSC или оператор клуба);
 - сделать dev-билд мобильного приложения с `eas projectId` и проверить push на телефоне;
 - добавить production database, лучше managed Postgres;
