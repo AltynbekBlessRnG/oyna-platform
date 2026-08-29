@@ -16,12 +16,15 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.1.10:4000/api"
+        "EXPO_PUBLIC_API_URL": "https://oyna-api.onrender.com/api"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://oyna-api.onrender.com/api"
       }
     }
   },
