@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { DatabaseService } from "../database/database.service";
 import { ClubsService } from "./clubs.service";
 
@@ -46,6 +46,10 @@ describe("ClubsService", () => {
     await expect(
       service.replaceZones("respawn-point", [{ id: "Зона 1", name: "Standard", description: "", pricePerHour: 500, seatCount: 8 }])
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it("refuses to load a catalog without a database", async () => {
+    await expect(service.upsertCatalog([{ club: { id: "x", name: "X" } as never, zones: [] }])).rejects.toThrow(ServiceUnavailableException);
   });
 
   it("requires at least one zone", async () => {

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { AuthService } from "./auth/auth.service";
 import { CLUB_CATALOG, type ClubCatalogEntry } from "./clubs/clubs.data";
+import { ClubsService } from "./clubs/clubs.service";
 import { DatabaseService } from "./database/database.service";
 
 /**
@@ -30,45 +31,6 @@ function readCatalog(): ClubCatalogEntry[] {
   return parsed as ClubCatalogEntry[];
 }
 
-async function seedCatalog(database: DatabaseService, catalog: ClubCatalogEntry[]): Promise<void> {
-  for (const { club, zones } of catalog) {
-    await database.query(
-      `INSERT INTO clubs (id, name, address, city, status, tags, equipment, accent, phone, opening_hours, rating, review_count, distance_km)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-       ON CONFLICT (id) DO UPDATE SET
-         name = EXCLUDED.name, address = EXCLUDED.address, city = EXCLUDED.city, status = EXCLUDED.status,
-         tags = EXCLUDED.tags, equipment = EXCLUDED.equipment, accent = EXCLUDED.accent,
-         phone = EXCLUDED.phone, opening_hours = EXCLUDED.opening_hours, updated_at = NOW()`,
-      [
-        club.id,
-        club.name,
-        club.address,
-        club.city,
-        club.status ?? "available",
-        club.tags ?? [],
-        club.equipment ?? "",
-        club.accent ?? "#b8ff45",
-        club.phone ?? null,
-        club.openingHours ?? null,
-        club.rating ?? 0,
-        club.reviewCount ?? 0,
-        club.distanceKm ?? 0
-      ]
-    );
-    for (const [index, zone] of zones.entries()) {
-      await database.query(
-        `INSERT INTO club_zones (club_id, id, name, description, price_per_hour, seat_count, sort_order)
-         VALUES ($1,$2,$3,$4,$5,$6,$7)
-         ON CONFLICT (club_id, id) DO UPDATE SET
-           name = EXCLUDED.name, description = EXCLUDED.description,
-           price_per_hour = EXCLUDED.price_per_hour, seat_count = EXCLUDED.seat_count, sort_order = EXCLUDED.sort_order`,
-        [club.id, zone.id, zone.name, zone.description ?? "", zone.pricePerHour, zone.seatCount, index]
-      );
-    }
-    console.info(`клуб ${club.id}: ${zones.length} зон, ${zones.reduce((sum, zone) => sum + zone.seatCount, 0)} мест`);
-  }
-}
-
 async function grantAdmin(database: DatabaseService, phone: string, clubId: string): Promise<void> {
   const club = await database.query("SELECT 1 FROM clubs WHERE id = $1", [clubId]);
   if (!club.rowCount) throw new Error(`Клуб ${clubId} не найден: сначала загрузите каталог`);
@@ -88,7 +50,11 @@ async function main(): Promise<void> {
   const database = new DatabaseService();
   await database.onModuleInit();
   try {
-    await seedCatalog(database, catalog);
+    const clubIds = await new ClubsService(database).upsertCatalog(catalog);
+    for (const { club, zones } of catalog) {
+      console.info(`клуб ${club.id}: ${zones.length} зон, ${zones.reduce((sum, zone) => sum + zone.seatCount, 0)} мест`);
+    }
+    if (!clubIds.length) throw new Error("каталог не загружен");
     const adminPhone = argument("admin-phone");
     if (adminPhone) {
       const clubId = argument("club");

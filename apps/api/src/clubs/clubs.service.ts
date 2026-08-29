@@ -1,7 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import type { ClubStatus, ClubSummary, ClubZone, UpdateClubRequest, UpsertZoneRequest } from "@oyna/contracts";
 import { DatabaseService } from "../database/database.service";
-import { CLUB_CATALOG, type ClubCatalogEntry } from "./clubs.data";
+import { type ClubCatalogEntry, CLUB_CATALOG } from "./clubs.data";
 
 interface ClubRow {
   id: string;
@@ -153,6 +153,55 @@ export class ClubsService {
       }
     });
     return this.findZones(clubId);
+  }
+
+  /**
+   * Загружает каталог клубов в базу: используется и seed-скриптом, и владельцем платформы
+   * через API, когда прямого доступа к базе нет. Идемпотентно: обновляет, ничего не удаляя.
+   */
+  async upsertCatalog(catalog: ClubCatalogEntry[]): Promise<string[]> {
+    if (!this.database.configured) throw new ServiceUnavailableException("Загрузка каталога доступна только с подключённой базой данных");
+    if (!Array.isArray(catalog) || catalog.length === 0) throw new BadRequestException("Каталог пуст");
+    for (const entry of catalog) {
+      if (!entry?.club?.id || !entry.club.name) throw new BadRequestException("У каждого клуба нужны поля club.id и club.name");
+      this.validateZones(entry.zones as UpsertZoneRequest[]);
+    }
+    for (const { club, zones } of catalog) {
+      await this.database.query(
+        `INSERT INTO clubs (id, name, address, city, status, tags, equipment, accent, phone, opening_hours, rating, review_count, distance_km)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         ON CONFLICT (id) DO UPDATE SET
+           name = EXCLUDED.name, address = EXCLUDED.address, city = EXCLUDED.city, status = EXCLUDED.status,
+           tags = EXCLUDED.tags, equipment = EXCLUDED.equipment, accent = EXCLUDED.accent,
+           phone = EXCLUDED.phone, opening_hours = EXCLUDED.opening_hours, updated_at = NOW()`,
+        [
+          club.id,
+          club.name,
+          club.address ?? "",
+          club.city ?? "",
+          club.status ?? "available",
+          club.tags ?? [],
+          club.equipment ?? "",
+          club.accent ?? "#b8ff45",
+          club.phone ?? null,
+          club.openingHours ?? null,
+          club.rating ?? 0,
+          club.reviewCount ?? 0,
+          club.distanceKm ?? 0
+        ]
+      );
+      for (const [index, zone] of zones.entries()) {
+        await this.database.query(
+          `INSERT INTO club_zones (club_id, id, name, description, price_per_hour, seat_count, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)
+           ON CONFLICT (club_id, id) DO UPDATE SET
+             name = EXCLUDED.name, description = EXCLUDED.description,
+             price_per_hour = EXCLUDED.price_per_hour, seat_count = EXCLUDED.seat_count, sort_order = EXCLUDED.sort_order`,
+          [club.id, zone.id, zone.name, zone.description ?? "", zone.pricePerHour, zone.seatCount, index]
+        );
+      }
+    }
+    return catalog.map((entry) => entry.club.id);
   }
 
   private validateClubPatch(patch: UpdateClubRequest): UpdateClubRequest {

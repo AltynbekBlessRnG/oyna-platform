@@ -13,6 +13,7 @@ import type {
 import { AdminIdentityGuard, ClubAdminGuard, PlatformAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ClubAccessService } from "./club-access.service";
+import { CLUB_CATALOG, type ClubCatalogEntry } from "./clubs.data";
 import { ClubsService } from "./clubs.service";
 
 @Controller("admin")
@@ -27,6 +28,13 @@ export class ClubsAdminController {
   @UseGuards(AdminIdentityGuard)
   managedClubs(@CurrentUser() user: AuthUser): Promise<ManagedClub[]> {
     return this.access.listManagedClubs(user);
+  }
+
+  /** Загрузка каталога клубов владельцем платформы: нужна там, где нет прямого доступа к базе. */
+  @Post("catalog")
+  @UseGuards(PlatformAdminGuard)
+  async seedCatalog(@Body() request: { catalog?: ClubCatalogEntry[] }): Promise<{ clubIds: string[] }> {
+    return { clubIds: await this.clubs.upsertCatalog(request?.catalog ?? CLUB_CATALOG) };
   }
 
   @Get("clubs/:clubId")
