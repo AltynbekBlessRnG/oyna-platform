@@ -8,7 +8,7 @@ import { Sidebar } from "@/components/sidebar";
 import { TournamentSection } from "@/components/tournament-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadActiveClub, loadClubBookings, loadClubView } from "@/lib/api";
+import { loadActiveClub, loadClubBookings, loadClubView, requireSession } from "@/lib/api";
 
 const MONEY = new Intl.NumberFormat("ru-KZ");
 
@@ -56,6 +56,7 @@ function toSummary(booking: BookingReceipt): BookingSummary {
 }
 
 export default async function DashboardPage() {
+  await requireSession();
   const { club } = await loadActiveClub();
   const [{ bookings, offline }, view] = await Promise.all([loadClubBookings(club.id), loadClubView(club.id)]);
 

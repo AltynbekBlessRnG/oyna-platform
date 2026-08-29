@@ -1,4 +1,5 @@
 import type { BookingReceipt, ClubAdminView, ManagedClub } from "@oyna/contracts";
+import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
 export const apiUrl = process.env.API_URL ?? "http://localhost:4000/api";
@@ -47,6 +48,17 @@ export async function adminFetch<T>(path: string, init: RequestInit = {}): Promi
 
 export async function loadManagedClubs(): Promise<ManagedClub[]> {
   return adminFetch<ManagedClub[]>("/admin/me/clubs");
+}
+
+/**
+ * Страницы кабинета доступны только тому, кто вошёл. Пилотный ключ остаётся входом
+ * для локальной демонстрации, поэтому там, где он не задан (production), анонимного
+ * посетителя отправляем на форму входа.
+ */
+export async function requireSession(): Promise<void> {
+  if (await getSessionToken()) return;
+  if (pilotKey()) return;
+  redirect("/login");
 }
 
 /** Активный клуб кабинета: из cookie, иначе первый доступный, иначе демонстрационный. */

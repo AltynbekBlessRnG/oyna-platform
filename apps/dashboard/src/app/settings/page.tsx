@@ -3,9 +3,10 @@ import Link from "next/link";
 import { ClubSettingsForm } from "@/components/club-settings-form";
 import { Sidebar } from "@/components/sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { adminFetch, loadActiveClub } from "@/lib/api";
+import { adminFetch, loadActiveClub, requireSession } from "@/lib/api";
 
 export default async function SettingsPage() {
+  await requireSession();
   const { club } = await loadActiveClub();
   let view: ClubAdminView | undefined;
   let error = "";
