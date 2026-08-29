@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import type { AuthSession, AuthUser, RequestCodeResponse } from "@oyna/contracts";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { DatabaseService } from "../database/database.service";
 import type { TokenPayload } from "./auth.types";
+import { SmsService } from "./sms/sms.service";
 
 interface Challenge {
   phone: string;
@@ -17,16 +18,31 @@ export class AuthService {
   private readonly users = new Map<string, AuthUser>();
   private readonly secret = process.env.AUTH_SECRET ?? "oyna-local-development-secret-change-me";
 
-  constructor(private readonly database: DatabaseService) {}
+  /** История запросов кода по номеру: защищает от перебора и от лишних платных SMS. */
+  private readonly requests = new Map<string, number[]>();
 
-  requestCode(rawPhone: string): RequestCodeResponse {
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly sms: SmsService = new SmsService()
+  ) {}
+
+  async requestCode(rawPhone: string): Promise<RequestCodeResponse> {
     const phone = this.normalizePhone(rawPhone);
+    this.assertNotThrottled(phone);
     const challengeId = randomUUID();
     const code = process.env.NODE_ENV === "production" ? String(randomInt(1000, 10000)) : "0000";
     this.challenges.set(challengeId, { phone, code, expiresAt: Date.now() + 5 * 60_000, attempts: 0 });
-    // Explicit console delivery is suitable only for a controlled pilot environment.
-    if (process.env.OTP_PROVIDER === "console") console.info(`[OTP] ${phone}: ${code}`);
+    await this.sms.sendCode(phone, code);
     return { challengeId, expiresInSeconds: 300, ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}) };
+  }
+
+  /** Не чаще одного кода в минуту и не больше пяти в час на номер. */
+  private assertNotThrottled(phone: string): void {
+    const now = Date.now();
+    const recent = (this.requests.get(phone) ?? []).filter((time) => now - time < 60 * 60_000);
+    if (recent.some((time) => now - time < 60_000)) throw new HttpException("Код уже отправлен. Подождите минуту.", HttpStatus.TOO_MANY_REQUESTS);
+    if (recent.length >= 5) throw new HttpException("Слишком много запросов кода. Попробуйте через час.", HttpStatus.TOO_MANY_REQUESTS);
+    this.requests.set(phone, [...recent, now]);
   }
 
   async verifyCode(challengeId: string, code: string, name?: string): Promise<AuthSession> {

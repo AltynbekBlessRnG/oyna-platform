@@ -7,7 +7,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("request-code")
-  requestCode(@Body() request: RequestCodeRequest): RequestCodeResponse {
+  requestCode(@Body() request: RequestCodeRequest): Promise<RequestCodeResponse> {
     return this.authService.requestCode(request.phone);
   }
 
