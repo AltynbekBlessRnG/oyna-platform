@@ -124,6 +124,9 @@ OYNA — единое мобильное приложение для компь�
 ## Боевой стенд на Render
 
 - API: `https://oyna-api.onrender.com` (сервис `oyna-api`, регион Frankfurt, план free).
+- Кабинет клуба: `https://oyna-cabinet.onrender.com` (сервис `oyna-cabinet`, Frankfurt, free),
+  переменная `API_URL` указывает на API. `CLUB_ADMIN_KEY` там намеренно не задан:
+  без него кабинет не пускает анонимного посетителя и требует вход по телефону.
 - База: `oyna-postgres`, PostgreSQL 18, Frankfurt, план free.
 - Деплой автоматический из ветки `main` репозитория `oyna-platform`.
 - Секреты (`AUTH_SECRET`, `CLUB_ADMIN_KEY`) заданы в Environment сервиса, в репозитории их нет.
@@ -133,6 +136,14 @@ OYNA — единое мобильное приложение для компь�
 
 ```
 npx --yes pnpm@11.9.0 install --frozen-lockfile && npx --yes pnpm@11.9.0 --filter @oyna/contracts build && npx --yes pnpm@11.9.0 --filter @oyna/api build
+```
+
+Права администратора клуба выдаются по номеру телефона тем же ключом:
+
+```bash
+curl -X POST -H "x-club-admin-key: <ключ>" -H 'Content-Type: application/json' \
+  -d '{"phone":"+7...","name":"Администратор"}' \
+  https://oyna-api.onrender.com/api/admin/clubs/vertex-arena/members
 ```
 
 Каталог клубов заливается без доступа к базе:
@@ -239,7 +250,6 @@ Seed идемпотентен: повторный запуск обновляе�
 
 Ближайшие задачи:
 
-- развернуть кабинет клуба: сейчас на Render живёт только API, кабинет запускается локально;
 - добавить SMS-провайдера вместо console OTP (Mobizon, SMSC или оператор клуба);
 - сделать dev-билд мобильного приложения с `eas projectId` и проверить push на телефоне;
 - добавить в кабинет управление администраторами клуба (сейчас права выдаются только через seed);
