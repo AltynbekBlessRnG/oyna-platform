@@ -18,6 +18,6 @@ describe("AuthService", () => {
   });
 
   it("keeps the throttle per number", async () => {
-    await expect(service.requestCode("+77010000002")).resolves.toMatchObject({ expiresInSeconds: 300 });
+    await expect(service.requestCode("+77010000002")).resolves.toMatchObject({ expiresInSeconds: 600 });
   });
 });
