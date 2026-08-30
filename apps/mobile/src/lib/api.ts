@@ -1,4 +1,4 @@
-import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubSummary, ClubZone, CreateBookingRequest, GameSummary, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
+import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubAccount, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
 import { demoClubs } from "@/data/demo-clubs";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -161,6 +161,13 @@ export const getChatChannels = (city="Алматы") => api<ChatChannel[]>(`/cha
 export const getChatMessages = (channelId:string) => api<ChatMessage[]>(`/chat/channels/${channelId}/messages`);
 export const sendChatMessage = (channelId:string,text:string) => api<ChatMessage>(`/chat/channels/${channelId}/messages`,{method:"POST",body:JSON.stringify({text})});
 export const getTournaments = (gameId?:string) => api<TournamentSummary[]>(`/tournaments${gameId?`?gameId=${encodeURIComponent(gameId)}`:""}`);
+export const getClubTournaments = (clubId:string) => api<TournamentSummary[]>(`/tournaments?clubId=${encodeURIComponent(clubId)}`);
+export const getSeatMap = (clubId:string) => api<ClubSeatMap>(`/clubs/${clubId}/seatmap`);
+export const getClubMenu = (clubId:string) => api<MenuItem[]>(`/clubs/${clubId}/menu`);
+export const getClubOrders = (clubId:string) => api<ClubOrder[]>(`/clubs/${clubId}/orders`);
+export const createClubOrder = (clubId:string,request:CreateOrderRequest) => api<ClubOrder>(`/clubs/${clubId}/orders`,{method:"POST",body:JSON.stringify(request)});
+export const getClubAccount = (clubId:string) => api<ClubAccount>(`/clubs/${clubId}/account`);
+export const renameClubAccount = (clubId:string,nickname:string) => api<ClubAccount>(`/clubs/${clubId}/account`,{method:"PATCH",body:JSON.stringify({nickname})});
 export const registerTournament = (id:string,teamId?:string) => api<{status:string}>(`/tournaments/${id}/register`,{method:"POST",body:JSON.stringify({teamId})});
 export const getMyProfile = () => api<PlayerProfile>("/profiles/me");
 export const updateMyProfile = (value:UpdateProfileRequest) => api<PlayerProfile>("/profiles/me",{method:"PATCH",body:JSON.stringify(value)});

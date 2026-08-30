@@ -165,6 +165,11 @@ export class ClubsService {
     for (const entry of catalog) {
       if (!entry?.club?.id || !entry.club.name) throw new BadRequestException("У каждого клуба нужны поля club.id и club.name");
       this.validateZones(entry.zones as UpsertZoneRequest[]);
+      for (const item of entry.menu ?? []) {
+        if (!item?.id || !item.name) throw new BadRequestException("У позиции меню нужны поля id и name");
+        if (!["drinks", "food", "snacks", "other"].includes(item.category)) throw new BadRequestException(`Неизвестная категория меню: ${item.category}`);
+        if (!Number.isInteger(item.price) || item.price < 0 || item.price > 1_000_000) throw new BadRequestException("Цена позиции меню должна быть целым числом");
+      }
     }
     for (const { club, zones } of catalog) {
       await this.database.query(
@@ -198,6 +203,18 @@ export class ClubsService {
              name = EXCLUDED.name, description = EXCLUDED.description,
              price_per_hour = EXCLUDED.price_per_hour, seat_count = EXCLUDED.seat_count, sort_order = EXCLUDED.sort_order`,
           [club.id, zone.id, zone.name, zone.description ?? "", zone.pricePerHour, zone.seatCount, index]
+        );
+      }
+    }
+    for (const { club, menu } of catalog) {
+      for (const [index, item] of (menu ?? []).entries()) {
+        await this.database.query(
+          `INSERT INTO club_menu_items (id, club_id, category, name, description, price, available, sort_order)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (id) DO UPDATE SET
+             category = EXCLUDED.category, name = EXCLUDED.name, description = EXCLUDED.description,
+             price = EXCLUDED.price, available = EXCLUDED.available, sort_order = EXCLUDED.sort_order`,
+          [item.id, club.id, item.category, item.name, item.description ?? "", item.price, item.available ?? true, index]
         );
       }
     }

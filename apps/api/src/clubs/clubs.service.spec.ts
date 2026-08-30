@@ -1,12 +1,13 @@
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { DatabaseService } from "../database/database.service";
+import { CLUB_CATALOG } from "./clubs.data";
 import { ClubsService } from "./clubs.service";
 
 describe("ClubsService", () => {
   const service = new ClubsService(new DatabaseService());
 
   it("returns the club catalog", async () => {
-    await expect(service.findAll()).resolves.toHaveLength(3);
+    await expect(service.findAll()).resolves.toHaveLength(CLUB_CATALOG.length);
   });
 
   it("derives the price and seat count from zones", async () => {

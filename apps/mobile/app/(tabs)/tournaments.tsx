@@ -1,9 +1,10 @@
-import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";import { CalendarDays,Trophy,Users } from "lucide-react-native";import { FlatList,Pressable,StyleSheet,Text,View } from "react-native";import { getTournaments,registerTournament } from "@/lib/api";import { colors } from "@/theme";
+import { useMutation,useQuery,useQueryClient } from "@tanstack/react-query";import { CalendarDays,Trophy,Users } from "lucide-react-native";import { FlatList,Pressable,StyleSheet,Text,View } from "react-native";import { useSafeAreaInsets } from "react-native-safe-area-context";import { getTournaments,registerTournament } from "@/lib/api";import { colors } from "@/theme";
 export default function Tournaments(){
+  const insets=useSafeAreaInsets();
   const qc=useQueryClient();
   const {data=[]}=useQuery({queryKey:["tournaments"],queryFn:()=>getTournaments()});
   const join=useMutation({mutationFn:(id:string)=>registerTournament(id),onSuccess:()=>void qc.invalidateQueries({queryKey:["tournaments"]})});
-  return <FlatList style={s.page} contentContainerStyle={s.content} data={data} keyExtractor={x=>x.id}
+  return <FlatList style={s.page} contentContainerStyle={[s.content,{paddingTop:insets.top+12}]} data={data} keyExtractor={x=>x.id}
     ListHeaderComponent={<View><Text style={s.title}>Турниры</Text><Text style={s.sub}>Официальные соревнования компьютерных клубов.</Text></View>}
     ListEmptyComponent={<Text style={s.empty}>Опубликованных турниров пока нет.</Text>}
     renderItem={({item})=><View style={s.card}>

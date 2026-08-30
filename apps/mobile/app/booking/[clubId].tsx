@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, ChevronLeft, Clock3, Minus, Monitor, Plus, Users } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createBooking, getAvailability, getClub, getZones } from "@/lib/api";
 import { colors } from "@/theme";
 import { useAuth } from "@/auth/auth-context";
@@ -28,15 +29,16 @@ function toStartAt(date: Date, time: string): string {
 }
 
 export default function BookingScreen() {
-  const { clubId } = useLocalSearchParams<{ clubId: string }>();
+  const { clubId, zoneId: preselectedZoneId } = useLocalSearchParams<{ clubId: string; zoneId?: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const days = getDays();
   const [step, setStep] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
   const [time, setTime] = useState("18:00");
   const [duration, setDuration] = useState(3);
-  const [zoneId, setZoneId] = useState("standard");
+  const [zoneId, setZoneId] = useState(preselectedZoneId ?? "standard");
   const [seatIds, setSeatIds] = useState<string[]>([]);
   const startAt = toStartAt(days[dayIndex], time);
   const { data: club } = useQuery({ queryKey: ["club", clubId], queryFn: () => getClub(clubId) });
@@ -105,7 +107,7 @@ export default function BookingScreen() {
         </View>}
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
         {step > 0 && <Pressable accessibilityLabel="Предыдущий шаг" onPress={() => setStep((current) => current - 1)} style={styles.backButton}><ChevronLeft color={colors.text} size={22} /></Pressable>}
         <Pressable disabled={!canContinue || booking.isPending} onPress={step === 3 ? confirm : goNext} style={[styles.nextButton, (!canContinue || booking.isPending) && styles.disabled]}><Text style={styles.nextText}>{booking.isPending ? "Бронируем…" : step === 3 ? `Подтвердить · ${total.toLocaleString("ru-KZ")} ₸` : "Продолжить"}</Text></Pressable>
       </View>

@@ -97,4 +97,44 @@ CREATE TABLE IF NOT EXISTS bookings (
 
 CREATE INDEX IF NOT EXISTS bookings_club_schedule_idx ON bookings (club_id, zone_id, start_at);
 CREATE INDEX IF NOT EXISTS bookings_user_idx ON bookings (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS club_menu_items (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('drinks', 'food', 'snacks', 'other')),
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  price INTEGER NOT NULL CHECK (price >= 0),
+  available BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS club_menu_items_club_idx ON club_menu_items (club_id, sort_order);
+
+CREATE TABLE IF NOT EXISTS club_orders (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  seat_label TEXT NOT NULL,
+  lines JSONB NOT NULL,
+  total INTEGER NOT NULL CHECK (total >= 0),
+  status TEXT NOT NULL CHECK (status IN ('new', 'accepted', 'delivered', 'cancelled')),
+  comment TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS club_orders_club_idx ON club_orders (club_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS club_orders_user_idx ON club_orders (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS club_accounts (
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  nickname TEXT NOT NULL,
+  balance INTEGER NOT NULL DEFAULT 0,
+  bonus_points INTEGER NOT NULL DEFAULT 0,
+  hours_played INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (club_id, user_id)
+);
 `;

@@ -57,4 +57,32 @@ describe("BookingsService", () => {
     const cancelled = await service.cancel(booking.id, user.id);
     expect(cancelled.status).toBe("cancelled");
   });
+
+  it("marks a seat busy while the session runs and reserved before it starts", async () => {
+    const now = Date.now();
+    const running: CreateBookingRequest = {
+      clubId: "zen-game-club",
+      zoneId: "standard",
+      seatIds: ["zen-game-club-standard-01"],
+      startAt: new Date(now - 3_600_000).toISOString(),
+      durationHours: 3,
+      playerName: "Игрок"
+    };
+    const upcoming: CreateBookingRequest = {
+      clubId: "zen-game-club",
+      zoneId: "standard",
+      seatIds: ["zen-game-club-standard-02"],
+      startAt: new Date(now + 3 * 3_600_000).toISOString(),
+      durationHours: 2,
+      playerName: "Игрок"
+    };
+    await service.create(running, user);
+    await service.create(upcoming, user);
+    const seatMap = await service.getSeatMap("zen-game-club");
+    const seats = seatMap.zones.find((zone) => zone.zone.id === "standard")?.seats ?? [];
+    expect(seats.find((seat) => seat.id === "zen-game-club-standard-01")?.status).toBe("occupied");
+    expect(seats.find((seat) => seat.id === "zen-game-club-standard-02")?.status).toBe("reserved");
+    expect(seats.find((seat) => seat.id === "zen-game-club-standard-03")?.status).toBe("free");
+    expect(seatMap.zones.map((zone) => zone.zone.id)).toContain("ps5");
+  });
 });

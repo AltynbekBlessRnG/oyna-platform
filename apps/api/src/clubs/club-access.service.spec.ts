@@ -3,6 +3,7 @@ import type { AuthUser } from "@oyna/contracts";
 import { AuthService } from "../auth/auth.service";
 import { DatabaseService } from "../database/database.service";
 import { ClubAccessService } from "./club-access.service";
+import { CLUB_CATALOG } from "./clubs.data";
 import { ClubsService } from "./clubs.service";
 
 describe("ClubAccessService", () => {
@@ -20,7 +21,7 @@ describe("ClubAccessService", () => {
 
   it("lets a club administrator manage the pilot catalog without a database", async () => {
     await expect(service.canManage(clubAdmin, "vertex-arena")).resolves.toBe(true);
-    await expect(service.listManagedClubs(clubAdmin)).resolves.toHaveLength(3);
+    await expect(service.listManagedClubs(clubAdmin)).resolves.toHaveLength(CLUB_CATALOG.length);
   });
 
   it("gives the platform owner access to every club", async () => {

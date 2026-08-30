@@ -190,3 +190,77 @@ export interface AuthSession {
 export interface UpdateBookingStatusRequest {
   status: Extract<BookingStatus, "confirmed" | "cancelled" | "completed">;
 }
+
+/** Статус компьютера на живой карте зала. */
+export type SeatLiveStatus = "free" | "occupied" | "reserved";
+
+export interface SeatMapSeat {
+  id: string;
+  label: string;
+  row: string;
+  status: SeatLiveStatus;
+  /** Для занятого места — когда текущая сессия закончится. */
+  occupiedUntil?: string;
+  /** Для забронированного места — во сколько придёт игрок. */
+  reservedFrom?: string;
+}
+
+export interface SeatMapZone {
+  zone: ClubZone;
+  seats: SeatMapSeat[];
+}
+
+export interface ClubSeatMap {
+  clubId: string;
+  generatedAt: string;
+  zones: SeatMapZone[];
+}
+
+export type MenuCategory = "drinks" | "food" | "snacks" | "other";
+
+export interface MenuItem {
+  id: string;
+  clubId: string;
+  category: MenuCategory;
+  name: string;
+  description: string;
+  price: number;
+  available: boolean;
+}
+
+export type ClubOrderStatus = "new" | "accepted" | "delivered" | "cancelled";
+
+export interface ClubOrderLine {
+  itemId: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface ClubOrder {
+  id: string;
+  clubId: string;
+  seatLabel: string;
+  lines: ClubOrderLine[];
+  total: number;
+  status: ClubOrderStatus;
+  comment?: string;
+  createdAt: string;
+}
+
+export interface CreateOrderRequest {
+  seatLabel: string;
+  comment?: string;
+  lines: { itemId: string; quantity: number }[];
+}
+
+/** Аккаунт игрока внутри конкретного клуба: свой ник, баланс и накопленные бонусы. */
+export interface ClubAccount {
+  clubId: string;
+  clubName: string;
+  nickname: string;
+  balance: number;
+  bonusPoints: number;
+  hoursPlayed: number;
+  joinedAt: string;
+}

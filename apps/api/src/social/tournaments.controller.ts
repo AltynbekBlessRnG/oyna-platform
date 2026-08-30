@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";import type { AuthUser,TournamentSummary } from "@oyna/contracts";import { AuthGuard } from "../auth/auth.guard";import { CurrentUser } from "../auth/current-user.decorator";import { TournamentsService } from "./tournaments.service";
 @Controller() export class TournamentsController{constructor(private readonly service:TournamentsService){}
-@Get("tournaments")list(@Query("gameId")g?:string){return this.service.list(g)} @Get("tournaments/:id")get(@Param("id")id:string){return this.service.get(id)}
+@Get("tournaments")list(@Query("gameId")g?:string,@Query("clubId")c?:string){return this.service.list(g,c)} @Get("tournaments/:id")get(@Param("id")id:string){return this.service.get(id)}
 @Post("tournaments") @UseGuards(AuthGuard) create(@CurrentUser()u:AuthUser,@Body()b:Omit<TournamentSummary,"id"|"status"|"registeredCount">){return this.service.create(u,b)}
 @Post("tournaments/:id/publish") @UseGuards(AuthGuard) publish(@CurrentUser()u:AuthUser,@Param("id")id:string){return this.service.publish(u,id)} @Post("tournaments/:id/register") @UseGuards(AuthGuard) register(@CurrentUser()u:AuthUser,@Param("id")id:string,@Body()b:{teamId?:string}){return this.service.register(u,id,b.teamId)}
 @Post("tournaments/:id/bracket") @UseGuards(AuthGuard) bracket(@CurrentUser()u:AuthUser,@Param("id")id:string){return this.service.generateBracket(u,id)}

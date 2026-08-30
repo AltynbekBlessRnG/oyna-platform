@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import type { AuthUser, AvailabilitySnapshot, BookingReceipt, BookingStatus, ClubZone, CreateBookingRequest } from "@oyna/contracts";
+import type { AuthUser, AvailabilitySnapshot, BookingReceipt, BookingStatus, ClubSeatMap, ClubZone, CreateBookingRequest, SeatMapSeat } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { ClubsService } from "../clubs/clubs.service";
@@ -48,6 +48,37 @@ export class BookingsService {
       startAt,
       durationHours,
       seats: createSeats(zone).map((seat) => reservedSeatIds.has(seat.id) ? { ...seat, status: "occupied" } : seat)
+    };
+  }
+
+  /**
+   * Живая карта зала: все компьютеры клуба с их состоянием прямо сейчас.
+   * Занято — идёт сессия, забронировано — бронь начнётся в ближайшие сутки.
+   */
+  async getSeatMap(clubId: string): Promise<ClubSeatMap> {
+    const zones = await this.clubsService.findZones(clubId);
+    const now = Date.now();
+    const horizon = now + 24 * 3_600_000;
+    const active = (await this.findForClub(clubId)).filter((booking) => {
+      if (!["pending", "confirmed"].includes(booking.status)) return false;
+      const start = new Date(booking.startAt).getTime();
+      return start < horizon && start + booking.durationHours * 3_600_000 > now;
+    });
+    return {
+      clubId,
+      generatedAt: new Date(now).toISOString(),
+      zones: zones.map((zone) => ({
+        zone,
+        seats: createSeats(zone).map<SeatMapSeat>((seat) => {
+          const booking = active.find((item) => item.seatIds.includes(seat.id));
+          if (!booking) return { id: seat.id, label: seat.label, row: seat.row, status: "free" };
+          const start = new Date(booking.startAt).getTime();
+          const end = new Date(start + booking.durationHours * 3_600_000).toISOString();
+          return start <= now
+            ? { id: seat.id, label: seat.label, row: seat.row, status: "occupied", occupiedUntil: end }
+            : { id: seat.id, label: seat.label, row: seat.row, status: "reserved", reservedFrom: booking.startAt };
+        })
+      }))
     };
   }
 

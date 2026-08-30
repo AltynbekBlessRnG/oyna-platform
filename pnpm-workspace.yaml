@@ -5,3 +5,6 @@ packages:
 allowBuilds:
   sharp: true
   unrs-resolver: true
+
+overrides:
+  '@react-native/metro-config': 0.81.5

@@ -1,7 +1,8 @@
 import type { NotificationItem } from "@oyna/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BellRing, CalendarCheck2, Trophy, Users } from "lucide-react-native";
-import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { getNotifications, markNotificationRead } from "@/lib/api";
 import { colors } from "@/theme";
 
@@ -36,7 +37,7 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
