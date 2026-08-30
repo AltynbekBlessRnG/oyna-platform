@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#C6FF57"/>
+      <stop offset="55%" stop-color="#7BF0A8"/>
+      <stop offset="100%" stop-color="#45E0FF"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.86) translate(-512 -512)">
+    <circle cx="512" cy="512" r="300" fill="none" stroke="url(#accent)" stroke-width="78"
+            stroke-linecap="round" stroke-dasharray="1620 265" transform="rotate(-58 512 512)"/>
+    <polygon points="397,387 627,387 627,443 547,581 627,581 627,637 397,637 397,581 477,443 397,443" fill="url(#accent)"/>
+  </g></svg>

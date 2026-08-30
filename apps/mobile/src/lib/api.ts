@@ -28,7 +28,7 @@ export async function verifyLoginCode(challengeId: string, code: string, name: s
   if (challengeId.startsWith("demo:")) {
     if (code !== "0000") throw new Error("Неверный код");
     const phone = challengeId.slice(5);
-    return { accessToken: `demo-token:${phone}`, user: { id: `demo-user:${phone}`, phone, name: name.trim() || "Игрок OYNA", role: "player" } };
+    return { accessToken: `demo-token:${phone}`, user: { id: `demo-user:${phone}`, phone, name: name.trim() || "Игрок Zen", role: "player" } };
   }
   const response = await fetch(`${apiUrl}/auth/verify-code`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ challengeId, code, name }) });
   if (!response.ok) throw new Error("Неверный или просроченный код");

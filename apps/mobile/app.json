@@ -1,26 +1,36 @@
 {
   "expo": {
-    "name": "OYNA",
+    "name": "Zen",
     "slug": "oyna",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "oyna",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "kz.oyna.app",
-      "buildNumber": "1"
+      "buildNumber": "2"
     },
     "android": {
       "package": "kz.oyna.app",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#111014"
       },
-      "versionCode": 1
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#111014"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -31,6 +41,7 @@
         "projectId": "18d324bc-c511-459a-b44d-80141a5adcdd"
       }
     },
-    "owner": "effervescence-ss"
+    "owner": "effervescence-ss",
+    "icon": "./assets/icon.png"
   }
 }

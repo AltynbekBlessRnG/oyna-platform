@@ -1,9 +1,10 @@
 import { useRouter } from "expo-router";
-import { Gamepad2, ShieldCheck } from "lucide-react-native";
+import { ShieldCheck } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ZenMark } from "@/components/zen-mark";
 import { useAuth } from "@/auth/auth-context";
 import { requestLoginCode, verifyLoginCode } from "@/lib/api";
 import { colors } from "@/theme";
@@ -46,8 +47,8 @@ export default function LoginScreen() {
       bottomOffset={24}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.logo}><Gamepad2 color={colors.primaryText} size={31} /></View>
-      <Text style={styles.brand}>OYNA</Text>
+      <View style={styles.logo}><ZenMark size={62} /></View>
+      <Text style={styles.brand}>ZEN</Text>
       <Text style={styles.title}>{challengeId ? "Введи код" : "Начнём играть"}</Text>
       <Text style={styles.subtitle}>{challengeId ? `Код отправлен на ${phone}.` : "Номер нужен для бронирований и уведомлений клуба."}</Text>
       {!challengeId ? (
@@ -83,7 +84,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 24, justifyContent: "center" },
-  logo: { width: 62, height: 62, borderRadius: 20, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  logo: { width: 62, height: 62, alignItems: "center", justifyContent: "center" },
   brand: { marginTop: 13, color: colors.primary, fontSize: 14, fontWeight: "900", letterSpacing: 2 },
   title: { marginTop: 35, color: colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -0.8 },
   subtitle: { marginTop: 9, color: colors.muted, fontSize: 14, lineHeight: 21 },

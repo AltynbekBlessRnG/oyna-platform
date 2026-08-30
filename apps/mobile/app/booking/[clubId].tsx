@@ -65,7 +65,7 @@ export default function BookingScreen() {
   }
 
   function confirm(): void {
-    booking.mutate({ clubId, zoneId, seatIds, startAt, durationHours: duration, playerName: session?.user.name ?? "Игрок OYNA" });
+    booking.mutate({ clubId, zoneId, seatIds, startAt, durationHours: duration, playerName: session?.user.name ?? "Игрок Zen" });
   }
 
   const canContinue = step === 1 ? Boolean(selectedZone) : step < 2 || seatIds.length > 0;
