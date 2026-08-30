@@ -8,7 +8,8 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
-      }
+      },
+      "node": "22.14.0"
     },
     "preview": {
       "distribution": "internal",
@@ -17,7 +18,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://oyna-api.onrender.com/api"
-      }
+      },
+      "node": "22.14.0"
     },
     "production": {
       "android": {
@@ -25,7 +27,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://oyna-api.onrender.com/api"
-      }
+      },
+      "node": "22.14.0"
     }
   },
   "submit": {
