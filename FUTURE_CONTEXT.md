@@ -163,8 +163,9 @@ API. Пока `OTP_PROVIDER=console`, он виден только в логах
 
 ## Сборка APK
 
-Мобильное приложение привязано к проекту EAS `@xenodochial/oyna`
-(projectId в `apps/mobile/app.json`). Keystore создан на стороне Expo.
+Мобильное приложение привязано к проекту EAS `@effervescence-ss/oyna`
+(projectId `18d324bc-c511-459a-b44d-80141a5adcdd` в `apps/mobile/app.json`).
+Keystore создан на стороне Expo.
 
 ```bash
 ./scripts/build-apk.sh          # поставить сборку в очередь
@@ -175,10 +176,17 @@ API. Пока `OTP_PROVIDER=console`, он виден только в логах
 `EXPO_PUBLIC_API_URL=https://oyna-api.onrender.com/api`, поэтому установленное
 приложение работает где угодно, а не только рядом с ноутбуком.
 
+Все профили в `eas.json` закрепляют `"node": "22.14.0"`. Это обязательно:
+сборщик EAS по умолчанию берёт Node 20, а pnpm 11.9 требует Node не ниже 22.13
+и падает на фазе Install dependencies с `No such built-in module: node:sqlite`.
+
 Бесплатный план Expo: 15 Android-сборок в месяц, очередь низкого приоритета,
-одна сборка за раз, таймаут 45 минут. 29 августа 2026 лимит был исчерпан
-(его выбрал другой проект), сборка отложена до сброса квоты 1 сентября —
-на это стоит таймер systemd `oyna-apk-build.timer` в пользовательской сессии.
+одна сборка за раз, таймаут 45 минут. Квота считается на аккаунт: 29 августа
+2026 лимит старого аккаунта `xenodochial` был исчерпан другим проектом, поэтому
+проект переехал на новый аккаунт.
+
+Первый готовый пилотный APK (30 августа 2026, ~70 МБ):
+https://expo.dev/artifacts/eas/gmm1g-uBSNwoDx-iiNexZ4kzVEjYEZKyG8A_0U1F6BA.apk
 
 ## Как запустить
 
