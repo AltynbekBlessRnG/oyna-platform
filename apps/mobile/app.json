@@ -24,6 +24,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "65776deb-7313-440e-9978-dabc47d48f6c"
+      }
+    },
+    "owner": "xenodochial"
   }
 }
