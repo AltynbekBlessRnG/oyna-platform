@@ -1,4 +1,4 @@
-import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubAccount, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
+import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubAccount, ClubAvailability, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
 import { demoClubs } from "@/data/demo-clubs";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -85,6 +85,20 @@ export async function getAvailability(clubId: string, zoneId: string, startAt: s
         status: "available"
       }))
     };
+  }
+}
+
+/** Доступность всего зала: зона у компьютера уже своя, отдельный выбор тарифа игроку не нужен. */
+export async function getClubAvailability(clubId: string, startAt: string, durationHours: number): Promise<ClubAvailability> {
+  const query = new URLSearchParams({ startAt, durationHours: String(durationHours) });
+  try {
+    const response = await fetch(`${apiUrl}/clubs/${clubId}/availability/hall?${query}`);
+    if (!response.ok) throw new Error("Hall availability request failed");
+    return (await response.json()) as ClubAvailability;
+  } catch {
+    const zones = await getZones(clubId);
+    const snapshots = await Promise.all(zones.map((zone) => getAvailability(clubId, zone.id, startAt, durationHours)));
+    return { clubId, startAt, durationHours, zones: zones.map((zone, index) => ({ zone, seats: snapshots[index].seats })) };
   }
 }
 

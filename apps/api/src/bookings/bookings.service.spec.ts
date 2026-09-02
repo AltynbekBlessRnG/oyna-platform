@@ -28,6 +28,14 @@ describe("BookingsService", () => {
     expect(booking.seatLabels).toEqual(["01", "02"]);
   });
 
+  it("returns the whole hall at once so the player never picks a tariff separately", async () => {
+    const hall = await service.getClubAvailability("vertex-arena", startAt, 3);
+    const standard = hall.zones.find((entry) => entry.zone.id === "standard");
+    expect(hall.zones.length).toBeGreaterThan(1);
+    expect(standard?.zone.pricePerHour).toBeGreaterThan(0);
+    expect(standard?.seats.filter((seat) => seat.status === "occupied").map((seat) => seat.id)).toEqual(["vertex-arena-standard-01", "vertex-arena-standard-02"]);
+  });
+
   it("keeps internal fields out of the club response", async () => {
     const [booking] = await service.findForClub("vertex-arena");
     expect(booking).not.toHaveProperty("userId");

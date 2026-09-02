@@ -113,7 +113,7 @@ export default function ClubDetailsScreen() {
                 <SeatMap
                   seatMap={seatMap}
                   onSeatPress={(zoneId, seat) => {
-                    if (seat.status === "free") router.push({ pathname: "/booking/[clubId]", params: { clubId: club.id, zoneId } });
+                    if (seat.status === "free") router.push({ pathname: "/booking/[clubId]", params: { clubId: club.id, zoneId, seatId: seat.id } });
                   }}
                 />
               ) : (

@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
-import type { AuthUser, AvailabilitySnapshot, BookingReceipt, ClubSeatMap, ClubZone, CreateBookingRequest, UpdateBookingStatusRequest } from "@oyna/contracts";
+import type { AuthUser, AvailabilitySnapshot, BookingReceipt, ClubAvailability, ClubSeatMap, ClubZone, CreateBookingRequest, UpdateBookingStatusRequest } from "@oyna/contracts";
 import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -17,6 +17,15 @@ export class BookingsController {
   @Get("clubs/:clubId/seatmap")
   getSeatMap(@Param("clubId") clubId: string): Promise<ClubSeatMap> {
     return this.bookingsService.getSeatMap(clubId);
+  }
+
+  @Get("clubs/:clubId/availability/hall")
+  getClubAvailability(
+    @Param("clubId") clubId: string,
+    @Query("startAt") startAt: string,
+    @Query("durationHours", ParseIntPipe) durationHours: number
+  ): Promise<ClubAvailability> {
+    return this.bookingsService.getClubAvailability(clubId, startAt, durationHours);
   }
 
   @Get("clubs/:clubId/availability")

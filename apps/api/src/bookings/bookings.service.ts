@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import type { AuthUser, AvailabilitySnapshot, BookingReceipt, BookingStatus, ClubSeatMap, ClubZone, CreateBookingRequest, SeatMapSeat } from "@oyna/contracts";
+import type { AuthUser, AvailabilitySnapshot, BookingReceipt, BookingStatus, ClubAvailability, ClubSeatMap, ClubZone, CreateBookingRequest, SeatMapSeat } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { ClubsService } from "../clubs/clubs.service";
@@ -49,6 +49,23 @@ export class BookingsService {
       durationHours,
       seats: createSeats(zone).map((seat) => reservedSeatIds.has(seat.id) ? { ...seat, status: "occupied" } : seat)
     };
+  }
+
+  /**
+   * Доступность всего зала на выбранное окно: зона у компьютера своя,
+   * поэтому отдельный шаг «выбери тариф» игроку не нужен.
+   */
+  async getClubAvailability(clubId: string, startAt: string, durationHours: number): Promise<ClubAvailability> {
+    this.validateSchedule(startAt, durationHours);
+    const zones = await this.clubsService.findZones(clubId);
+    const zoneSnapshots = await Promise.all(zones.map(async (zone) => {
+      const reservedSeatIds = new Set(await this.findReservedSeatIds(clubId, zone.id, startAt, durationHours));
+      return {
+        zone,
+        seats: createSeats(zone).map((seat) => reservedSeatIds.has(seat.id) ? { ...seat, status: "occupied" as const } : seat)
+      };
+    }));
+    return { clubId, startAt, durationHours, zones: zoneSnapshots };
   }
 
   /**

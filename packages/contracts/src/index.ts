@@ -63,6 +63,19 @@ export interface AvailabilitySnapshot {
   seats: SeatAvailability[];
 }
 
+/** Доступность всего зала на выбранное время: зоны с их ценами и компьютерами. */
+export interface ClubAvailabilityZone {
+  zone: ClubZone;
+  seats: SeatAvailability[];
+}
+
+export interface ClubAvailability {
+  clubId: string;
+  startAt: string;
+  durationHours: number;
+  zones: ClubAvailabilityZone[];
+}
+
 export interface CreateBookingRequest {
   clubId: string;
   zoneId: string;
