@@ -9,3 +9,8 @@ coverage/
 *.tsbuildinfo
 *.log
 .DS_Store
+
+# Приватные ключи Apple: .p8 от App Store Connect скачивается один раз и не восстанавливается.
+*.p8
+*.p12
+*.mobileprovision
