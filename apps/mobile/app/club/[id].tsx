@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarDays, ChevronLeft, Clock3, MapPin, Monitor, Star, Trophy, Users } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -144,6 +144,9 @@ export default function ClubDetailsScreen() {
                 <View>
                   {tournaments.map((tournament) => (
                     <View key={tournament.id} style={styles.tournament}>
+                      {tournament.imageUrl ? (
+                        <Image source={{ uri: tournament.imageUrl }} style={styles.tournamentCover} resizeMode="cover" accessibilityIgnoresInvertColors />
+                      ) : null}
                       <View style={styles.inline}>
                         <Trophy color={colors.primary} size={18} />
                         <Text style={styles.tournamentName}>{tournament.name}</Text>
@@ -231,6 +234,7 @@ const styles = StyleSheet.create({
   zonePrice: { color: colors.primary, fontSize: 14, fontWeight: "800" },
   zoneHour: { color: colors.muted, fontWeight: "500" },
   tournament: { marginBottom: 12, padding: 17, borderRadius: 19, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  tournamentCover: { height: 128, marginTop: -17, marginHorizontal: -17, marginBottom: 15, borderTopLeftRadius: 18, borderTopRightRadius: 18, backgroundColor: colors.surfaceRaised },
   tournamentName: { color: colors.text, fontSize: 16, fontWeight: "800" },
   tournamentMeta: { marginTop: 13, flexDirection: "row", justifyContent: "space-between" },
   metaText: { color: colors.muted, fontSize: 12 },

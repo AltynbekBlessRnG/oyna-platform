@@ -13,6 +13,7 @@ interface MenuRow {
   description: string;
   price: number;
   available: boolean;
+  image_url: string | null;
 }
 
 interface OrderRow {
@@ -52,7 +53,7 @@ export class ClubHallService {
       return (CLUB_CATALOG.find((entry) => entry.club.id === clubId)?.menu ?? []).map((item) => ({ ...item, clubId, available: item.available ?? true }));
     }
     const result = await this.database.query<MenuRow>(
-      "SELECT id, club_id, category, name, description, price, available FROM club_menu_items WHERE club_id = $1 ORDER BY sort_order, name",
+      "SELECT id, club_id, category, name, description, price, available, image_url FROM club_menu_items WHERE club_id = $1 ORDER BY sort_order, name",
       [clubId]
     );
     return result.rows.map((row) => this.mapMenuItem(row));
@@ -161,7 +162,7 @@ export class ClubHallService {
   }
 
   private mapMenuItem(row: MenuRow): MenuItem {
-    return { id: row.id, clubId: row.club_id, category: row.category, name: row.name, description: row.description, price: row.price, available: row.available };
+    return { id: row.id, clubId: row.club_id, category: row.category, name: row.name, description: row.description, price: row.price, available: row.available, ...(row.image_url ? { imageUrl: row.image_url } : {}) };
   }
 
   private mapOrder(row: OrderRow): ClubOrder {

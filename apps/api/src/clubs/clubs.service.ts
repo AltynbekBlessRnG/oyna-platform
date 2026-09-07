@@ -209,12 +209,34 @@ export class ClubsService {
     for (const { club, menu } of catalog) {
       for (const [index, item] of (menu ?? []).entries()) {
         await this.database.query(
-          `INSERT INTO club_menu_items (id, club_id, category, name, description, price, available, sort_order)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          `INSERT INTO club_menu_items (id, club_id, category, name, description, price, available, sort_order, image_url)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
            ON CONFLICT (id) DO UPDATE SET
              category = EXCLUDED.category, name = EXCLUDED.name, description = EXCLUDED.description,
-             price = EXCLUDED.price, available = EXCLUDED.available, sort_order = EXCLUDED.sort_order`,
-          [item.id, club.id, item.category, item.name, item.description ?? "", item.price, item.available ?? true, index]
+             price = EXCLUDED.price, available = EXCLUDED.available, sort_order = EXCLUDED.sort_order,
+             image_url = EXCLUDED.image_url`,
+          [item.id, club.id, item.category, item.name, item.description ?? "", item.price, item.available ?? true, index, item.imageUrl ?? null]
+        );
+      }
+    }
+    for (const { club, tournaments } of catalog) {
+      for (const item of tournaments ?? []) {
+        const startsAt = new Date(Date.now() + item.startsInDays * 86_400_000);
+        startsAt.setHours(19, 0, 0, 0);
+        const registrationEndsAt = new Date(Date.now() + item.registrationClosesInDays * 86_400_000);
+        await this.database.query(
+          `INSERT INTO tournaments (id, club_id, game_id, name, description, rules, kind, capacity, status,
+             registration_starts_at, registration_ends_at, starts_at, entry_fee_text, prize_text, image_url)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'published',NOW(),$9,$10,$11,$12,$13)
+           ON CONFLICT (id) DO UPDATE SET
+             name = EXCLUDED.name, description = EXCLUDED.description, rules = EXCLUDED.rules,
+             kind = EXCLUDED.kind, capacity = EXCLUDED.capacity, status = EXCLUDED.status,
+             registration_ends_at = EXCLUDED.registration_ends_at, starts_at = EXCLUDED.starts_at,
+             entry_fee_text = EXCLUDED.entry_fee_text, prize_text = EXCLUDED.prize_text,
+             image_url = EXCLUDED.image_url, updated_at = NOW()`,
+          [item.id, club.id, item.gameId, item.name, item.description, item.rules, item.kind, item.capacity,
+           registrationEndsAt.toISOString(), startsAt.toISOString(),
+           item.entryFeeText ?? null, item.prizeText ?? null, item.imageUrl ?? null]
         );
       }
     }

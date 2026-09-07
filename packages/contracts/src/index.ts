@@ -150,7 +150,7 @@ export interface TeamSummary { id: string; gameId: string; name: string; logoUrl
 export interface TournamentSummary {
   id: string; clubId: string; gameId: string; name: string; description: string; rules: string; kind: "solo" | "team";
   capacity: 4 | 8 | 16 | 32; status: TournamentStatus; registrationStartsAt: string; registrationEndsAt: string; startsAt: string;
-  entryFeeText?: string; prizeText?: string; registeredCount: number;
+  entryFeeText?: string; prizeText?: string; registeredCount: number; imageUrl?: string;
 }
 export interface TournamentMatch { id: string; tournamentId: string; round: number; position: number; participantAId?: string; participantBId?: string; scoreA?: number; scoreB?: number; winnerId?: string; status: "pending" | "awaiting_confirmation" | "disputed" | "completed"; }
 
@@ -247,6 +247,8 @@ export interface MenuItem {
   description: string;
   price: number;
   available: boolean;
+  /** Фото позиции. Нет — карточка рисует запасную плашку. */
+  imageUrl?: string;
 }
 
 export type ClubOrderStatus = "new" | "accepted" | "delivered" | "cancelled";

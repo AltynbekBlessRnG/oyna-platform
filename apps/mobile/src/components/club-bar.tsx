@@ -1,8 +1,8 @@
 import type { MenuCategory, MenuItem } from "@oyna/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Minus, Plus, ShoppingBag } from "lucide-react-native";
+import { Minus, Plus, ShoppingBag, UtensilsCrossed } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { createClubOrder, getClubMenu, getClubOrders } from "@/lib/api";
 import { colors } from "@/theme";
 
@@ -57,20 +57,28 @@ export function ClubBar({ clubId }: { clubId: string }) {
         <View key={category} style={styles.category}>
           <Text style={styles.categoryTitle}>{CATEGORY_LABELS[category]}</Text>
           {items.map((item) => (
-            <View key={item.id} style={styles.item}>
-              <View style={styles.itemBody}>
+            <View key={item.id} style={styles.card}>
+              {item.imageUrl ? (
+                <Image source={{ uri: item.imageUrl }} style={styles.photo} resizeMode="cover" accessibilityIgnoresInvertColors />
+              ) : (
+                <View style={[styles.photo, styles.photoFallback]}><UtensilsCrossed color={colors.muted} size={30} /></View>
+              )}
+              {(cart[item.id] ?? 0) > 0 ? <View style={styles.badge}><Text style={styles.badgeText}>{cart[item.id]}</Text></View> : null}
+              <View style={styles.cardBody}>
                 <Text style={styles.itemName}>{item.name}</Text>
                 {item.description ? <Text style={styles.itemDescription}>{item.description}</Text> : null}
-              </View>
-              <Text style={styles.itemPrice}>{item.price} ₸</Text>
-              <View style={styles.stepper}>
-                <Pressable accessibilityLabel={`Убрать ${item.name}`} onPress={() => change(item.id, -1)} style={styles.stepperButton} hitSlop={4}>
-                  <Minus color={colors.text} size={15} />
-                </Pressable>
-                <Text style={styles.quantity}>{cart[item.id] ?? 0}</Text>
-                <Pressable accessibilityLabel={`Добавить ${item.name}`} onPress={() => change(item.id, 1)} style={styles.stepperButton} hitSlop={4}>
-                  <Plus color={colors.text} size={15} />
-                </Pressable>
+                <View style={styles.cardFooter}>
+                  <Text style={styles.itemPrice}>{item.price.toLocaleString("ru-KZ")} ₸</Text>
+                  <View style={styles.stepper}>
+                    <Pressable accessibilityLabel={`Убрать ${item.name}`} disabled={!cart[item.id]} onPress={() => change(item.id, -1)} style={[styles.stepperButton, !cart[item.id] && styles.stepperDisabled]} hitSlop={6}>
+                      <Minus color={colors.text} size={16} />
+                    </Pressable>
+                    <Text style={styles.quantity}>{cart[item.id] ?? 0}</Text>
+                    <Pressable accessibilityLabel={`Добавить ${item.name}`} onPress={() => change(item.id, 1)} style={styles.stepperButton} hitSlop={6}>
+                      <Plus color={colors.text} size={16} />
+                    </Pressable>
+                  </View>
+                </View>
               </View>
             </View>
           ))}
@@ -123,14 +131,20 @@ const styles = StyleSheet.create({
   empty: { color: colors.muted, fontSize: 13, lineHeight: 20 },
   category: { marginBottom: 18 },
   categoryTitle: { marginBottom: 10, color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
-  item: { marginBottom: 9, padding: 13, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexDirection: "row", alignItems: "center", gap: 10 },
-  itemBody: { flex: 1 },
-  itemName: { color: colors.text, fontSize: 14, fontWeight: "700" },
-  itemDescription: { marginTop: 3, color: colors.muted, fontSize: 11 },
-  itemPrice: { color: colors.text, fontSize: 13, fontWeight: "800" },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 8 },
-  stepperButton: { width: 28, height: 28, borderRadius: 9, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" },
-  quantity: { minWidth: 14, textAlign: "center", color: colors.text, fontSize: 13, fontWeight: "800" },
+  card: { marginBottom: 13, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: "hidden" },
+  photo: { width: "100%", height: 168, backgroundColor: colors.surfaceRaised },
+  photoFallback: { alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: 12, right: 12, minWidth: 28, height: 28, paddingHorizontal: 8, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  badgeText: { color: colors.primaryText, fontSize: 13, fontWeight: "900" },
+  cardBody: { padding: 15 },
+  cardFooter: { marginTop: 13, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  itemName: { color: colors.text, fontSize: 16, fontWeight: "800" },
+  itemDescription: { marginTop: 4, color: colors.muted, fontSize: 12, lineHeight: 17 },
+  itemPrice: { color: colors.text, fontSize: 17, fontWeight: "900" },
+  stepper: { flexDirection: "row", alignItems: "center", gap: 10 },
+  stepperButton: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" },
+  stepperDisabled: { opacity: 0.35 },
+  quantity: { minWidth: 16, textAlign: "center", color: colors.text, fontSize: 15, fontWeight: "800" },
   checkout: { marginTop: 4, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
   checkoutLabel: { marginBottom: 8, color: colors.muted, fontSize: 11, fontWeight: "700" },
   seatInput: { height: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.text, fontSize: 15 },
