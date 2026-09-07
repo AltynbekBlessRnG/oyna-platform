@@ -148,4 +148,8 @@ CREATE TABLE IF NOT EXISTS auth_challenges (
 );
 
 CREATE INDEX IF NOT EXISTS auth_challenges_phone_idx ON auth_challenges (phone, created_at DESC);
+
+-- Подтверждение номера через Telegram: чат, в котором игрок нажал «Поделиться номером».
+ALTER TABLE auth_challenges ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
+ALTER TABLE auth_challenges ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
 `;

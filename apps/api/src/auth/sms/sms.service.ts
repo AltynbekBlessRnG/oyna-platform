@@ -20,7 +20,7 @@ export class SmsService {
 
   async sendCode(phone: string, code: string): Promise<void> {
     try {
-      await this.provider.send(phone, `OYNA: код ${code}. Никому его не сообщайте.`);
+      await this.provider.send(phone, `Zen: код ${code}. Никому его не сообщайте.`);
     } catch (error) {
       this.logger.error(`Не удалось отправить код через ${this.provider.name}: ${error instanceof Error ? error.message : error}`);
       throw new ServiceUnavailableException("Не удалось отправить код. Попробуйте ещё раз через минуту.");

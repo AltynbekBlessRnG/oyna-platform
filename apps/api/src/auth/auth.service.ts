@@ -1,18 +1,31 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
-import type { AuthSession, AuthUser, RequestCodeResponse } from "@oyna/contracts";
+import type { AuthSession, AuthUser, ChallengeStatusResponse, RequestCodeResponse } from "@oyna/contracts";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { DatabaseService } from "../database/database.service";
 import type { TokenPayload } from "./auth.types";
 import { SmsService } from "./sms/sms.service";
+import { phonesMatch } from "./telegram/phone.util";
+import { TelegramService } from "./telegram/telegram.service";
 
 /** Сколько живёт код из SMS. */
 const CODE_LIFETIME_MS = 10 * 60_000;
+
+export interface TelegramUpdate {
+  message?: {
+    text?: string;
+    chat?: { id?: number | string };
+    from?: { id?: number };
+    contact?: { phone_number?: string; user_id?: number };
+  };
+}
 
 interface Challenge {
   phone: string;
   code: string;
   expiresAt: number;
   attempts: number;
+  telegramChatId?: string;
+  verifiedAt?: number;
 }
 
 @Injectable()
@@ -26,7 +39,8 @@ export class AuthService {
 
   constructor(
     private readonly database: DatabaseService,
-    private readonly sms: SmsService = new SmsService()
+    private readonly sms: SmsService = new SmsService(),
+    private readonly telegram: TelegramService = new TelegramService()
   ) {}
 
   async requestCode(rawPhone: string): Promise<RequestCodeResponse> {
@@ -47,7 +61,12 @@ export class AuthService {
       this.challenges.set(challengeId, { phone, code, expiresAt, attempts: 0 });
     }
     await this.sms.sendCode(phone, code);
-    return { challengeId, expiresInSeconds: CODE_LIFETIME_MS / 1000, ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}) };
+    return {
+      challengeId,
+      expiresInSeconds: CODE_LIFETIME_MS / 1000,
+      ...(this.telegram.buildStartUrl(challengeId) ? { telegramBotUrl: this.telegram.buildStartUrl(challengeId) } : {}),
+      ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {})
+    };
   }
 
   /** Не чаще одного кода в минуту и не больше пяти в час на номер. */
@@ -100,6 +119,122 @@ export class AuthService {
     if (challenge.attempts > 5 || challenge.code !== code) throw new UnauthorizedException("Invalid code");
     this.challenges.delete(challengeId);
     return challenge.phone;
+  }
+
+  /**
+   * Опрос сессии, пока игрок ходит в Telegram. Как только номер подтверждён,
+   * отдаём токен и закрываем сессию — второй раз по той же ссылке войти нельзя.
+   */
+  async getChallengeStatus(challengeId: string, name?: string): Promise<ChallengeStatusResponse> {
+    const phone = this.database.configured
+      ? await this.consumeStoredVerification(challengeId)
+      : this.consumeMemoryVerification(challengeId);
+    if (!phone) return { status: "pending" };
+    const user = await this.upsertUser(phone, name?.trim() || "Игрок Zen");
+    return { status: "verified", session: { accessToken: this.signToken(user), user } };
+  }
+
+  private async consumeStoredVerification(challengeId: string): Promise<string | undefined> {
+    const result = await this.database.query<{ phone: string }>(
+      "DELETE FROM auth_challenges WHERE id = $1 AND verified_at IS NOT NULL AND expires_at > NOW() RETURNING phone",
+      [challengeId]
+    );
+    return result.rows[0]?.phone;
+  }
+
+  private consumeMemoryVerification(challengeId: string): string | undefined {
+    const challenge = this.challenges.get(challengeId);
+    if (!challenge || !challenge.verifiedAt || challenge.expiresAt < Date.now()) return undefined;
+    this.challenges.delete(challengeId);
+    return challenge.phone;
+  }
+
+  /** Без секрета вебхук открыт всему интернету: любой мог бы прислать чужой «подтверждённый» контакт. */
+  assertWebhookSecret(secret?: string): void {
+    const expected = process.env.TELEGRAM_WEBHOOK_SECRET?.trim();
+    if (!expected || secret !== expected) throw new UnauthorizedException("Bad webhook secret");
+  }
+
+  /**
+   * Апдейты бота. Telegram ждёт 200 на всё подряд — иначе он повторяет доставку,
+   * поэтому на любую невнятную ситуацию отвечаем игроку текстом, а не ошибкой.
+   */
+  async handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
+    const message = update?.message;
+    const chatId = message?.chat?.id?.toString();
+    if (!chatId) return;
+
+    const start = message?.text?.trim().match(/^\/start\s+otp_(\S+)$/);
+    if (start) {
+      const phone = await this.bindChat(start[1], chatId);
+      if (!phone) {
+        await this.telegram.sendText(chatId, "Сессия входа не найдена или уже закрыта. Вернись в Zen и запроси подтверждение заново.");
+        return;
+      }
+      await this.telegram.requestPhoneContact(chatId, phone);
+      return;
+    }
+
+    const contact = message?.contact;
+    if (!contact) return;
+
+    // Переслать чужой контакт можно, свой — только кнопкой. Отличаем по user_id.
+    if (!contact.user_id || contact.user_id !== message?.from?.id) {
+      await this.telegram.sendText(chatId, "Нужен твой собственный номер — отправь его кнопкой «Поделиться номером», а не пересланным контактом.");
+      return;
+    }
+
+    const pending = await this.findPendingByChat(chatId);
+    if (!pending) {
+      await this.telegram.sendText(chatId, "Активной сессии входа нет. Вернись в Zen и начни вход заново.");
+      return;
+    }
+    if (!phonesMatch(pending.phone, contact.phone_number ?? "")) {
+      await this.telegram.sendText(chatId, `Номер из Telegram не совпал с тем, что введён в приложении (${pending.phone}). Введи тот же номер или начни заново.`);
+      return;
+    }
+
+    await this.markVerified(pending.id);
+    await this.telegram.sendText(chatId, "Номер подтверждён. Возвращайся в Zen — вход завершится сам.");
+  }
+
+  private async bindChat(challengeId: string, chatId: string): Promise<string | undefined> {
+    if (!this.database.configured) {
+      const challenge = this.challenges.get(challengeId);
+      if (!challenge || challenge.expiresAt < Date.now()) return undefined;
+      challenge.telegramChatId = chatId;
+      return challenge.phone;
+    }
+    const result = await this.database.query<{ phone: string }>(
+      "UPDATE auth_challenges SET telegram_chat_id = $2 WHERE id = $1 AND expires_at > NOW() RETURNING phone",
+      [challengeId, chatId]
+    );
+    return result.rows[0]?.phone;
+  }
+
+  private async findPendingByChat(chatId: string): Promise<{ id: string; phone: string } | undefined> {
+    if (!this.database.configured) {
+      for (const [id, challenge] of this.challenges) {
+        if (challenge.telegramChatId === chatId && !challenge.verifiedAt && challenge.expiresAt > Date.now()) return { id, phone: challenge.phone };
+      }
+      return undefined;
+    }
+    const result = await this.database.query<{ id: string; phone: string }>(
+      `SELECT id, phone FROM auth_challenges
+       WHERE telegram_chat_id = $1 AND verified_at IS NULL AND expires_at > NOW()
+       ORDER BY created_at DESC LIMIT 1`,
+      [chatId]
+    );
+    return result.rows[0];
+  }
+
+  private async markVerified(challengeId: string): Promise<void> {
+    if (!this.database.configured) {
+      const challenge = this.challenges.get(challengeId);
+      if (challenge) challenge.verifiedAt = Date.now();
+      return;
+    }
+    await this.database.query("UPDATE auth_challenges SET verified_at = NOW() WHERE id = $1", [challengeId]);
   }
 
   private hashCode(challengeId: string, code: string): string {

@@ -105,6 +105,14 @@ export interface RequestCodeResponse {
   challengeId: string;
   expiresInSeconds: number;
   devCode?: string;
+  /** Ссылка на бота, который подтвердит номер без SMS. Нет, если бот не настроен. */
+  telegramBotUrl?: string;
+}
+
+/** Опрос сессии, пока игрок подтверждает номер в Telegram. */
+export interface ChallengeStatusResponse {
+  status: "pending" | "verified";
+  session?: AuthSession;
 }
 
 export interface VerifyCodeRequest {

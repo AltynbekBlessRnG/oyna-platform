@@ -1,4 +1,4 @@
-import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChatChannel, ChatMessage, ClubAccount, ClubAvailability, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
+import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChallengeStatusResponse, ChatChannel, ChatMessage, ClubAccount, ClubAvailability, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
 import { demoClubs } from "@/data/demo-clubs";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -22,6 +22,15 @@ export async function requestLoginCode(phone: string): Promise<RequestCodeRespon
   }
   if (!response.ok) throw new Error("Проверь номер телефона");
   return (await response.json()) as RequestCodeResponse;
+}
+
+/** Опрос сессии, пока игрок подтверждает номер в Telegram. */
+export async function getChallengeStatus(challengeId: string, name: string): Promise<ChallengeStatusResponse> {
+  if (challengeId.startsWith("demo:")) return { status: "pending" };
+  const query = new URLSearchParams(name ? { name } : {});
+  const response = await fetch(`${apiUrl}/auth/challenges/${challengeId}?${query}`);
+  if (!response.ok) return { status: "pending" };
+  return (await response.json()) as ChallengeStatusResponse;
 }
 
 export async function verifyLoginCode(challengeId: string, code: string, name: string): Promise<AuthSession> {
