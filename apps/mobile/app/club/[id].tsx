@@ -54,10 +54,17 @@ export default function ClubDetailsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={[styles.hero, { backgroundColor: club.accent, paddingTop: insets.top + 12 }]}>
+          {club.imageUrl ? (
+            <>
+              <Image source={{ uri: club.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+              <View style={styles.heroScrim} />
+            </>
+          ) : (
+            <Monitor color="#111014" size={76} strokeWidth={1.3} style={styles.heroIcon} />
+          )}
           <Pressable accessibilityLabel="Назад" onPress={() => router.back()} style={styles.back} hitSlop={8}>
             <ChevronLeft color="#111014" size={22} />
           </Pressable>
-          <Monitor color="#111014" size={76} strokeWidth={1.3} style={styles.heroIcon} />
         </View>
 
         <View style={styles.body}>
@@ -207,6 +214,8 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 120 },
   hero: { height: 210, alignItems: "center", justifyContent: "center" },
   heroIcon: { opacity: 0.5 },
+  // Затемнение под кнопкой «назад»: на светлом снимке её не видно.
+  heroScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(17,16,20,0.28)" },
   back: { position: "absolute", left: 16, top: 0, marginTop: 12, width: 40, height: 40, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.55)", alignItems: "center", justifyContent: "center" },
   body: { padding: 18 },
   heading: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },

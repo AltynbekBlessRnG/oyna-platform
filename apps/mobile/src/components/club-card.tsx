@@ -1,7 +1,7 @@
 import type { ClubSummary } from "@oyna/contracts";
 import { useRouter } from "expo-router";
 import { MapPin, Monitor, Star } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/theme";
 
 interface ClubCardProps { club: ClubSummary; }
@@ -12,7 +12,12 @@ export function ClubCard({ club }: ClubCardProps) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={`Открыть ${club.name}`} onPress={() => router.push(`/club/${club.id}`)} style={styles.card}>
       <View style={[styles.cover, { backgroundColor: club.accent }]}>
-        <View style={styles.coverPattern}><Monitor color="#111014" size={54} strokeWidth={1.5} /></View>
+        {club.imageUrl ? (
+          <Image source={{ uri: club.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+        ) : (
+          <View style={styles.coverPattern}><Monitor color="#111014" size={54} strokeWidth={1.5} /></View>
+        )}
+        <View style={styles.scrim} />
         <View style={styles.distance}><MapPin color={colors.text} size={13} /><Text style={styles.distanceText}>{club.distanceKm} км</Text></View>
         <View style={[styles.status, !available && styles.statusBusy]}><View style={[styles.statusDot, !available && styles.statusDotBusy]} /><Text style={styles.statusText}>{available ? `${club.availableSeats} мест` : "Нет мест"}</Text></View>
       </View>
@@ -29,6 +34,8 @@ const styles = StyleSheet.create({
   card: { overflow: "hidden", borderRadius: 22, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   cover: { height: 128, padding: 12 },
   coverPattern: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", opacity: 0.45 },
+  // Подложка под плашками: на светлом снимке белый текст иначе теряется.
+  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(17,16,20,0.22)" },
   distance: { position: "absolute", top: 12, left: 12, flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, backgroundColor: "rgba(17,16,20,0.78)", paddingHorizontal: 9, paddingVertical: 6 },
   distanceText: { color: colors.text, fontSize: 11, fontWeight: "700" },
   status: { position: "absolute", right: 12, bottom: 12, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, backgroundColor: "rgba(17,16,20,0.84)", paddingHorizontal: 10, paddingVertical: 7 },

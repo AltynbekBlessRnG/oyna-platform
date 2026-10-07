@@ -114,6 +114,7 @@ CREATE INDEX IF NOT EXISTS club_menu_items_club_idx ON club_menu_items (club_id,
 -- Обложки: у позиции меню и у турнира своя картинка.
 ALTER TABLE club_menu_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE clubs ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 CREATE TABLE IF NOT EXISTS club_orders (
   id TEXT PRIMARY KEY,

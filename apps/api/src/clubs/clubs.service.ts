@@ -12,6 +12,7 @@ interface ClubRow {
   tags: string[];
   equipment: string;
   accent: string;
+  image_url: string | null;
   phone: string | null;
   opening_hours: string | null;
   rating: string;
@@ -32,7 +33,7 @@ interface ZoneRow {
 }
 
 const CLUB_SELECT = `
-  SELECT c.id, c.name, c.address, c.city, c.status, c.tags, c.equipment, c.accent, c.phone, c.opening_hours,
+  SELECT c.id, c.name, c.address, c.city, c.status, c.tags, c.equipment, c.accent, c.phone, c.opening_hours, c.image_url,
          c.rating, c.review_count, c.distance_km,
          (SELECT MIN(z.price_per_hour) FROM club_zones z WHERE z.club_id = c.id) AS price_from,
          COALESCE((SELECT SUM(z.seat_count) FROM club_zones z WHERE z.club_id = c.id), 0) AS total_seats,
@@ -173,12 +174,13 @@ export class ClubsService {
     }
     for (const { club, zones } of catalog) {
       await this.database.query(
-        `INSERT INTO clubs (id, name, address, city, status, tags, equipment, accent, phone, opening_hours, rating, review_count, distance_km)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        `INSERT INTO clubs (id, name, address, city, status, tags, equipment, accent, phone, opening_hours, rating, review_count, distance_km, image_url)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name, address = EXCLUDED.address, city = EXCLUDED.city, status = EXCLUDED.status,
            tags = EXCLUDED.tags, equipment = EXCLUDED.equipment, accent = EXCLUDED.accent,
-           phone = EXCLUDED.phone, opening_hours = EXCLUDED.opening_hours, updated_at = NOW()`,
+           phone = EXCLUDED.phone, opening_hours = EXCLUDED.opening_hours,
+           image_url = EXCLUDED.image_url, updated_at = NOW()`,
         [
           club.id,
           club.name,
@@ -192,7 +194,8 @@ export class ClubsService {
           club.openingHours ?? null,
           club.rating ?? 0,
           club.reviewCount ?? 0,
-          club.distanceKm ?? 0
+          club.distanceKm ?? 0,
+          club.imageUrl ?? null
         ]
       );
       for (const [index, zone] of zones.entries()) {
@@ -317,7 +320,8 @@ export class ClubsService {
       equipment: row.equipment,
       accent: row.accent,
       ...(row.phone ? { phone: row.phone } : {}),
-      ...(row.opening_hours ? { openingHours: row.opening_hours } : {})
+      ...(row.opening_hours ? { openingHours: row.opening_hours } : {}),
+      ...(row.image_url ? { imageUrl: row.image_url } : {})
     };
   }
 

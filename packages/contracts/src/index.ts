@@ -17,6 +17,8 @@ export interface ClubSummary {
   accent: string;
   phone?: string;
   openingHours?: string;
+  /** Фотография клуба для списка и шапки. */
+  imageUrl?: string;
 }
 
 export interface DashboardMetric {
