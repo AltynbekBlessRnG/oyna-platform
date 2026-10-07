@@ -2,14 +2,14 @@
   "expo": {
     "name": "Zen",
     "slug": "oyna",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "scheme": "oyna",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "kz.oyna.app",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -20,7 +20,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#111014"
       },
-      "versionCode": 4
+      "versionCode": 5
     },
     "plugins": [
       "expo-router",
