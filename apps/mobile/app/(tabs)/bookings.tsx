@@ -6,7 +6,7 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/auth/auth-context";
 import { cancelBooking, getMyBookings } from "@/lib/api";
-import { colors } from "@/theme";
+import { colors, fonts, radii } from "@/theme";
 
 const STATUS_LABELS: Record<BookingStatus, string> = { pending: "Ждёт подтверждения", confirmed: "Подтверждено", cancelled: "Отменено", completed: "Завершено" };
 
@@ -33,8 +33,8 @@ export default function BookingsScreen() {
     return <View style={styles.card}>
       <View style={styles.cardHeader}><View><Text style={styles.bookingId}>{item.id}</Text><Text style={styles.club}>{item.clubId}</Text></View><Text style={[styles.status, item.status === "confirmed" && styles.confirmed, item.status === "cancelled" && styles.cancelled]}>{STATUS_LABELS[item.status]}</Text></View>
       <View style={styles.detail}><CalendarClock color={colors.muted} size={17} /><Text style={styles.detailText}>{start.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}</Text></View>
-      <View style={styles.detail}><Clock3 color={colors.muted} size={17} /><Text style={styles.detailText}>{start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} · {item.durationHours} ч</Text></View>
-      <View style={styles.detail}><Monitor color={colors.muted} size={17} /><Text style={styles.detailText}>{item.zoneName} · места {item.seatLabels.join(", ")}</Text></View>
+      <View style={styles.detail}><Clock3 color={colors.muted} size={17} /><Text style={styles.detailText}>{start.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}, {item.durationHours} ч</Text></View>
+      <View style={styles.detail}><Monitor color={colors.muted} size={17} /><Text style={styles.detailText}>{item.zoneName}, места {item.seatLabels.join(", ")}</Text></View>
       <View style={styles.cardFooter}><Text style={styles.total}>{item.totalAmount.toLocaleString("ru-KZ")} ₸</Text>{cancellable ? <Pressable accessibilityRole="button" disabled={cancellation.isPending} onPress={() => cancellation.mutate(item.id)} style={styles.cancelButton}><RotateCcw color={colors.danger} size={14} /><Text style={styles.cancelText}>Отменить</Text></Pressable> : null}</View>
     </View>;
   }
@@ -47,5 +47,29 @@ export default function BookingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background }, content: { padding: 18, paddingBottom: 35 }, pageTitle: { marginBottom: 20, color: colors.text, fontSize: 30, fontWeight: "900", letterSpacing: -0.9 }, separator: { height: 12 }, profile: { marginBottom: 24, padding: 16, borderRadius: 18, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, name: { color: colors.text, fontSize: 16, fontWeight: "800" }, phone: { marginTop: 4, color: colors.muted, fontSize: 12 }, logout: { width: 40, height: 40, borderRadius: 13, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" }, card: { padding: 17, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, cardHeader: { marginBottom: 16, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }, bookingId: { color: colors.text, fontSize: 17, fontWeight: "900" }, club: { marginTop: 4, color: colors.muted, fontSize: 11 }, status: { maxWidth: 130, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, overflow: "hidden", backgroundColor: "#41391D", color: "#FFD86A", fontSize: 9, fontWeight: "800" }, confirmed: { backgroundColor: "#1D3D2A", color: "#7CF0A5" }, cancelled: { backgroundColor: colors.surfaceRaised, color: colors.muted }, detail: { marginTop: 9, flexDirection: "row", alignItems: "center", gap: 9 }, detailText: { color: colors.text, fontSize: 12 }, cardFooter: { marginTop: 17, paddingTop: 15, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, total: { color: colors.primary, fontSize: 17, fontWeight: "900" }, cancelButton: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 10 }, cancelText: { color: colors.danger, fontSize: 11, fontWeight: "700" }, empty: { paddingTop: 90, alignItems: "center" }, emptyTitle: { marginTop: 15, color: colors.text, fontSize: 17, fontWeight: "800" }, emptyText: { marginTop: 6, color: colors.muted, fontSize: 12 }
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { padding: 18, paddingBottom: 35 },
+  pageTitle: { marginBottom: 18, color: colors.text, fontSize: 28, lineHeight: 36, fontFamily: fonts.displayBold, letterSpacing: -0.6 },
+  separator: { height: 12 },
+  profile: { marginBottom: 24, paddingBottom: 18, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  name: { color: colors.text, fontSize: 16, fontFamily: fonts.semibold },
+  phone: { marginTop: 3, color: colors.muted, fontSize: 13, fontFamily: fonts.body },
+  logout: { width: 40, height: 40, borderRadius: radii.control, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  card: { padding: 16, borderRadius: radii.card, backgroundColor: colors.surface },
+  cardHeader: { marginBottom: 12, flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
+  bookingId: { color: colors.text, fontSize: 16, fontFamily: fonts.display, letterSpacing: 0.5 },
+  club: { marginTop: 3, color: colors.muted, fontSize: 12, fontFamily: fonts.body },
+  // Статус — словом, без цветных плашек: подтверждённая бронь просто читается ярче.
+  status: { maxWidth: 150, color: colors.muted, fontSize: 12, fontFamily: fonts.medium, textAlign: "right" },
+  confirmed: { color: colors.text, fontFamily: fonts.semibold },
+  cancelled: { color: colors.muted, textDecorationLine: "line-through" },
+  detail: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 9 },
+  detailText: { color: colors.text, fontSize: 13, fontFamily: fonts.body },
+  cardFooter: { marginTop: 14, paddingTop: 13, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  total: { color: colors.text, fontSize: 16, fontFamily: fonts.display },
+  cancelButton: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 8, paddingHorizontal: 10 },
+  cancelText: { color: colors.danger, fontSize: 13, fontFamily: fonts.medium },
+  empty: { paddingTop: 90, alignItems: "center" },
+  emptyTitle: { marginTop: 15, color: colors.text, fontSize: 17, fontFamily: fonts.display },
+  emptyText: { marginTop: 6, color: colors.muted, fontSize: 13, fontFamily: fonts.body }
 });

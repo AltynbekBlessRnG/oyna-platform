@@ -1,10 +1,14 @@
+import { Onest_400Regular, Onest_500Medium, Onest_600SemiBold, Onest_700Bold } from "@expo-google-fonts/onest";
+import { Unbounded_600SemiBold, Unbounded_700Bold } from "@expo-google-fonts/unbounded";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { colors } from "@/theme";
+import { colors, fonts } from "@/theme";
 import { AuthProvider } from "@/auth/auth-context";
 
 /** Общие настройки переходов: плавное выезжание справа вместо рывка по умолчанию. */
@@ -12,15 +16,35 @@ const screenOptions = {
   headerStyle: { backgroundColor: colors.background },
   headerTintColor: colors.text,
   headerShadowVisible: false,
-  headerTitleStyle: { fontWeight: "800" as const },
+  headerTitleStyle: { fontFamily: fonts.display, fontSize: 16 },
+  headerBackTitleStyle: { fontFamily: fonts.medium },
   contentStyle: { backgroundColor: colors.background },
   animation: "slide_from_right" as const,
   animationDuration: 260,
   gestureEnabled: true
 };
 
+// Заставка держится, пока не загрузятся шрифты: иначе первый кадр мигнёт системным.
+void SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime: 30_000 } } }));
+  const [fontsLoaded, fontError] = useFonts({
+    Onest_400Regular,
+    Onest_500Medium,
+    Onest_600SemiBold,
+    Onest_700Bold,
+    Unbounded_600SemiBold,
+    Unbounded_700Bold
+  });
+  const ready = fontsLoaded || Boolean(fontError);
+
+  useEffect(() => {
+    if (ready) void SplashScreen.hideAsync();
+  }, [ready]);
+
+  if (!ready) return null;
+
   return (
     <SafeAreaProvider>
       <KeyboardProvider>

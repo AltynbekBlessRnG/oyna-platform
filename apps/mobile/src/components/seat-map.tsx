@@ -1,7 +1,6 @@
 import type { ClubSeatMap, SeatMapSeat } from "@oyna/contracts";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
-import { colors, seatLegend } from "@/theme";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { colors, fonts, radii, seatLegend } from "@/theme";
 
 interface SeatMapProps {
   seatMap: ClubSeatMap;
@@ -10,11 +9,16 @@ interface SeatMapProps {
   onSeatPress?: (zoneId: string, seat: SeatMapSeat) => void;
 }
 
-const SEAT_COLORS: Record<SeatMapSeat["status"], string> = {
-  occupied: colors.seatOccupied,
-  free: colors.seatFree,
-  reserved: colors.seatReserved
-};
+/**
+ * Свободный компьютер — золотой контур, его можно взять. Занятый гаснет в фон,
+ * забронированный обведён пунктиром. Выбранный заливается золотом целиком.
+ */
+function seatStyle(status: SeatMapSeat["status"] | "selected"): StyleProp<ViewStyle> {
+  if (status === "selected") return styles.seatSelected;
+  if (status === "free") return styles.seatFree;
+  if (status === "reserved") return styles.seatReserved;
+  return styles.seatOccupied;
+}
 
 function seatHint(seat: SeatMapSeat, selected: boolean): string {
   if (selected) return "выбран";
@@ -27,7 +31,7 @@ function seatHint(seat: SeatMapSeat, selected: boolean): string {
   return seat.status === "free" ? "свободен" : "занят";
 }
 
-/** Карта зала: каждый компьютер клуба своим цветом — занят, свободен или забронирован. */
+/** Карта зала: каждый компьютер клуба на своём месте, по зонам. */
 export function SeatMap({ seatMap, selectedIds, onSeatPress }: SeatMapProps) {
   const selecting = Boolean(selectedIds);
   const selected = new Set(selectedIds ?? []);
@@ -35,33 +39,30 @@ export function SeatMap({ seatMap, selectedIds, onSeatPress }: SeatMapProps) {
   const free = all.filter((seat) => seat.status === "free").length;
   return (
     <View>
-      <View style={styles.summary}>
-        <Text style={styles.summaryValue}>{free}</Text>
-        <Text style={styles.summaryLabel}>свободно из {all.length} компьютеров</Text>
-      </View>
+      <Text style={styles.summary}>
+        <Text style={styles.summaryValue}>{free}</Text> из {all.length} свободны
+      </Text>
       <View style={styles.legend}>
         {seatLegend.map((item) => (
           <View key={item.status} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: item.color }]} />
+            <View style={[styles.legendSwatch, seatStyle(item.status)]} />
             <Text style={styles.legendText}>{item.label}</Text>
           </View>
         ))}
         {selecting && (
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+            <View style={[styles.legendSwatch, seatStyle("selected")]} />
             <Text style={styles.legendText}>Твой выбор</Text>
           </View>
         )}
       </View>
       {seatMap.zones.map((entry) => (
-        <Animated.View key={entry.zone.id} entering={FadeIn.duration(260)} style={styles.zone}>
+        <View key={entry.zone.id} style={styles.zone}>
           <View style={styles.zoneHeader}>
-            <View>
-              <Text style={styles.zoneName}>{entry.zone.name}</Text>
-              <Text style={styles.zoneDescription}>{entry.zone.description}</Text>
-            </View>
+            <Text style={styles.zoneName}>{entry.zone.name}</Text>
             <Text style={styles.zonePrice}>{entry.zone.pricePerHour} ₸/ч</Text>
           </View>
+          {entry.zone.description ? <Text style={styles.zoneDescription}>{entry.zone.description}</Text> : null}
           <View style={styles.grid}>
             {entry.seats.map((seat) => {
               const picked = selected.has(seat.id);
@@ -74,43 +75,40 @@ export function SeatMap({ seatMap, selectedIds, onSeatPress }: SeatMapProps) {
                   accessibilityLabel={`Компьютер ${seat.label}, ${seatHint(seat, picked)}`}
                   disabled={selecting && busy}
                   onPress={() => onSeatPress?.(entry.zone.id, seat)}
-                  style={({ pressed }) => [
-                    styles.seat,
-                    { backgroundColor: picked ? colors.primary : SEAT_COLORS[seat.status] },
-                    seat.status === "free" && !picked && styles.seatFree,
-                    selecting && busy && styles.seatBusy,
-                    pressed && styles.seatPressed
-                  ]}
+                  hitSlop={2}
+                  style={({ pressed }) => [styles.seat, seatStyle(picked ? "selected" : seat.status), pressed && styles.seatPressed]}
                 >
-                  <Text style={[styles.seatLabel, (seat.status !== "free" || picked) && styles.seatLabelDark]}>{seat.label}</Text>
+                  <Text style={[styles.seatLabel, picked ? styles.seatLabelSelected : !busy && styles.seatLabelFree]}>{seat.label}</Text>
                 </Pressable>
               );
             })}
           </View>
-        </Animated.View>
+        </View>
       ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  summary: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  summaryValue: { color: colors.primary, fontSize: 30, fontWeight: "900" },
-  summaryLabel: { color: colors.muted, fontSize: 13 },
-  legend: { marginTop: 14, marginBottom: 18, flexDirection: "row", flexWrap: "wrap", gap: 14 },
-  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendDot: { width: 11, height: 11, borderRadius: 4, borderWidth: 1, borderColor: colors.border },
-  legendText: { color: colors.muted, fontSize: 11 },
-  zone: { marginBottom: 20 },
-  zoneHeader: { marginBottom: 11, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
-  zoneName: { color: colors.text, fontSize: 14, fontWeight: "800" },
-  zoneDescription: { marginTop: 2, color: colors.muted, fontSize: 11 },
-  zonePrice: { color: colors.muted, fontSize: 12, fontWeight: "700" },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  seat: { width: 44, height: 40, borderRadius: 11, alignItems: "center", justifyContent: "center" },
-  seatFree: { borderWidth: 1, borderColor: colors.border },
-  seatBusy: { opacity: 0.45 },
-  seatPressed: { opacity: 0.65 },
-  seatLabel: { color: colors.muted, fontSize: 12, fontWeight: "800" },
-  seatLabelDark: { color: "#0E1A12" }
+  summary: { color: colors.muted, fontSize: 14, fontFamily: fonts.body },
+  summaryValue: { color: colors.text, fontSize: 22, fontFamily: fonts.displayBold },
+  legend: { marginTop: 12, marginBottom: 22, flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 8 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 7 },
+  legendSwatch: { width: 14, height: 12, borderRadius: 3 },
+  legendText: { color: colors.muted, fontSize: 12, fontFamily: fonts.body },
+  zone: { marginBottom: 24 },
+  zoneHeader: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 12 },
+  zoneName: { flex: 1, color: colors.text, fontSize: 14, fontFamily: fonts.display },
+  zonePrice: { color: colors.text, fontSize: 13, fontFamily: fonts.semibold },
+  zoneDescription: { marginTop: 3, color: colors.muted, fontSize: 12, lineHeight: 17, fontFamily: fonts.body },
+  grid: { marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  seat: { width: 46, height: 40, borderRadius: radii.seat, alignItems: "center", justifyContent: "center" },
+  seatFree: { borderWidth: 1.5, borderColor: colors.seatFree },
+  seatOccupied: { backgroundColor: colors.seatOccupied },
+  seatReserved: { borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.seatReserved },
+  seatSelected: { backgroundColor: colors.primary, borderWidth: 1.5, borderColor: colors.primary },
+  seatPressed: { opacity: 0.6 },
+  seatLabel: { color: colors.muted, fontSize: 12, fontFamily: fonts.display },
+  seatLabelFree: { color: colors.seatFree },
+  seatLabelSelected: { color: colors.primaryText }
 });

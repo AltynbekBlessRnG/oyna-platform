@@ -3,7 +3,7 @@ import { CalendarDays, Home, Trophy, UserRound, Users } from "lucide-react-nativ
 import { Platform, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/auth/auth-context";
-import { colors } from "@/theme";
+import { colors, fonts } from "@/theme";
 
 /** Нижняя навигация: на Android высота панели учитывает жестовую полосу. */
 export default function TabsLayout() {
@@ -12,7 +12,7 @@ export default function TabsLayout() {
   if (!ready) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: colors.muted }}>Загружаем Zen…</Text>
+        <Text style={{ color: colors.muted, fontFamily: fonts.body }}>Загружаем Zen…</Text>
       </View>
     );
   }
@@ -24,14 +24,15 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: colors.background,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 58 + insets.bottom,
-          paddingTop: 7,
+          // Под иконку и подпись нужно ~50 pt при любом нижнем отступе, даже нулевом.
+          height: 56 + Math.max(insets.bottom, Platform.OS === "android" ? 10 : 6),
+          paddingTop: 6,
           paddingBottom: Math.max(insets.bottom, Platform.OS === "android" ? 10 : 6)
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.medium },
         sceneStyle: { backgroundColor: colors.background }
       }}
     >

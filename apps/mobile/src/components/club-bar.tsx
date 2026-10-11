@@ -4,7 +4,7 @@ import { Minus, Plus, ShoppingBag, UtensilsCrossed } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { createClubOrder, getClubMenu, getClubOrders } from "@/lib/api";
-import { colors } from "@/theme";
+import { colors, fonts, radii } from "@/theme";
 
 const CATEGORY_LABELS: Record<MenuCategory, string> = { drinks: "Напитки", food: "Еда", snacks: "Снеки", other: "Другое" };
 const ORDER_STATUS: Record<string, string> = { new: "Принят в работу", accepted: "Готовится", delivered: "Доставлен", cancelled: "Отменён" };
@@ -102,10 +102,10 @@ export function ClubBar({ clubId }: { clubId: string }) {
             accessibilityRole="button"
             disabled={!seat.trim() || order.isPending}
             onPress={() => order.mutate()}
-            style={[styles.orderButton, (!seat.trim() || order.isPending) && styles.disabled]}
+            style={[styles.orderButton, (!seat.trim() || order.isPending) && styles.orderDisabled]}
           >
-            <ShoppingBag color={colors.primaryText} size={17} />
-            <Text style={styles.orderText}>{order.isPending ? "Отправляем…" : `Заказать · ${total.toLocaleString("ru-KZ")} ₸`}</Text>
+            <ShoppingBag color={!seat.trim() || order.isPending ? colors.muted : colors.primaryText} size={17} />
+            <Text style={[styles.orderText, (!seat.trim() || order.isPending) && styles.orderTextDisabled]}>{order.isPending ? "Отправляем…" : `Заказать за ${total.toLocaleString("ru-KZ")} ₸`}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -116,9 +116,9 @@ export function ClubBar({ clubId }: { clubId: string }) {
           {orders.slice(0, 5).map((item) => (
             <View key={item.id} style={styles.historyRow}>
               <Text style={styles.historyText}>
-                Место {item.seatLabel} · {item.lines.map((line) => `${line.name} ×${line.quantity}`).join(", ")}
+                Место {item.seatLabel}: {item.lines.map((line) => `${line.name} ×${line.quantity}`).join(", ")}
               </Text>
-              <Text style={styles.historyStatus}>{ORDER_STATUS[item.status] ?? item.status} · {item.total.toLocaleString("ru-KZ")} ₸</Text>
+              <Text style={styles.historyStatus}>{ORDER_STATUS[item.status] ?? item.status}, {item.total.toLocaleString("ru-KZ")} ₸</Text>
             </View>
           ))}
         </View>
@@ -128,32 +128,33 @@ export function ClubBar({ clubId }: { clubId: string }) {
 }
 
 const styles = StyleSheet.create({
-  empty: { color: colors.muted, fontSize: 13, lineHeight: 20 },
-  category: { marginBottom: 18 },
-  categoryTitle: { marginBottom: 10, color: colors.muted, fontSize: 11, fontWeight: "800", letterSpacing: 1.2, textTransform: "uppercase" },
-  card: { marginBottom: 13, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: "hidden" },
-  photo: { width: "100%", height: 168, backgroundColor: colors.surfaceRaised },
+  empty: { color: colors.muted, fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
+  category: { marginBottom: 20 },
+  categoryTitle: { marginBottom: 12, color: colors.text, fontSize: 15, fontFamily: fonts.display },
+  card: { marginBottom: 12, borderRadius: radii.card, backgroundColor: colors.surface, overflow: "hidden" },
+  photo: { width: "100%", height: 160, backgroundColor: colors.surfaceRaised },
   photoFallback: { alignItems: "center", justifyContent: "center" },
   badge: { position: "absolute", top: 12, right: 12, minWidth: 28, height: 28, paddingHorizontal: 8, borderRadius: 14, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  badgeText: { color: colors.primaryText, fontSize: 13, fontWeight: "900" },
+  badgeText: { color: colors.primaryText, fontSize: 13, fontFamily: fonts.display },
   cardBody: { padding: 15 },
-  cardFooter: { marginTop: 13, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  itemName: { color: colors.text, fontSize: 16, fontWeight: "800" },
-  itemDescription: { marginTop: 4, color: colors.muted, fontSize: 12, lineHeight: 17 },
-  itemPrice: { color: colors.text, fontSize: 17, fontWeight: "900" },
+  cardFooter: { marginTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  itemName: { color: colors.text, fontSize: 16, fontFamily: fonts.semibold },
+  itemDescription: { marginTop: 4, color: colors.muted, fontSize: 13, lineHeight: 18, fontFamily: fonts.body },
+  itemPrice: { color: colors.text, fontSize: 16, fontFamily: fonts.display },
   stepper: { flexDirection: "row", alignItems: "center", gap: 10 },
-  stepperButton: { width: 34, height: 34, borderRadius: 11, backgroundColor: colors.surfaceRaised, alignItems: "center", justifyContent: "center" },
+  stepperButton: { width: 36, height: 36, borderRadius: radii.control, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   stepperDisabled: { opacity: 0.35 },
-  quantity: { minWidth: 16, textAlign: "center", color: colors.text, fontSize: 15, fontWeight: "800" },
-  checkout: { marginTop: 4, padding: 16, borderRadius: 18, borderWidth: 1, borderColor: colors.primary, backgroundColor: colors.surface },
-  checkoutLabel: { marginBottom: 8, color: colors.muted, fontSize: 11, fontWeight: "700" },
-  seatInput: { height: 48, paddingHorizontal: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, color: colors.text, fontSize: 15 },
-  error: { marginTop: 10, color: colors.danger, fontSize: 12, lineHeight: 18 },
-  orderButton: { marginTop: 13, height: 52, borderRadius: 15, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
-  orderText: { color: colors.primaryText, fontSize: 14, fontWeight: "900" },
-  disabled: { opacity: 0.45 },
-  history: { marginTop: 22 },
-  historyRow: { marginBottom: 9, padding: 13, borderRadius: 14, backgroundColor: colors.surface },
-  historyText: { color: colors.text, fontSize: 12 },
-  historyStatus: { marginTop: 5, color: colors.muted, fontSize: 11 }
+  quantity: { minWidth: 18, textAlign: "center", color: colors.text, fontSize: 15, fontFamily: fonts.display },
+  checkout: { marginTop: 4, padding: 16, borderRadius: radii.card, backgroundColor: colors.surface },
+  checkoutLabel: { marginBottom: 8, color: colors.muted, fontSize: 13, fontFamily: fonts.medium },
+  seatInput: { height: 48, paddingHorizontal: 14, borderRadius: radii.control, backgroundColor: colors.background, color: colors.text, fontSize: 16, fontFamily: fonts.display },
+  error: { marginTop: 10, color: colors.danger, fontSize: 13, lineHeight: 18, fontFamily: fonts.body },
+  orderButton: { marginTop: 13, height: 52, borderRadius: radii.control, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
+  orderText: { color: colors.primaryText, fontSize: 15, fontFamily: fonts.bold },
+  orderDisabled: { backgroundColor: colors.surfaceRaised },
+  orderTextDisabled: { color: colors.muted },
+  history: { marginTop: 24 },
+  historyRow: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  historyText: { color: colors.text, fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
+  historyStatus: { marginTop: 4, color: colors.muted, fontSize: 13, fontFamily: fonts.body }
 });

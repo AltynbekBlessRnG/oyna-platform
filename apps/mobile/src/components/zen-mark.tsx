@@ -6,9 +6,8 @@ export function ZenMark({ size = 64 }: { size?: number }) {
     <Svg width={size} height={size} viewBox="0 0 1024 1024">
       <Defs>
         <LinearGradient id="zen-accent" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0%" stopColor="#C6FF57" />
-          <Stop offset="55%" stopColor="#7BF0A8" />
-          <Stop offset="100%" stopColor="#45E0FF" />
+          <Stop offset="0%" stopColor="#FFD86B" />
+          <Stop offset="100%" stopColor="#FFB81F" />
         </LinearGradient>
       </Defs>
       <Circle

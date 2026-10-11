@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ZenMark } from "@/components/zen-mark";
 import { useAuth } from "@/auth/auth-context";
 import { getChallengeStatus, requestLoginCode, verifyLoginCode } from "@/lib/api";
-import { colors } from "@/theme";
+import { colors, fonts, radii } from "@/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -76,7 +76,6 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.logo}><ZenMark size={62} /></View>
-      <Text style={styles.brand}>ZEN</Text>
       <Text style={styles.title}>{challengeId ? "Подтверди номер" : "Начнём играть"}</Text>
       <Text style={styles.subtitle}>{challengeId ? `Подтверждаем ${phone}.` : "Номер нужен для бронирований и уведомлений клуба."}</Text>
       {!challengeId ? (
@@ -130,26 +129,26 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 24, justifyContent: "center" },
   logo: { width: 62, height: 62, alignItems: "center", justifyContent: "center" },
-  brand: { marginTop: 13, color: colors.primary, fontSize: 14, fontWeight: "900", letterSpacing: 2 },
-  title: { marginTop: 35, color: colors.text, fontSize: 32, fontWeight: "900", letterSpacing: -0.8 },
-  subtitle: { marginTop: 9, color: colors.muted, fontSize: 14, lineHeight: 21 },
-  form: { marginTop: 27 },
-  label: { marginBottom: 8, color: colors.muted, fontSize: 11, fontWeight: "700" },
-  input: { height: 54, marginBottom: 17, paddingHorizontal: 15, borderRadius: 16, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, color: colors.text, fontSize: 15 },
-  code: { fontSize: 25, fontWeight: "900", letterSpacing: 12 },
-  telegram: { height: 56, marginBottom: 13, borderRadius: 17, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
-  telegramText: { color: colors.primaryText, fontSize: 15, fontWeight: "900" },
-  hint: { marginBottom: 6, color: colors.muted, fontSize: 12, lineHeight: 18 },
+  title: { marginTop: 32, color: colors.text, fontSize: 30, lineHeight: 38, fontFamily: fonts.displayBold, letterSpacing: -0.6 },
+  subtitle: { marginTop: 9, color: colors.muted, fontSize: 15, lineHeight: 22, fontFamily: fonts.body },
+  form: { marginTop: 28 },
+  label: { marginBottom: 8, color: colors.muted, fontSize: 13, fontFamily: fonts.medium },
+  input: { height: 52, marginBottom: 16, paddingHorizontal: 15, borderRadius: radii.control, backgroundColor: colors.surface, color: colors.text, fontSize: 16, fontFamily: fonts.body },
+  // Не Unbounded: его круглый ноль в коде читается как точка от пароля.
+  code: { fontSize: 26, fontFamily: fonts.semibold, letterSpacing: 14 },
+  telegram: { height: 54, marginBottom: 13, borderRadius: radii.control, backgroundColor: colors.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9 },
+  telegramText: { color: colors.primaryText, fontSize: 15, fontFamily: fonts.bold },
+  hint: { marginBottom: 6, color: colors.muted, fontSize: 13, lineHeight: 19, fontFamily: fonts.body },
   waiting: { marginBottom: 6, flexDirection: "row", alignItems: "center", gap: 10 },
-  waitingText: { flex: 1, color: colors.muted, fontSize: 12, lineHeight: 18 },
-  divider: { marginVertical: 21, flexDirection: "row", alignItems: "center", gap: 11 },
+  waitingText: { flex: 1, color: colors.muted, fontSize: 13, lineHeight: 19, fontFamily: fonts.body },
+  divider: { marginVertical: 20, flexDirection: "row", alignItems: "center", gap: 11 },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  dividerText: { color: colors.muted, fontSize: 11 },
-  error: { marginBottom: 12, color: colors.danger, fontSize: 12 },
-  button: { height: 56, borderRadius: 17, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
-  buttonText: { color: colors.primaryText, fontSize: 15, fontWeight: "900" },
+  dividerText: { color: colors.muted, fontSize: 12, fontFamily: fonts.body },
+  error: { marginBottom: 12, color: colors.danger, fontSize: 13, lineHeight: 18, fontFamily: fonts.body },
+  button: { height: 54, borderRadius: radii.control, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" },
+  buttonText: { color: colors.primaryText, fontSize: 15, fontFamily: fonts.bold },
   disabled: { opacity: 0.5 },
-  changePhone: { paddingVertical: 17, color: colors.primary, textAlign: "center", fontSize: 13, fontWeight: "700" },
+  changePhone: { paddingVertical: 17, color: colors.text, textAlign: "center", fontSize: 14, fontFamily: fonts.medium },
   security: { marginTop: 20, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
-  securityText: { color: colors.muted, fontSize: 10 }
+  securityText: { color: colors.muted, fontSize: 12, fontFamily: fonts.body }
 });

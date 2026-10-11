@@ -3,13 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Bell, MapPin, Search, X } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ClubCard } from "@/components/club-card";
 import { FilterChip } from "@/components/filter-chip";
 import { getClubs, getNotifications } from "@/lib/api";
-import { colors } from "@/theme";
+import { colors, fonts, radii } from "@/theme";
 import { useAuth } from "@/auth/auth-context";
 
 interface Filter {
@@ -69,11 +68,7 @@ export default function HomeScreen() {
       <FlatList
         data={visible}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 6) * 45).duration(320)}>
-            <ClubCard club={item} />
-          </Animated.View>
-        )}
+        renderItem={({ item }) => <ClubCard club={item} />}
         contentContainerStyle={styles.content}
         ItemSeparatorComponent={ClubSeparator}
         keyboardShouldPersistTaps="handled"
@@ -81,12 +76,9 @@ export default function HomeScreen() {
         ListHeaderComponent={
           <View>
             <View style={styles.header}>
-              <View>
-                <Text style={styles.eyebrow}>ТВОЙ ГОРОД</Text>
-                <View style={styles.location}>
-                  <MapPin color={colors.primary} size={18} />
-                  <Text style={styles.city}>Алматы</Text>
-                </View>
+              <View style={styles.location}>
+                <MapPin color={colors.text} size={16} />
+                <Text style={styles.city}>Алматы</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
@@ -116,11 +108,11 @@ export default function HomeScreen() {
                 </Pressable>
               ) : null}
             </View>
-            <View style={styles.filters}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll} contentContainerStyle={styles.filters}>
               {FILTERS.map((filter) => (
                 <FilterChip key={filter.id} label={filter.label} active={active.includes(filter.id)} onPress={() => toggle(filter.id)} />
               ))}
-            </View>
+            </ScrollView>
             <View style={styles.sectionTitle}>
               <Text style={styles.sectionHeading}>Клубы рядом</Text>
               <Text style={styles.count}>{isLoading ? "…" : `${visible.length} ${clubWord(visible.length)}`}</Text>
@@ -140,18 +132,18 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 28 },
   separator: { height: 14 },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  eyebrow: { color: colors.muted, fontSize: 10, fontWeight: "800", letterSpacing: 1.5 },
-  location: { marginTop: 5, flexDirection: "row", alignItems: "center", gap: 6 },
-  city: { color: colors.text, fontSize: 17, fontWeight: "800" },
-  iconButton: { width: 42, height: 42, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
-  badge: { position: "absolute", top: 9, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: colors.primary },
-  title: { marginTop: 26, color: colors.text, fontSize: 36, lineHeight: 41, fontWeight: "900", letterSpacing: -1.2 },
-  subtitle: { marginTop: 8, maxWidth: 310, color: colors.muted, fontSize: 15, lineHeight: 22 },
-  search: { marginTop: 22, height: 54, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 15, borderRadius: 17, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  input: { flex: 1, color: colors.text, fontSize: 14 },
-  filters: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 14 },
-  sectionTitle: { marginTop: 8, marginBottom: 13, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sectionHeading: { color: colors.text, fontSize: 20, fontWeight: "800" },
-  count: { color: colors.muted, fontSize: 12 },
-  empty: { paddingVertical: 40, paddingHorizontal: 20, textAlign: "center", color: colors.muted, lineHeight: 20 }
+  location: { flexDirection: "row", alignItems: "center", gap: 6 },
+  city: { color: colors.text, fontSize: 15, fontFamily: fonts.semibold },
+  iconButton: { width: 42, height: 42, borderRadius: radii.control, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: 9, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
+  title: { marginTop: 28, color: colors.text, fontSize: 32, lineHeight: 40, fontFamily: fonts.displayBold, letterSpacing: -0.8 },
+  subtitle: { marginTop: 8, maxWidth: 310, color: colors.muted, fontSize: 15, lineHeight: 22, fontFamily: fonts.body },
+  search: { marginTop: 22, height: 50, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 14, borderRadius: radii.control, backgroundColor: colors.surface },
+  input: { flex: 1, color: colors.text, fontSize: 15, fontFamily: fonts.body },
+  filtersScroll: { marginHorizontal: -18 },
+  filters: { gap: 8, paddingHorizontal: 18, paddingVertical: 14 },
+  sectionTitle: { marginTop: 10, marginBottom: 12, flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" },
+  sectionHeading: { color: colors.text, fontSize: 18, fontFamily: fonts.display },
+  count: { color: colors.muted, fontSize: 13, fontFamily: fonts.body },
+  empty: { paddingVertical: 40, paddingHorizontal: 20, textAlign: "center", color: colors.muted, lineHeight: 20, fontFamily: fonts.body }
 });

@@ -11,10 +11,13 @@
     "test": "node -e \"console.log('mobile: no tests yet')\""
   },
   "dependencies": {
+    "@expo-google-fonts/onest": "^0.4.2",
+    "@expo-google-fonts/unbounded": "^0.4.1",
     "@oyna/contracts": "workspace:*",
     "@tanstack/react-query": "^5.90.10",
     "expo": "~54.0.25",
     "expo-device": "~8.0.10",
+    "expo-font": "~14.0.12",
     "expo-haptics": "~15.0.8",
     "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.15",

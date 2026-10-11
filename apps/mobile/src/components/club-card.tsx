@@ -2,7 +2,8 @@ import type { ClubSummary } from "@oyna/contracts";
 import { useRouter } from "expo-router";
 import { MapPin, Monitor, Star } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/theme";
+import { SeatStrip } from "@/components/seat-strip";
+import { colors, fonts, radii } from "@/theme";
 
 interface ClubCardProps { club: ClubSummary; }
 
@@ -10,38 +11,72 @@ export function ClubCard({ club }: ClubCardProps) {
   const router = useRouter();
   const available = club.availableSeats > 0;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={`Открыть ${club.name}`} onPress={() => router.push(`/club/${club.id}`)} style={styles.card}>
-      <View style={[styles.cover, { backgroundColor: club.accent }]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${club.name}, свободно ${club.availableSeats} из ${club.totalSeats}`}
+      onPress={() => router.push(`/club/${club.id}`)}
+      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
+    >
+      <View style={styles.cover}>
         {club.imageUrl ? (
           <Image source={{ uri: club.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
         ) : (
-          <View style={styles.coverPattern}><Monitor color="#111014" size={54} strokeWidth={1.5} /></View>
+          <View style={styles.coverPattern}><Monitor color={colors.muted} size={44} strokeWidth={1.25} /></View>
         )}
-        <View style={styles.scrim} />
-        <View style={styles.distance}><MapPin color={colors.text} size={13} /><Text style={styles.distanceText}>{club.distanceKm} км</Text></View>
-        <View style={[styles.status, !available && styles.statusBusy]}><View style={[styles.statusDot, !available && styles.statusDotBusy]} /><Text style={styles.statusText}>{available ? `${club.availableSeats} мест` : "Нет мест"}</Text></View>
+        <View style={styles.distance}>
+          <MapPin color={colors.text} size={12} />
+          <Text style={styles.distanceText}>{club.distanceKm} км</Text>
+        </View>
       </View>
       <View style={styles.body}>
-        <View style={styles.titleRow}><View><Text style={styles.name}>{club.name}</Text><Text style={styles.address}>{club.address}</Text></View><View style={styles.rating}><Star color={colors.primary} fill={colors.primary} size={15} /><Text style={styles.ratingText}>{club.rating}</Text></View></View>
-        <View style={styles.tags}>{club.tags.map((tag) => <Text key={tag} style={styles.tag}>{tag}</Text>)}</View>
-        <View style={styles.footer}><Text style={styles.equipment}>{club.equipment}</Text><Text style={styles.price}>от {club.priceFrom} ₸<Text style={styles.hour}>/ч</Text></Text></View>
+        <View style={styles.titleRow}>
+          <View style={styles.titleText}>
+            <Text style={styles.name} numberOfLines={1}>{club.name}</Text>
+            <Text style={styles.address} numberOfLines={1}>{club.address}</Text>
+          </View>
+          <View style={styles.rating}>
+            <Star color={colors.text} fill={colors.text} size={13} />
+            <Text style={styles.ratingText}>{club.rating}</Text>
+          </View>
+        </View>
+
+        <SeatStrip free={club.availableSeats} total={club.totalSeats} style={styles.strip} />
+        <Text style={[styles.seats, !available && styles.seatsNone]}>
+          {available ? `${club.availableSeats} из ${club.totalSeats} компьютеров свободны` : "Сейчас всё занято"}
+        </Text>
+
+        <View style={styles.footer}>
+          <View style={styles.tags}>
+            {club.tags.slice(0, 3).map((tag) => <Text key={tag} style={styles.tag}>{tag}</Text>)}
+          </View>
+          <Text style={styles.price}>от {club.priceFrom} ₸<Text style={styles.hour}>/ч</Text></Text>
+        </View>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { overflow: "hidden", borderRadius: 22, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  cover: { height: 128, padding: 12 },
-  coverPattern: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", opacity: 0.45 },
-  // Подложка под плашками: на светлом снимке белый текст иначе теряется.
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(17,16,20,0.22)" },
-  distance: { position: "absolute", top: 12, left: 12, flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, backgroundColor: "rgba(17,16,20,0.78)", paddingHorizontal: 9, paddingVertical: 6 },
-  distanceText: { color: colors.text, fontSize: 11, fontWeight: "700" },
-  status: { position: "absolute", right: 12, bottom: 12, flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, backgroundColor: "rgba(17,16,20,0.84)", paddingHorizontal: 10, paddingVertical: 7 },
-  statusBusy: { opacity: 0.85 }, statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary }, statusDotBusy: { backgroundColor: colors.danger }, statusText: { color: colors.text, fontSize: 11, fontWeight: "700" },
-  body: { padding: 16 }, titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }, name: { color: colors.text, fontSize: 19, fontWeight: "800" }, address: { marginTop: 4, color: colors.muted, fontSize: 13 }, rating: { flexDirection: "row", alignItems: "center", gap: 5 }, ratingText: { color: colors.text, fontSize: 13, fontWeight: "700" },
-  tags: { marginTop: 14, flexDirection: "row", flexWrap: "wrap", gap: 7 }, tag: { borderRadius: 8, backgroundColor: colors.surfaceRaised, color: colors.muted, fontSize: 11, paddingHorizontal: 8, paddingVertical: 5, overflow: "hidden" },
-  footer: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }, equipment: { color: colors.muted, fontSize: 12 }, price: { color: colors.text, fontSize: 14, fontWeight: "800" }, hour: { color: colors.muted, fontWeight: "500" }
+  card: { overflow: "hidden", borderRadius: radii.card, backgroundColor: colors.surface },
+  pressed: { opacity: 0.85 },
+  // Цвет клуба из данных в обложку не берём: случайный яркий цвет спорит с палитрой.
+  cover: { height: 116, backgroundColor: colors.surfaceRaised },
+  coverPattern: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", opacity: 0.5 },
+  distance: { position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, backgroundColor: "rgba(20,20,20,0.82)", paddingHorizontal: 9, paddingVertical: 5 },
+  distanceText: { color: colors.text, fontSize: 11, fontFamily: fonts.medium },
+  body: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 },
+  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  titleText: { flex: 1 },
+  name: { color: colors.text, fontSize: 17, fontFamily: fonts.display, letterSpacing: -0.2 },
+  address: { marginTop: 3, color: colors.muted, fontSize: 13, fontFamily: fonts.body },
+  rating: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 3 },
+  ratingText: { color: colors.text, fontSize: 13, fontFamily: fonts.semibold },
+  strip: { marginTop: 16 },
+  seats: { marginTop: 8, color: colors.text, fontSize: 12, fontFamily: fonts.medium },
+  seatsNone: { color: colors.muted },
+  footer: { marginTop: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  tags: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: { borderRadius: 6, borderWidth: 1, borderColor: colors.border, color: colors.muted, fontSize: 11, fontFamily: fonts.medium, paddingHorizontal: 7, paddingVertical: 3, overflow: "hidden" },
+  price: { color: colors.text, fontSize: 14, fontFamily: fonts.display },
+  hour: { color: colors.muted, fontFamily: fonts.body }
 });
-

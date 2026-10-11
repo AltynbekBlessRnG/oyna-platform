@@ -18,7 +18,7 @@
       "package": "kz.oyna.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#111014"
+        "backgroundColor": "#141414"
       },
       "versionCode": 5
     },
@@ -31,9 +31,10 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#111014"
+          "backgroundColor": "#141414"
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -4,7 +4,7 @@ import { BellRing, CalendarCheck2, Trophy, Users } from "lucide-react-native";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getNotifications, markNotificationRead } from "@/lib/api";
-import { colors } from "@/theme";
+import { colors, fonts, radii } from "@/theme";
 
 const ICONS = { booking_status: CalendarCheck2, tournament_registration: Trophy, match_scheduled: Trophy, match_result: Trophy, team_invite: Users, chat_reply: BellRing };
 
@@ -26,11 +26,11 @@ export default function NotificationsScreen() {
         onPress={() => { if (!item.readAt) read.mutate(item.id); }}
         style={[styles.card, !item.readAt && styles.unread]}
       >
-        <View style={styles.icon}><Icon color={item.readAt ? colors.muted : colors.primary} size={19} /></View>
+        <View style={styles.icon}><Icon color={item.readAt ? colors.muted : colors.text} size={19} /></View>
         <View style={styles.body}>
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.text}>{item.body}</Text>
-          <Text style={styles.time}>{created.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} · {created.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</Text>
+          <Text style={styles.time}>{created.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })}, {created.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</Text>
         </View>
       </Pressable>
     );
@@ -53,13 +53,14 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 18, paddingTop: 18, paddingBottom: 32 },
-  separator: { height: 10 },
-  card: { flexDirection: "row", gap: 12, padding: 15, borderRadius: 17, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  unread: { borderColor: colors.primary },
-  icon: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: colors.background },
+  separator: { height: 8 },
+  card: { flexDirection: "row", gap: 12, padding: 15, borderRadius: radii.card, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  // Непрочитанное приподнято над фоном, прочитанное уходит в контур.
+  unread: { backgroundColor: colors.surface, borderColor: colors.surface },
+  icon: { width: 38, height: 38, borderRadius: radii.control, alignItems: "center", justifyContent: "center", backgroundColor: colors.surfaceRaised },
   body: { flex: 1, gap: 4 },
-  title: { color: colors.text, fontSize: 15, fontWeight: "800" },
-  text: { color: colors.muted, fontSize: 13, lineHeight: 19 },
-  time: { color: colors.muted, fontSize: 11 },
-  empty: { paddingVertical: 40, textAlign: "center", color: colors.muted }
+  title: { color: colors.text, fontSize: 15, fontFamily: fonts.semibold },
+  text: { color: colors.muted, fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
+  time: { color: colors.muted, fontSize: 12, fontFamily: fonts.body },
+  empty: { paddingVertical: 40, textAlign: "center", color: colors.muted, fontFamily: fonts.body, lineHeight: 20 }
 });
