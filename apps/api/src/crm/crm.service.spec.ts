@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import type { AuthUser } from "@oyna/contracts";
-import { PgliteDatabase } from "../../test/pglite-database";
+import { PgliteDatabase } from "../database/pglite.testing";
 import { AuthService } from "../auth/auth.service";
 import { BookingsService } from "../bookings/bookings.service";
 import { ClubHallService } from "../clubs/club-hall.service";

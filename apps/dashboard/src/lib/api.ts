@@ -1,4 +1,4 @@
-import type { BookingReceipt, ClubAdminView, ClubSeatMap, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
+import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubClientsResponse, ClubSeatMap, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
 import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
@@ -119,4 +119,36 @@ export async function loadHall(clubId: string): Promise<HallSnapshot> {
   ]);
   if (!seatMapResponse.ok) throw new ApiError(`Карта зала недоступна (${seatMapResponse.status})`, seatMapResponse.status);
   return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions };
+}
+
+/** Аналитика нужна базе данных: без неё API отвечает 503, и кабинет показывает пояснение вместо нулей. */
+export async function loadAnalytics(clubId: string, days: number): Promise<{ analytics?: ClubAnalytics; error?: string }> {
+  try {
+    return { analytics: await adminFetch<ClubAnalytics>(`/admin/clubs/${clubId}/analytics?days=${days}`) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Аналитика недоступна" };
+  }
+}
+
+export async function loadClients(
+  clubId: string,
+  options: { search?: string; segment?: ClientSegment | "risk"; sort?: ClientSort }
+): Promise<{ data?: ClubClientsResponse; error?: string }> {
+  const query = new URLSearchParams();
+  if (options.search) query.set("search", options.search);
+  if (options.segment) query.set("segment", options.segment);
+  if (options.sort) query.set("sort", options.sort);
+  try {
+    return { data: await adminFetch<ClubClientsResponse>(`/admin/clubs/${clubId}/clients?${query.toString()}`) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Клиенты недоступны" };
+  }
+}
+
+export async function loadClient(clubId: string, userId: string): Promise<{ data?: ClubClientDetail; error?: string; status?: number }> {
+  try {
+    return { data: await adminFetch<ClubClientDetail>(`/admin/clubs/${clubId}/clients/${encodeURIComponent(userId)}`) };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Клиент недоступен", status: error instanceof ApiError ? error.status : undefined };
+  }
 }

@@ -4,6 +4,7 @@ import type {
   AuthSession,
   BookingReceipt,
   ClubSummary,
+  ClientNote,
   ClubZone,
   ManagedClub,
   PlaySession,
@@ -79,7 +80,8 @@ export async function confirmAdminCode(challengeId: string, code: string): Promi
 
 export async function switchClub(clubId: string): Promise<void> {
   await setActiveClubId(clubId);
-  revalidatePath("/");
+  // Клуб влияет на каждую страницу кабинета, а не только на обзор.
+  revalidatePath("/", "layout");
 }
 
 export async function signOut(): Promise<void> {
@@ -150,4 +152,65 @@ export async function removeStation(clubId: string, stationId: string): Promise<
     await adminFetch<void>(`/admin/clubs/${clubId}/stations/${stationId}`, { method: "DELETE" });
     return null;
   }, "Не удалось отвязать компьютер");
+}
+
+// ---------- CRM ----------
+
+function revalidateClient(userId: string): void {
+  revalidatePath(`/clients/${userId}`);
+  revalidatePath("/clients");
+}
+
+export async function addClientNote(clubId: string, userId: string, text: string): Promise<HallResult<ClientNote>> {
+  try {
+    const note = await adminFetch<ClientNote>(`/admin/clubs/${clubId}/clients/${userId}/notes`, { method: "POST", body: JSON.stringify({ text }) });
+    revalidateClient(userId);
+    return { ok: true, data: note };
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось сохранить заметку") };
+  }
+}
+
+export async function deleteClientNote(clubId: string, userId: string, noteId: string): Promise<HallResult<null>> {
+  try {
+    await adminFetch<void>(`/admin/clubs/${clubId}/clients/${userId}/notes/${noteId}`, { method: "DELETE" });
+    revalidateClient(userId);
+    return { ok: true, data: null };
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось удалить заметку") };
+  }
+}
+
+export async function setClientTags(clubId: string, userId: string, tags: string[]): Promise<HallResult<string[]>> {
+  try {
+    const result = await adminFetch<{ tags: string[] }>(`/admin/clubs/${clubId}/clients/${userId}/tags`, { method: "PUT", body: JSON.stringify({ tags }) });
+    revalidateClient(userId);
+    return { ok: true, data: result.tags };
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось сохранить теги") };
+  }
+}
+
+export async function adjustClientBalance(clubId: string, userId: string, amount: number, reason: string): Promise<HallResult<number>> {
+  try {
+    const result = await adminFetch<{ balance: number }>(`/admin/clubs/${clubId}/clients/${userId}/balance-adjustments`, {
+      method: "POST",
+      body: JSON.stringify({ amount, reason })
+    });
+    revalidateClient(userId);
+    return { ok: true, data: result.balance };
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось изменить баланс") };
+  }
+}
+
+export async function topUpClient(clubId: string, userId: string, phone: string, amount: number): Promise<HallResult<TopUpResult>> {
+  try {
+    const result = await adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount }) });
+    revalidateClient(userId);
+    revalidatePath("/hall");
+    return { ok: true, data: result };
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось пополнить баланс") };
+  }
 }

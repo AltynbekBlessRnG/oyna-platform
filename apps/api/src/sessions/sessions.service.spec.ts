@@ -48,6 +48,7 @@ describe("SessionsService", () => {
     const session = await service.start(clubId, seatId, player, undefined, start);
     expect(session.endsAt).toBe("2030-01-01T11:00:00.000Z");
     expect(session.seatLabel).toBe("01");
+    expect(session.playerPhoneTail).toBe("0002");
   });
 
   it("charges started minutes on early end and keeps the rest of the balance", async () => {

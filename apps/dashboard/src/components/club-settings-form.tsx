@@ -118,17 +118,17 @@ export function ClubSettingsForm({ clubId, club, zones }: ClubSettingsFormProps)
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <div><CardTitle>Зоны, цены и места</CardTitle><p className="mt-1 text-sm text-muted-foreground">Из этих зон игрок выбирает ПК</p></div>
-          <Badge>{totalSeats} мест · от {priceFrom.toLocaleString("ru-KZ")} ₸</Badge>
+          <Badge>{totalSeats} мест, от {priceFrom.toLocaleString("ru-KZ")} ₸/ч</Badge>
         </CardHeader>
         <CardContent className="grid gap-4">
           {rows.map((row, index) => (
             <article key={`${row.id}-${index}`} className="grid gap-3 rounded-xl border border-border p-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="text-xs text-muted-foreground" htmlFor={`zone-id-${index}`}>Идентификатор</label>
+                  <label className="text-xs text-muted-foreground" htmlFor={`zone-id-${index}`}>Код зоны</label>
                   <input
                     id={`zone-id-${index}`}
-                    className={`${inputClass} mt-1 font-mono disabled:opacity-60`}
+                    className={`${inputClass} mt-1 disabled:opacity-60`}
                     value={row.id}
                     disabled={!row.isNew}
                     onChange={(event) => patchRow(index, { id: event.target.value })}
@@ -146,11 +146,11 @@ export function ClubSettingsForm({ clubId, club, zones }: ClubSettingsFormProps)
               <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
                 <div>
                   <label className="text-xs text-muted-foreground" htmlFor={`zone-price-${index}`}>Цена за час, ₸</label>
-                  <input id={`zone-price-${index}`} type="number" min={0} className={`${inputClass} mt-1 font-mono`} value={row.pricePerHour} onChange={(event) => patchRow(index, { pricePerHour: Number(event.target.value) })} />
+                  <input id={`zone-price-${index}`} type="number" min={0} className={`${inputClass} mt-1`} value={row.pricePerHour} onChange={(event) => patchRow(index, { pricePerHour: Number(event.target.value) })} />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground" htmlFor={`zone-seats-${index}`}>Мест</label>
-                  <input id={`zone-seats-${index}`} type="number" min={1} max={200} className={`${inputClass} mt-1 font-mono`} value={row.seatCount} onChange={(event) => patchRow(index, { seatCount: Number(event.target.value) })} />
+                  <input id={`zone-seats-${index}`} type="number" min={1} max={200} className={`${inputClass} mt-1`} value={row.seatCount} onChange={(event) => patchRow(index, { seatCount: Number(event.target.value) })} />
                 </div>
                 <Button variant="ghost" size="sm" aria-label={`Удалить зону ${row.name}`} onClick={() => setRows((current) => current.filter((_, position) => position !== index))}>
                   <Trash2 className="size-4" />Удалить
@@ -162,7 +162,7 @@ export function ClubSettingsForm({ clubId, club, zones }: ClubSettingsFormProps)
             <Plus className="size-4" />Добавить зону
           </Button>
           <p className="text-xs text-muted-foreground">
-            Идентификатор существующей зоны менять нельзя: к нему привязаны созданные брони. Зону с будущими бронями API не даст удалить или уменьшить.
+            Код зоны после создания не меняется: на него ссылаются брони и компьютеры. Зону с будущими бронями нельзя удалить или уменьшить.
           </p>
           {zoneResult ? <p role="status" className="rounded-xl bg-secondary px-4 py-3 text-sm text-muted-foreground">{zoneResult}</p> : null}
           <Button className="justify-self-start" disabled={isPending || rows.length === 0} onClick={submitZones}><Save className="size-4" />Сохранить зоны</Button>

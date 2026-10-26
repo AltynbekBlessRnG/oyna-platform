@@ -37,7 +37,7 @@ const SWEEP_INTERVAL_MS = 15_000;
 const CLAIM_ATTEMPTS_PER_MINUTE = 10;
 const MAX_TOP_UP = 1_000_000;
 
-type Player = Pick<AuthUser, "id" | "name">;
+type Player = Pick<AuthUser, "id" | "name"> & { phone?: string };
 
 interface StationRecord {
   id: string;
@@ -71,6 +71,7 @@ interface SessionRow {
   zone_name: string;
   user_id: string;
   player_name: string;
+  player_phone_tail: string | null;
   price_per_hour: number;
   started_at: Date | string;
   ends_at: Date | string;
@@ -91,7 +92,7 @@ interface ResolvedSeat {
 export type StationListener = (stationId: string, state: StationState | null) => void;
 
 const SESSION_COLUMNS =
-  "id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, price_per_hour, started_at, ends_at, status, ended_at, end_reason, charged, limit_minutes";
+  "id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, ended_at, end_reason, charged, limit_minutes";
 
 /**
  * Компьютеры с клиентом Zen и игровые сессии за ними.
@@ -278,6 +279,7 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       zoneName: seat.zone.name,
       userId: player.id,
       playerName: player.name,
+      ...(player.phone ? { playerPhoneTail: player.phone.replace(/\D/g, "").slice(-4) } : {}),
       pricePerHour: seat.zone.pricePerHour,
       startedAt: new Date(now).toISOString(),
       status: "active" as const,
@@ -306,9 +308,9 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
         const created: StoredSession = { ...base, endsAt: this.endsAt(now, base.pricePerHour, balance, effectiveLimit) };
         try {
           await client.query(
-            `INSERT INTO play_sessions (id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, price_per_hour, started_at, ends_at, status, limit_minutes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12)`,
-            [created.id, clubId, created.seatId, created.seatLabel, created.zoneId, created.zoneName, player.id, player.name, created.pricePerHour, created.startedAt, created.endsAt, minutes ?? null]
+            `INSERT INTO play_sessions (id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, limit_minutes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', $13)`,
+            [created.id, clubId, created.seatId, created.seatLabel, created.zoneId, created.zoneName, player.id, player.name, created.playerPhoneTail ?? null, created.pricePerHour, created.startedAt, created.endsAt, minutes ?? null]
           );
         } catch (error) {
           if (!this.isUniqueViolation(error)) throw error;
@@ -602,6 +604,7 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       zoneName: row.zone_name,
       userId: row.user_id,
       playerName: row.player_name,
+      ...(row.player_phone_tail ? { playerPhoneTail: row.player_phone_tail } : {}),
       pricePerHour: row.price_per_hour,
       startedAt: new Date(row.started_at).toISOString(),
       endsAt: new Date(row.ends_at).toISOString(),

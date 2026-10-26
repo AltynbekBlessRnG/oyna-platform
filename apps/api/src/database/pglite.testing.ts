@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
-import { DatabaseService } from "../src/database/database.service";
-import { DATABASE_SCHEMA } from "../src/database/schema";
+import { DatabaseService } from "./database.service";
+import { DATABASE_SCHEMA } from "./schema";
 
 interface Queryable {
   query<T>(text: string, values?: unknown[]): Promise<{ rows: T[]; affectedRows?: number }>;

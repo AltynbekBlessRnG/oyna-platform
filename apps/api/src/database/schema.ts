@@ -235,6 +235,7 @@ CREATE TABLE IF NOT EXISTS club_client_notes (
 );
 
 CREATE INDEX IF NOT EXISTS club_client_notes_client_idx ON club_client_notes (club_id, user_id, created_at DESC);
+ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS player_phone_tail TEXT;
 CREATE INDEX IF NOT EXISTS play_sessions_club_user_idx ON play_sessions (club_id, user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS club_orders_club_user_idx ON club_orders (club_id, user_id);
 `;

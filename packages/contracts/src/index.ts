@@ -330,6 +330,8 @@ export interface PlaySession {
   zoneName: string;
   userId: string;
   playerName: string;
+  /** Последние 4 цифры телефона: касса различает гостей без имени, полный номер на компьютер не уходит. */
+  playerPhoneTail?: string;
   pricePerHour: number;
   startedAt: string;
   /** Когда сессия закончится сама: хватает баланса или выбранного времени. */
