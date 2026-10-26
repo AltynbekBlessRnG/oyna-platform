@@ -17,8 +17,8 @@ interface Filter {
   matches: (club: ClubSummary) => boolean;
 }
 
+// «Рядом» убран, пока расстояние берётся из каталога, а не из геолокации игрока.
 const FILTERS: Filter[] = [
-  { id: "near", label: "Рядом", matches: (club) => club.distanceKm <= 2 },
   { id: "free", label: "Есть места", matches: (club) => club.availableSeats > 0 },
   { id: "24/7", label: "24/7", matches: (club) => club.tags.includes("24/7") },
   { id: "vip", label: "VIP", matches: (club) => club.tags.includes("VIP") },

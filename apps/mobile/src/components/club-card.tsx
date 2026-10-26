@@ -1,6 +1,6 @@
 import type { ClubSummary } from "@oyna/contracts";
 import { useRouter } from "expo-router";
-import { MapPin, Monitor, Star } from "lucide-react-native";
+import { Monitor } from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { SeatStrip } from "@/components/seat-strip";
 import { colors, fonts, radii } from "@/theme";
@@ -23,20 +23,13 @@ export function ClubCard({ club }: ClubCardProps) {
         ) : (
           <View style={styles.coverPattern}><Monitor color={colors.muted} size={44} strokeWidth={1.25} /></View>
         )}
-        <View style={styles.distance}>
-          <MapPin color={colors.text} size={12} />
-          <Text style={styles.distanceText}>{club.distanceKm} км</Text>
-        </View>
       </View>
       <View style={styles.body}>
         <View style={styles.titleRow}>
+          {/* Расстояние и рейтинг не показываем: пока это значения из каталога, а не геолокация и отзывы игроков. */}
           <View style={styles.titleText}>
             <Text style={styles.name} numberOfLines={1}>{club.name}</Text>
             <Text style={styles.address} numberOfLines={1}>{club.address}</Text>
-          </View>
-          <View style={styles.rating}>
-            <Star color={colors.text} fill={colors.text} size={13} />
-            <Text style={styles.ratingText}>{club.rating}</Text>
           </View>
         </View>
 
@@ -62,15 +55,11 @@ const styles = StyleSheet.create({
   // Цвет клуба из данных в обложку не берём: случайный яркий цвет спорит с палитрой.
   cover: { height: 116, backgroundColor: colors.surfaceRaised },
   coverPattern: { ...StyleSheet.absoluteFillObject, alignItems: "center", justifyContent: "center", opacity: 0.5 },
-  distance: { position: "absolute", top: 10, left: 10, flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, backgroundColor: "rgba(20,20,20,0.82)", paddingHorizontal: 9, paddingVertical: 5 },
-  distanceText: { color: colors.text, fontSize: 11, fontFamily: fonts.medium },
   body: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 },
   titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   titleText: { flex: 1 },
   name: { color: colors.text, fontSize: 17, fontFamily: fonts.display, letterSpacing: -0.2 },
   address: { marginTop: 3, color: colors.muted, fontSize: 13, fontFamily: fonts.body },
-  rating: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 3 },
-  ratingText: { color: colors.text, fontSize: 13, fontFamily: fonts.semibold },
   strip: { marginTop: 16 },
   seats: { marginTop: 8, color: colors.text, fontSize: 12, fontFamily: fonts.medium },
   seatsNone: { color: colors.muted },

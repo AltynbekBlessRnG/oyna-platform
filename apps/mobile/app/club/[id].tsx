@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CalendarDays, ChevronLeft, Clock3, MapPin, Monitor, Star, Users } from "lucide-react-native";
+import { CalendarDays, ChevronLeft, Clock3, MapPin, Monitor, Users } from "lucide-react-native";
 import { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -80,12 +80,8 @@ export default function ClubDetailsScreen() {
               <Text style={styles.title}>{club.name}</Text>
               <View style={styles.inline}>
                 <MapPin color={colors.muted} size={15} />
-                <Text style={styles.muted}>{club.address}, {club.distanceKm} км</Text>
+                <Text style={styles.muted}>{club.address}</Text>
               </View>
-            </View>
-            <View style={styles.inline}>
-              <Star color={colors.text} fill={colors.text} size={15} />
-              <Text style={styles.rating}>{club.rating}</Text>
             </View>
           </View>
 
@@ -223,7 +219,6 @@ const styles = StyleSheet.create({
   inline: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 6 },
   inlineTight: { flexDirection: "row", alignItems: "center", gap: 5 },
   muted: { color: colors.muted, fontSize: 13, lineHeight: 19, fontFamily: fonts.body },
-  rating: { color: colors.text, fontSize: 14, fontFamily: fonts.semibold },
   facts: { marginTop: 22, marginBottom: 20 },
   factsRow: { marginTop: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   factMain: { color: colors.text, fontSize: 14, fontFamily: fonts.medium },

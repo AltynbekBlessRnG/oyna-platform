@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { PlaySession } from "@oyna/contracts";
-import { Monitor, Square } from "lucide-react-native";
+import { ChevronRight, Monitor, Square } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { claimStation, endMySession, getCurrentSession } from "@/lib/api";
@@ -17,11 +17,13 @@ function timeLeft(iso: string, now: number): string {
 
 /**
  * Сесть за компьютер в клубе: игрок вводит код с экрана блокировки, время идёт с клубного баланса.
- * Пока сессия идёт, карточка показывает место и остаток времени.
+ * Пока сессия идёт, карточка показывает место и остаток времени. Без сессии она свёрнута в одну строку:
+ * тому, кто выбирает клуб из дома, поле для кода над картой зала только мешает.
  */
 export function ClubSessionCard({ clubId }: { clubId: string }) {
   const queryClient = useQueryClient();
   const [code, setCode] = useState("");
+  const [open, setOpen] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [lastEnded, setLastEnded] = useState<PlaySession | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -47,6 +49,7 @@ export function ClubSessionCard({ clubId }: { clubId: string }) {
     mutationFn: () => claimStation(code),
     onSuccess: (started) => {
       setCode("");
+      setOpen(false);
       setLastEnded(null);
       queryClient.setQueryData(["club-session", clubId], started);
       refreshClub();
@@ -88,11 +91,29 @@ export function ClubSessionCard({ clubId }: { clubId: string }) {
     );
   }
 
+  if (!open) {
+    return (
+      <View style={styles.collapsed}>
+        <Pressable accessibilityRole="button" onPress={() => setOpen(true)} style={styles.entry} hitSlop={4}>
+          <Monitor color={colors.primary} size={18} />
+          <Text style={styles.entryText}>Я в клубе: ввести код с экрана компьютера</Text>
+          <ChevronRight color={colors.muted} size={18} />
+        </Pressable>
+        {lastEnded ? (
+          <Text style={styles.muted}>Сессия за местом {lastEnded.seatLabel} завершена, списано {(lastEnded.charged ?? 0).toLocaleString("ru-KZ")} ₸.</Text>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
         <Monitor color={colors.muted} size={18} />
-        <Text style={styles.title}>Сесть за компьютер</Text>
+        <Text style={[styles.title, styles.grow]}>Сесть за компьютер</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel="Свернуть" onPress={() => setOpen(false)} hitSlop={8}>
+          <Text style={styles.link}>Свернуть</Text>
+        </Pressable>
       </View>
       <Text style={styles.muted}>Введите код с экрана компьютера. Время спишется с вашего баланса в этом клубе.</Text>
       <View style={styles.row}>
@@ -103,6 +124,7 @@ export function ClubSessionCard({ clubId }: { clubId: string }) {
           placeholderTextColor={colors.muted}
           keyboardType="number-pad"
           maxLength={6}
+          autoFocus
           style={styles.input}
           accessibilityLabel="Код с экрана компьютера"
         />
@@ -116,9 +138,6 @@ export function ClubSessionCard({ clubId }: { clubId: string }) {
         </Pressable>
       </View>
       {claim.error ? <Text style={styles.error}>{claim.error.message}</Text> : null}
-      {lastEnded ? (
-        <Text style={styles.muted}>Сессия за местом {lastEnded.seatLabel} завершена, списано {(lastEnded.charged ?? 0).toLocaleString("ru-KZ")} ₸.</Text>
-      ) : null}
     </View>
   );
 }
@@ -127,6 +146,11 @@ const styles = StyleSheet.create({
   card: { marginBottom: 16, padding: 17, gap: 10, borderRadius: radii.card, backgroundColor: colors.surface },
   active: { borderWidth: 1, borderColor: colors.primary },
   header: { flexDirection: "row", alignItems: "center", gap: 9 },
+  grow: { flex: 1 },
+  link: { color: colors.muted, fontSize: 13, fontFamily: fonts.medium },
+  collapsed: { marginBottom: 16, gap: 8 },
+  entry: { flexDirection: "row", alignItems: "center", gap: 10, minHeight: 48, paddingHorizontal: 14, borderRadius: radii.control, borderWidth: 1, borderColor: colors.border },
+  entryText: { flex: 1, color: colors.text, fontSize: 14, fontFamily: fonts.medium },
   title: { color: colors.text, fontSize: 15, fontFamily: fonts.display },
   left: { color: colors.primary, fontSize: 28, fontFamily: fonts.displayBold },
   muted: { color: colors.muted, fontSize: 13, lineHeight: 19, fontFamily: fonts.body },
