@@ -8,6 +8,7 @@ import Animated, { FadeIn } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ClubAccountCard } from "@/components/club-account-card";
 import { ClubBar } from "@/components/club-bar";
+import { ClubSessionCard } from "@/components/club-session-card";
 import { SeatMap } from "@/components/seat-map";
 import { SeatStrip } from "@/components/seat-strip";
 import { getClub, getClubTournaments, getSeatMap, getZones, registerTournament } from "@/lib/api";
@@ -116,6 +117,7 @@ export default function ClubDetailsScreen() {
           </ScrollView>
 
           <Animated.View key={section} entering={FadeIn.duration(220)}>
+            {section === "hall" ? <ClubSessionCard clubId={club.id} /> : null}
             {section === "hall" ? (
               seatMap ? (
                 <SeatMap

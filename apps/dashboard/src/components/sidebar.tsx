@@ -5,7 +5,7 @@ import { signOut } from "@/app/actions";
 const navigation = [
   { key: "overview", label: "Обзор", icon: LayoutDashboard, href: "/" },
   { key: "bookings", label: "Бронирования", icon: CalendarDays, href: "/" },
-  { key: "seats", label: "Игровые места", icon: Monitor, href: "/settings" },
+  { key: "hall", label: "Зал и касса", icon: Monitor, href: "/hall" },
   { key: "clients", label: "Клиенты", icon: Users, href: "#" },
   { key: "analytics", label: "Аналитика", icon: BarChart3, href: "#" },
   { key: "promo", label: "Акции", icon: Megaphone, href: "#" }

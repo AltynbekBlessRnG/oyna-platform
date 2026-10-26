@@ -1,6 +1,19 @@
 "use server";
 
-import type { AuthSession, BookingReceipt, ClubSummary, ClubZone, ManagedClub, RequestCodeResponse, UpdateBookingStatusRequest, UpdateClubRequest, UpsertZoneRequest } from "@oyna/contracts";
+import type {
+  AuthSession,
+  BookingReceipt,
+  ClubSummary,
+  ClubZone,
+  ManagedClub,
+  PlaySession,
+  RequestCodeResponse,
+  StationCredentials,
+  TopUpResult,
+  UpdateBookingStatusRequest,
+  UpdateClubRequest,
+  UpsertZoneRequest
+} from "@oyna/contracts";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { adminFetch, apiUrl, loadManagedClubs } from "@/lib/api";
@@ -94,4 +107,47 @@ export async function saveClubZones(clubId: string, zones: UpsertZoneRequest[]):
   } catch (error) {
     return { ok: false, message: describe(error, "Не удалось сохранить зоны") };
   }
+}
+
+/** Результат действия кассы: данные при успехе, понятное сообщение при отказе API. */
+export type HallResult<T> = { ok: true; data: T } | { ok: false; message: string };
+
+async function hallAction<T>(work: () => Promise<T>, fallback: string): Promise<HallResult<T>> {
+  try {
+    const data = await work();
+    revalidatePath("/hall");
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, message: describe(error, fallback) };
+  }
+}
+
+export async function startPlaySession(clubId: string, seatId: string, phone: string, minutes?: number): Promise<HallResult<PlaySession>> {
+  return hallAction(
+    () => adminFetch<PlaySession>(`/admin/clubs/${clubId}/sessions`, { method: "POST", body: JSON.stringify({ seatId, phone, ...(minutes ? { minutes } : {}) }) }),
+    "Не удалось запустить сессию"
+  );
+}
+
+export async function endPlaySession(clubId: string, sessionId: string): Promise<HallResult<PlaySession>> {
+  return hallAction(() => adminFetch<PlaySession>(`/admin/clubs/${clubId}/sessions/${sessionId}/end`, { method: "POST" }), "Не удалось завершить сессию");
+}
+
+export async function topUpBalance(clubId: string, phone: string, amount: number): Promise<HallResult<TopUpResult>> {
+  return hallAction(() => adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount }) }), "Не удалось пополнить баланс");
+}
+
+export async function registerStation(clubId: string, seatId: string): Promise<HallResult<StationCredentials>> {
+  return hallAction(() => adminFetch<StationCredentials>(`/admin/clubs/${clubId}/stations`, { method: "POST", body: JSON.stringify({ seatId }) }), "Не удалось подключить компьютер");
+}
+
+export async function rotateStationKey(clubId: string, stationId: string): Promise<HallResult<StationCredentials>> {
+  return hallAction(() => adminFetch<StationCredentials>(`/admin/clubs/${clubId}/stations/${stationId}/token`, { method: "POST" }), "Не удалось выпустить ключ");
+}
+
+export async function removeStation(clubId: string, stationId: string): Promise<HallResult<null>> {
+  return hallAction(async () => {
+    await adminFetch<void>(`/admin/clubs/${clubId}/stations/${stationId}`, { method: "DELETE" });
+    return null;
+  }, "Не удалось отвязать компьютер");
 }

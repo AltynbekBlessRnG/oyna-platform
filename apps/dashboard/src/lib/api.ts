@@ -1,4 +1,4 @@
-import type { BookingReceipt, ClubAdminView, ManagedClub } from "@oyna/contracts";
+import type { BookingReceipt, ClubAdminView, ClubSeatMap, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
 import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
@@ -102,4 +102,21 @@ export async function loadClubBookings(clubId: string): Promise<{ bookings: Book
 
 export async function loadClubView(clubId: string): Promise<ClubAdminView | undefined> {
   return adminFetch<ClubAdminView>(`/admin/clubs/${clubId}`).catch(() => undefined);
+}
+
+export interface HallSnapshot {
+  seatMap: ClubSeatMap;
+  stations: ClubStation[];
+  sessions: PlaySession[];
+}
+
+/** Зал для кассы: карта мест, компьютеры с клиентом Zen и идущие сессии. */
+export async function loadHall(clubId: string): Promise<HallSnapshot> {
+  const [seatMapResponse, stations, sessions] = await Promise.all([
+    fetch(`${apiUrl}/clubs/${clubId}/seatmap`, { cache: "no-store" }),
+    adminFetch<ClubStation[]>(`/admin/clubs/${clubId}/stations`),
+    adminFetch<PlaySession[]>(`/admin/clubs/${clubId}/sessions`)
+  ]);
+  if (!seatMapResponse.ok) throw new ApiError(`Карта зала недоступна (${seatMapResponse.status})`, seatMapResponse.status);
+  return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions };
 }

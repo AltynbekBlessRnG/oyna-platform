@@ -1,4 +1,4 @@
-import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChallengeStatusResponse, ChatChannel, ChatMessage, ClubAccount, ClubAvailability, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
+import type { AuthSession, AvailabilitySnapshot, BookingReceipt, ChallengeStatusResponse, ChatChannel, ChatMessage, ClubAccount, ClubAvailability, ClubOrder, ClubSeatMap, ClubSummary, ClubZone, CreateBookingRequest, CreateOrderRequest, GameSummary, MenuItem, NotificationItem, PlaySession, PlayerProfile, RequestCodeResponse, TournamentSummary, UpdateProfileRequest } from "@oyna/contracts";
 import { demoClubs } from "@/data/demo-clubs";
 
 const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000/api";
@@ -175,7 +175,11 @@ export async function cancelBooking(id: string): Promise<BookingReceipt> {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, { ...init, headers: { "Content-Type": "application/json", ...authHeaders(), ...(init?.headers ?? {}) } });
-  if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+  if (!response.ok) {
+    // Сервер объясняет отказ по-русски («Код устарел…», «Недостаточно средств…») — показываем это игроку.
+    const detail = (await response.json().catch(() => undefined)) as { message?: unknown } | undefined;
+    throw new Error(typeof detail?.message === "string" ? detail.message : `API request failed: ${response.status}`);
+  }
   const text = await response.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -186,6 +190,9 @@ export const sendChatMessage = (channelId:string,text:string) => api<ChatMessage
 export const getTournaments = (gameId?:string) => api<TournamentSummary[]>(`/tournaments${gameId?`?gameId=${encodeURIComponent(gameId)}`:""}`);
 export const getClubTournaments = (clubId:string) => api<TournamentSummary[]>(`/tournaments?clubId=${encodeURIComponent(clubId)}`);
 export const getSeatMap = (clubId:string) => api<ClubSeatMap>(`/clubs/${clubId}/seatmap`);
+export const getCurrentSession = (clubId:string) => api<PlaySession | null>(`/clubs/${clubId}/session`);
+export const claimStation = (code:string) => api<PlaySession>("/sessions/claim",{method:"POST",body:JSON.stringify({code})});
+export const endMySession = (sessionId:string) => api<PlaySession>(`/sessions/${sessionId}/end`,{method:"POST"});
 export const getClubMenu = (clubId:string) => api<MenuItem[]>(`/clubs/${clubId}/menu`);
 export const getClubOrders = (clubId:string) => api<ClubOrder[]>(`/clubs/${clubId}/orders`);
 export const createClubOrder = (clubId:string,request:CreateOrderRequest) => api<ClubOrder>(`/clubs/${clubId}/orders`,{method:"POST",body:JSON.stringify(request)});

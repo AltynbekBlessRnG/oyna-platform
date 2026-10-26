@@ -226,6 +226,8 @@ export interface SeatMapSeat {
   occupiedUntil?: string;
   /** Для забронированного места — во сколько придёт игрок. */
   reservedFrom?: string;
+  /** На компьютере стоит клиент Zen, и он сейчас на связи. Нет — клиента нет. */
+  stationOnline?: boolean;
 }
 
 export interface SeatMapZone {
@@ -288,4 +290,91 @@ export interface ClubAccount {
   bonusPoints: number;
   hoursPlayed: number;
   joinedAt: string;
+}
+
+/** Компьютер в зале с установленным клиентом Zen. Привязан к месту на карте зала. */
+export interface ClubStation {
+  id: string;
+  clubId: string;
+  seatId: string;
+  seatLabel: string;
+  zoneId: string;
+  name: string;
+  /** Клиент сейчас на связи с сервером. */
+  online: boolean;
+  lastSeenAt?: string;
+  createdAt: string;
+}
+
+export interface RegisterStationRequest {
+  seatId: string;
+  name?: string;
+}
+
+/** Ключ клиента показывается один раз: на сервере хранится только его хеш. */
+export interface StationCredentials {
+  station: ClubStation;
+  token: string;
+}
+
+export type PlaySessionStatus = "active" | "ended";
+export type PlaySessionEndReason = "player" | "admin" | "expired" | "station";
+
+/** Игровая сессия за компьютером: время списывается с клубного баланса игрока. */
+export interface PlaySession {
+  id: string;
+  clubId: string;
+  seatId: string;
+  seatLabel: string;
+  zoneId: string;
+  zoneName: string;
+  userId: string;
+  playerName: string;
+  pricePerHour: number;
+  startedAt: string;
+  /** Когда сессия закончится сама: хватает баланса или выбранного времени. */
+  endsAt: string;
+  status: PlaySessionStatus;
+  endedAt?: string;
+  endReason?: PlaySessionEndReason;
+  /** Списано с баланса по факту, только у завершённой сессии. */
+  charged?: number;
+}
+
+/** Запуск сессии администратором с кассы. */
+export interface StartSessionRequest {
+  seatId: string;
+  phone: string;
+  /** Ограничить время; без него сессия идёт, пока хватает баланса. */
+  minutes?: number;
+}
+
+/** Игрок сканирует код с экрана компьютера и садится за него. */
+export interface ClaimStationRequest {
+  code: string;
+  minutes?: number;
+}
+
+export interface TopUpRequest {
+  phone: string;
+  amount: number;
+}
+
+export interface TopUpResult {
+  clubId: string;
+  userId: string;
+  playerName: string;
+  amount: number;
+  balance: number;
+}
+
+export interface StationLoginCode {
+  code: string;
+  expiresAt: string;
+}
+
+/** Всё, что клиенту на компьютере нужно знать, чтобы заблокировать или открыть экран. */
+export interface StationState {
+  station: ClubStation;
+  session: PlaySession | null;
 }

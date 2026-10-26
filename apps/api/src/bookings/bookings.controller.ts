@@ -3,11 +3,15 @@ import type { AuthUser, AvailabilitySnapshot, BookingReceipt, ClubAvailability, 
 import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
+import { SessionsService } from "../sessions/sessions.service";
 import { BookingsService } from "./bookings.service";
 
 @Controller()
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly sessions: SessionsService
+  ) {}
 
   @Get("clubs/:clubId/zones")
   findZones(@Param("clubId") clubId: string): Promise<ClubZone[]> {
@@ -15,8 +19,8 @@ export class BookingsController {
   }
 
   @Get("clubs/:clubId/seatmap")
-  getSeatMap(@Param("clubId") clubId: string): Promise<ClubSeatMap> {
-    return this.bookingsService.getSeatMap(clubId);
+  async getSeatMap(@Param("clubId") clubId: string): Promise<ClubSeatMap> {
+    return this.sessions.applyToSeatMap(await this.bookingsService.getSeatMap(clubId));
   }
 
   @Get("clubs/:clubId/availability/hall")

@@ -24,15 +24,50 @@ interface BookingRow {
   user_id: string;
 }
 
+/** Места, занятые идущими сессиями в окне времени: их отдаёт SessionsService, который сам зависит от броней. */
+export type SessionOccupancy = (clubId: string, from: number, to: number) => Promise<string[]>;
+
+/** Бронь места глазами кассы: чья она и на какое время. */
+export interface SeatReservation {
+  userId: string;
+  start: number;
+  end: number;
+}
+
 @Injectable()
 export class BookingsService {
   private readonly memoryBookings = new Map<string, BookingReceipt & { userId: string; playerPhone: string }>();
+  private sessionOccupancy?: SessionOccupancy;
 
   constructor(
     private readonly clubsService: ClubsService,
     private readonly database: DatabaseService,
     private readonly notifications: NotificationsService
   ) {}
+
+  useSessionOccupancy(source: SessionOccupancy): void {
+    this.sessionOccupancy = source;
+  }
+
+  /** Действующие брони одного места, которые ещё не закончились к моменту `from`. */
+  async findSeatReservations(clubId: string, seatId: string, from: number): Promise<SeatReservation[]> {
+    if (!this.database.configured) {
+      return [...this.memoryBookings.values()]
+        .filter((booking) => booking.clubId === clubId && booking.seatIds.includes(seatId) && ["pending", "confirmed"].includes(booking.status))
+        .map((booking) => ({ userId: booking.userId, start: Date.parse(booking.startAt), end: Date.parse(booking.startAt) + booking.durationHours * 3_600_000 }))
+        .filter((reservation) => reservation.end > from);
+    }
+    const result = await this.database.query<{ user_id: string; start_at: Date | string; duration_hours: number }>(
+      `SELECT user_id, start_at, duration_hours FROM bookings
+       WHERE club_id = $1 AND $2 = ANY(seat_ids) AND status IN ('pending', 'confirmed')
+         AND start_at + (duration_hours * INTERVAL '1 hour') > $3::timestamptz`,
+      [clubId, seatId, new Date(from).toISOString()]
+    );
+    return result.rows.map((row) => {
+      const start = new Date(row.start_at).getTime();
+      return { userId: row.user_id, start, end: start + row.duration_hours * 3_600_000 };
+    });
+  }
 
   findZones(clubId: string): Promise<ClubZone[]> {
     return this.clubsService.findZones(clubId);
@@ -228,6 +263,8 @@ export class BookingsService {
         [receipt.clubId, receipt.zoneId, receipt.seatIds, receipt.startAt, receipt.durationHours]
       );
       if (conflict.rowCount) throw new ConflictException("One or more seats are no longer available");
+      const inSession = await this.seatsInSession(receipt.clubId, receipt.startAt, receipt.durationHours);
+      if (receipt.seatIds.some((seatId) => inSession.includes(seatId))) throw new ConflictException("One or more seats are no longer available");
       return this.insertBooking(client, receipt, user);
     });
   }
@@ -242,7 +279,19 @@ export class BookingsService {
     return this.mapRow(result.rows[0]);
   }
 
+  /** Места заняты и бронями, и сессиями, которые к этому времени ещё не закончатся. */
   private async findReservedSeatIds(clubId: string, zoneId: string, startAt: string, durationHours: number): Promise<string[]> {
+    const [booked, inSession] = await Promise.all([this.findBookedSeatIds(clubId, zoneId, startAt, durationHours), this.seatsInSession(clubId, startAt, durationHours)]);
+    return [...booked, ...inSession];
+  }
+
+  private seatsInSession(clubId: string, startAt: string, durationHours: number): Promise<string[]> {
+    if (!this.sessionOccupancy) return Promise.resolve([]);
+    const from = Date.parse(startAt);
+    return this.sessionOccupancy(clubId, from, from + durationHours * 3_600_000);
+  }
+
+  private async findBookedSeatIds(clubId: string, zoneId: string, startAt: string, durationHours: number): Promise<string[]> {
     if (!this.database.configured) {
       return [...this.memoryBookings.values()]
         .filter((booking) => booking.clubId === clubId && booking.zoneId === zoneId && ["pending", "confirmed"].includes(booking.status) && this.overlaps(booking, startAt, durationHours))

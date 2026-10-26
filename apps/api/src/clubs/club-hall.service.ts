@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type { AuthUser, ClubAccount, ClubOrder, ClubOrderLine, CreateOrderRequest, MenuItem } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
+import type { PoolClient, QueryResultRow } from "pg";
 import { DatabaseService } from "../database/database.service";
 import { ClubsService } from "./clubs.service";
 import { CLUB_CATALOG } from "./clubs.data";
@@ -114,7 +115,7 @@ export class ClubHallService {
   }
 
   /** Клубный аккаунт заводится при первом обращении: у игрока свой ник и бонусы в каждом клубе. */
-  async getAccount(clubId: string, user: AuthUser): Promise<ClubAccount> {
+  async getAccount(clubId: string, user: Pick<AuthUser, "id" | "name">): Promise<ClubAccount> {
     const club = await this.clubs.findOne(clubId);
     if (!this.database.configured) {
       const key = `${clubId}:${user.id}`;
@@ -159,6 +160,41 @@ export class ClubHallService {
     }
     await this.database.query("UPDATE club_accounts SET nickname = $3 WHERE club_id = $1 AND user_id = $2", [clubId, user.id, value]);
     return { ...account, nickname: value };
+  }
+
+  /**
+   * Пополнение или списание с клубного баланса с записью в журнал.
+   * Уйти в минус нельзя: списание больше остатка отклоняется целиком.
+   */
+  async changeBalance(
+    clubId: string,
+    user: Pick<AuthUser, "id" | "name">,
+    delta: number,
+    entry: { kind: "top_up" | "session"; refId?: string; createdBy?: string },
+    client?: PoolClient
+  ): Promise<number> {
+    if (!Number.isInteger(delta)) throw new BadRequestException("Сумма должна быть целым числом");
+    if (!this.database.configured) {
+      const account = await this.getAccount(clubId, user);
+      if (account.balance + delta < 0) throw new BadRequestException("Недостаточно средств на балансе");
+      const updated = { ...account, balance: account.balance + delta };
+      this.memoryAccounts.set(`${clubId}:${user.id}`, updated);
+      return updated.balance;
+    }
+    const run = <T extends QueryResultRow>(text: string, values: unknown[]) => (client ? client.query<T>(text, values) : this.database.query<T>(text, values));
+    await this.clubs.findOne(clubId);
+    // Всё через одно соединение: внутри транзакции запрос через пул ждал бы её же блокировку.
+    await run("INSERT INTO club_accounts (club_id, user_id, nickname) VALUES ($1, $2, $3) ON CONFLICT (club_id, user_id) DO NOTHING", [clubId, user.id, user.name]);
+    const result = await run<{ balance: number }>(
+      "UPDATE club_accounts SET balance = balance + $3 WHERE club_id = $1 AND user_id = $2 AND balance + $3 >= 0 RETURNING balance",
+      [clubId, user.id, delta]
+    );
+    if (result.rowCount === 0) throw new BadRequestException("Недостаточно средств на балансе");
+    await run(
+      "INSERT INTO club_balance_transactions (id, club_id, user_id, amount, kind, ref_id, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [randomUUID(), clubId, user.id, delta, entry.kind, entry.refId ?? null, entry.createdBy ?? null]
+    );
+    return result.rows[0].balance;
   }
 
   private mapMenuItem(row: MenuRow): MenuItem {

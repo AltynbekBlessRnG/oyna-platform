@@ -157,4 +157,55 @@ CREATE INDEX IF NOT EXISTS auth_challenges_phone_idx ON auth_challenges (phone, 
 -- Подтверждение номера через Telegram: чат, в котором игрок нажал «Поделиться номером».
 ALTER TABLE auth_challenges ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
 ALTER TABLE auth_challenges ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+
+-- Компьютеры с клиентом Zen и игровые сессии за ними.
+CREATE TABLE IF NOT EXISTS club_stations (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  seat_id TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  token_hash TEXT NOT NULL,
+  last_seen_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS club_stations_club_idx ON club_stations (club_id);
+
+CREATE TABLE IF NOT EXISTS play_sessions (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  seat_id TEXT NOT NULL,
+  seat_label TEXT NOT NULL,
+  zone_id TEXT NOT NULL,
+  zone_name TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  player_name TEXT NOT NULL,
+  price_per_hour INTEGER NOT NULL CHECK (price_per_hour >= 0),
+  started_at TIMESTAMPTZ NOT NULL,
+  ends_at TIMESTAMPTZ NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('active', 'ended')),
+  ended_at TIMESTAMPTZ,
+  end_reason TEXT CHECK (end_reason IN ('player', 'admin', 'expired', 'station')),
+  charged INTEGER CHECK (charged >= 0),
+  -- Потолок времени, выбранный при запуске: пополнение не продлевает сессию сверх него.
+  limit_minutes INTEGER CHECK (limit_minutes > 0)
+);
+
+-- За одним компьютером одна сессия, у игрока в клубе тоже одна: баланс не тратится дважды.
+CREATE UNIQUE INDEX IF NOT EXISTS play_sessions_active_seat_idx ON play_sessions (seat_id) WHERE status = 'active';
+CREATE UNIQUE INDEX IF NOT EXISTS play_sessions_active_user_idx ON play_sessions (club_id, user_id) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS play_sessions_due_idx ON play_sessions (ends_at) WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS club_balance_transactions (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('top_up', 'session')),
+  ref_id TEXT,
+  created_by TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS club_balance_transactions_account_idx ON club_balance_transactions (club_id, user_id, created_at DESC);
 `;
