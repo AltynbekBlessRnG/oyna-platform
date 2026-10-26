@@ -170,7 +170,7 @@ export class ClubHallService {
     clubId: string,
     user: Pick<AuthUser, "id" | "name">,
     delta: number,
-    entry: { kind: "top_up" | "session"; refId?: string; createdBy?: string },
+    entry: { kind: "top_up" | "session" | "adjustment"; refId?: string; createdBy?: string; reason?: string },
     client?: PoolClient
   ): Promise<number> {
     if (!Number.isInteger(delta)) throw new BadRequestException("Сумма должна быть целым числом");
@@ -182,7 +182,8 @@ export class ClubHallService {
       return updated.balance;
     }
     const run = <T extends QueryResultRow>(text: string, values: unknown[]) => (client ? client.query<T>(text, values) : this.database.query<T>(text, values));
-    await this.clubs.findOne(clubId);
+    // Внутри транзакции клуб уже проверил вызывающий код.
+    if (!client) await this.clubs.findOne(clubId);
     // Всё через одно соединение: внутри транзакции запрос через пул ждал бы её же блокировку.
     await run("INSERT INTO club_accounts (club_id, user_id, nickname) VALUES ($1, $2, $3) ON CONFLICT (club_id, user_id) DO NOTHING", [clubId, user.id, user.name]);
     const result = await run<{ balance: number }>(
@@ -191,8 +192,8 @@ export class ClubHallService {
     );
     if (result.rowCount === 0) throw new BadRequestException("Недостаточно средств на балансе");
     await run(
-      "INSERT INTO club_balance_transactions (id, club_id, user_id, amount, kind, ref_id, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-      [randomUUID(), clubId, user.id, delta, entry.kind, entry.refId ?? null, entry.createdBy ?? null]
+      "INSERT INTO club_balance_transactions (id, club_id, user_id, amount, kind, ref_id, created_by, reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      [randomUUID(), clubId, user.id, delta, entry.kind, entry.refId ?? null, entry.createdBy ?? null, entry.reason ?? null]
     );
     return result.rows[0].balance;
   }

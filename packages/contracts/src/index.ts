@@ -378,3 +378,105 @@ export interface StationState {
   station: ClubStation;
   session: PlaySession | null;
 }
+
+// ---------- CRM клуба ----------
+
+/**
+ * Сегмент клиента: VIP — топ-10 % по тратам или тег VIP; постоянный — 4+ дня визитов за 30 дней
+ * и был не позже двух недель назад; новый — впервые пришёл за последние 14 дней; спящий — 30+ дней без визитов.
+ */
+export type ClientSegment = "vip" | "regular" | "new" | "sleeping" | "occasional";
+
+export interface ClubClient {
+  userId: string;
+  name: string;
+  /** Клубный ник; совпадает с именем, если игрок его не менял. */
+  nickname: string;
+  phone: string;
+  balance: number;
+  bonusPoints: number;
+  tags: string[];
+  segment: ClientSegment;
+  /** Ходил часто, но пропал на 2+ недели: стоит позвонить или дать бонус. */
+  atRisk: boolean;
+  firstSeenAt: string;
+  lastVisitAt?: string;
+  /** Дни, в которые игрок был в клубе: сессия за ПК или подтверждённая бронь. */
+  visitDays: number;
+  visitDays30: number;
+  sessionsCount: number;
+  minutesPlayed: number;
+  spentOnTime: number;
+  spentOnBar: number;
+  totalSpent: number;
+  toppedUp: number;
+  bookingsCount: number;
+  cancelledBookings: number;
+}
+
+export type ClientSort = "lastVisit" | "spent" | "visits" | "balance" | "name";
+
+export interface ClubClientsResponse {
+  clients: ClubClient[];
+  total: number;
+  segments: Record<ClientSegment, number>;
+  atRisk: number;
+}
+
+export interface ClientNote {
+  id: string;
+  text: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export type ClientTimelineEntry =
+  | { kind: "session"; id: string; at: string; seatLabel: string; zoneName: string; minutes: number; charged?: number; active: boolean }
+  | { kind: "balance"; id: string; at: string; amount: number; type: "top_up" | "adjustment"; reason?: string }
+  | { kind: "booking"; id: string; at: string; startAt: string; zoneName: string; seatLabels: string[]; durationHours: number; status: BookingStatus }
+  | { kind: "order"; id: string; at: string; total: number; status: ClubOrderStatus; summary: string };
+
+export interface ClubClientDetail {
+  client: ClubClient;
+  notes: ClientNote[];
+  timeline: ClientTimelineEntry[];
+}
+
+/** Ручная корректировка баланса: возврат, компенсация, исправление ошибки кассы. */
+export interface BalanceAdjustmentRequest {
+  amount: number;
+  reason: string;
+}
+
+export interface AnalyticsTotals {
+  /** Выручка: оплаченное время плюс бар. */
+  revenue: number;
+  timeRevenue: number;
+  barRevenue: number;
+  /** Деньги, которые игроки внесли на балансы. */
+  toppedUp: number;
+  sessions: number;
+  minutesPlayed: number;
+  avgSessionMinutes: number;
+  uniquePlayers: number;
+  newPlayers: number;
+  /** Игроки, пришедшие в периоде в два и более разных дня. */
+  returningPlayers: number;
+  /** Доля занятого машинного времени от круглосуточной ёмкости зала, 0..1. */
+  occupancy: number;
+}
+
+export interface ClubAnalytics {
+  clubId: string;
+  days: number;
+  from: string;
+  to: string;
+  totals: AnalyticsTotals;
+  /** Тот же показатель за предыдущий период такой же длины. */
+  previous: AnalyticsTotals;
+  daily: { date: string; timeRevenue: number; barRevenue: number; toppedUp: number; sessions: number }[];
+  /** Загрузка по дням недели (1 — понедельник) и часам по времени клуба. */
+  heatmap: { weekday: number; hour: number; occupancy: number }[];
+  zones: { zoneId: string; zoneName: string; seats: number; minutesPlayed: number; revenue: number; occupancy: number }[];
+  topClients: { userId: string; name: string; phone: string; spent: number; minutesPlayed: number; visitDays: number }[];
+}

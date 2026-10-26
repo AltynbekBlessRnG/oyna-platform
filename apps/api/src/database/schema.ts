@@ -208,4 +208,33 @@ CREATE TABLE IF NOT EXISTS club_balance_transactions (
 );
 
 CREATE INDEX IF NOT EXISTS club_balance_transactions_account_idx ON club_balance_transactions (club_id, user_id, created_at DESC);
+
+-- CRM: теги клиента в клубе, заметки сотрудников и ручные корректировки баланса.
+ALTER TABLE club_accounts ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE club_balance_transactions ADD COLUMN IF NOT EXISTS reason TEXT;
+DO $$
+BEGIN
+  -- Ограничение меняется один раз, а не при каждом старте API.
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'club_balance_transactions_kind_check' AND pg_get_constraintdef(oid) LIKE '%adjustment%'
+  ) THEN
+    ALTER TABLE club_balance_transactions DROP CONSTRAINT IF EXISTS club_balance_transactions_kind_check;
+    ALTER TABLE club_balance_transactions ADD CONSTRAINT club_balance_transactions_kind_check CHECK (kind IN ('top_up', 'session', 'adjustment'));
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS club_client_notes (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  author_id TEXT,
+  author_name TEXT NOT NULL,
+  text TEXT NOT NULL CHECK (char_length(text) BETWEEN 1 AND 1000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS club_client_notes_client_idx ON club_client_notes (club_id, user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS play_sessions_club_user_idx ON play_sessions (club_id, user_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS club_orders_club_user_idx ON club_orders (club_id, user_id);
 `;
