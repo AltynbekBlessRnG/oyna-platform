@@ -18,6 +18,8 @@ import type {
   PlaySession,
   PlaySessionEndReason,
   StationCredentials,
+  StationEnrollment,
+  StationEnrollmentCode,
   StationLoginCode,
   StationState,
   TopUpResult
@@ -36,6 +38,10 @@ const LOGIN_CODE_TTL_MS = 2 * 60_000;
 const SWEEP_INTERVAL_MS = 15_000;
 const CLAIM_ATTEMPTS_PER_MINUTE = 10;
 const MAX_TOP_UP = 1_000_000;
+const ENROLLMENT_CODE_TTL_MS = 24 * 60 * 60_000;
+// Без 0/O, 1/I/L: код читают с экрана кабинета и набирают руками на каждом компьютере.
+const ENROLLMENT_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const ENROLLMENT_FAILURES_PER_10_MIN = 10;
 
 type Player = Pick<AuthUser, "id" | "name"> & { phone?: string };
 
@@ -106,6 +112,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
   /** Коды входа живут две минуты, поэтому им хватает памяти процесса. */
   private readonly loginCodes = new Map<string, { stationId: string; expiresAt: number }>();
   private readonly claimAttempts = new Map<string, number[]>();
+  private readonly memoryEnrollment = new Map<string, { clubId: string; expiresAt: number }>();
+  private readonly enrollmentFailures = new Map<string, number[]>();
   private readonly connected = new Set<string>();
   private readonly listeners = new Set<StationListener>();
   private sweeper?: NodeJS.Timeout;
@@ -194,6 +202,69 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     else await this.database.query("DELETE FROM club_stations WHERE id = $1", [record.id]);
     this.revoke(record.id);
     for (const [code, entry] of this.loginCodes) if (entry.stationId === record.id) this.loginCodes.delete(code);
+  }
+
+  // ---------- Подключение компьютеров по коду клуба ----------
+
+  /** Новый код клуба на сутки; прежний сразу перестаёт работать. */
+  async issueEnrollmentCode(clubId: string, now = Date.now()): Promise<StationEnrollmentCode> {
+    await this.clubs.findOne(clubId);
+    const raw = Array.from({ length: 8 }, () => ENROLLMENT_ALPHABET[randomInt(ENROLLMENT_ALPHABET.length)]).join("");
+    const expiresAt = now + ENROLLMENT_CODE_TTL_MS;
+    const codeHash = this.hashToken(raw);
+    if (!this.database.configured) {
+      for (const [hash, entry] of this.memoryEnrollment) if (entry.clubId === clubId || entry.expiresAt <= now) this.memoryEnrollment.delete(hash);
+      this.memoryEnrollment.set(codeHash, { clubId, expiresAt });
+    } else {
+      await this.database.query("DELETE FROM station_enrollment_codes WHERE club_id = $1 OR expires_at < NOW()", [clubId]);
+      await this.database.query("INSERT INTO station_enrollment_codes (code_hash, club_id, expires_at) VALUES ($1, $2, $3)", [
+        codeHash,
+        clubId,
+        new Date(expiresAt).toISOString()
+      ]);
+    }
+    return { code: `${raw.slice(0, 4)}-${raw.slice(4)}`, expiresAt: new Date(expiresAt).toISOString() };
+  }
+
+  /** Компьютер ввёл код клуба: показываем, какой это клуб и какие места есть. */
+  async lookupEnrollment(code: string, requester: string, now = Date.now()): Promise<StationEnrollment> {
+    const clubId = await this.resolveEnrollment(code, requester, now);
+    const [club, seats, stations] = await Promise.all([this.clubs.findOne(clubId), this.seatIndex(clubId), this.findStationRecords(clubId)]);
+    const taken = new Set(stations.map((station) => station.seatId));
+    return {
+      clubName: club.name,
+      seats: [...seats.values()].map((seat) => ({ seatId: seat.seatId, label: seat.seatLabel, zoneName: seat.zone.name, taken: taken.has(seat.seatId) }))
+    };
+  }
+
+  async enrollStation(code: string, seatId: string, requester: string, now = Date.now()): Promise<StationCredentials> {
+    const clubId = await this.resolveEnrollment(code, requester, now);
+    await this.resolveSeat(clubId, seatId);
+    const existing = (await this.findStationRecords(clubId)).find((station) => station.seatId === seatId);
+    if (!existing) return this.registerStation(clubId, seatId);
+    // Компьютер переустановили или «заморозка» стёрла его ключ: тому же месту — новый ключ.
+    if (await this.findActiveBySeat(seatId)) throw new ConflictException("За этим местом идёт сессия: дождитесь её конца");
+    return this.rotateStationToken(clubId, existing.id);
+  }
+
+  private async resolveEnrollment(code: string, requester: string, now: number): Promise<string> {
+    const failures = (this.enrollmentFailures.get(requester) ?? []).filter((at) => at > now - 10 * 60_000);
+    if (failures.length >= ENROLLMENT_FAILURES_PER_10_MIN) throw new HttpException("Слишком много неверных кодов: подождите 10 минут", HttpStatus.TOO_MANY_REQUESTS);
+    const codeHash = this.hashToken(String(code ?? "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
+    let clubId: string | undefined;
+    if (!this.database.configured) {
+      const entry = this.memoryEnrollment.get(codeHash);
+      clubId = entry && entry.expiresAt > now ? entry.clubId : undefined;
+    } else {
+      const result = await this.database.query<{ club_id: string }>("SELECT club_id FROM station_enrollment_codes WHERE code_hash = $1 AND expires_at > $2", [
+        codeHash,
+        new Date(now).toISOString()
+      ]);
+      clubId = result.rows[0]?.club_id;
+    }
+    if (clubId) return clubId;
+    this.enrollmentFailures.set(requester, [...failures, now]);
+    throw new UnauthorizedException("Код клуба неверный или устарел: получите новый в кабинете");
   }
 
   /** Проверка ключа клиента при подключении. */

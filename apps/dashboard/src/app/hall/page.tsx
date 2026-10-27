@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { HallBoard } from "@/components/hall-board";
+import { StationEnrollment } from "@/components/station-enrollment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiUrl, type HallSnapshot, loadActiveClub, loadHall, requireSession } from "@/lib/api";
 
@@ -16,8 +17,9 @@ export default async function HallPage() {
 
   return (
     <AppShell active="hall" club={club} clubs={clubs}>
-      <header className="mb-6">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-semibold md:text-3xl">Зал и касса</h1>
+        <StationEnrollment clubId={club.id} />
       </header>
       {hall ? (
         <HallBoard clubId={club.id} hall={hall} apiUrl={apiUrl.replace(/\/api\/?$/, "")} />

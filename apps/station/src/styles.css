@@ -249,10 +249,15 @@ button.tile:hover {
   align-items: flex-start;
 }
 
+.side-head {
+  gap: 12px;
+}
+
 .seat {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 28px;
+  font-size: 26px;
+  white-space: nowrap;
 }
 
 .free {
@@ -263,6 +268,7 @@ button.tile:hover {
 
 .time {
   text-align: right;
+  white-space: nowrap;
 }
 
 .time-now {
@@ -700,4 +706,56 @@ button.tile:hover {
 .setup-card details input {
   width: 100%;
   margin-top: 6px;
+}
+
+.setup-card.wide {
+  width: min(720px, 100%);
+}
+
+.code-input {
+  font-family: var(--display) !important;
+  font-size: 22px !important;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.seat-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.seat-option {
+  height: 60px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.seat-option small {
+  font-family: Onest, system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.seat-option.taken {
+  border-style: dashed;
+  color: var(--muted);
+}
+
+.seat-option[aria-checked="true"] {
+  border: 2px solid var(--accent);
+  background: rgba(255, 200, 61, 0.14);
+  color: var(--accent);
 }

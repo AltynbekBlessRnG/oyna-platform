@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
-import type { AuthUser, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCredentials, TopUpRequest, TopUpResult } from "@oyna/contracts";
+import type { AuthUser, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCredentials, StationEnrollmentCode, TopUpRequest, TopUpResult } from "@oyna/contracts";
 import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionsService } from "./sessions.service";
@@ -18,6 +18,12 @@ export class SessionsAdminController {
   @Post("stations")
   registerStation(@Param("clubId") clubId: string, @Body() request: RegisterStationRequest): Promise<StationCredentials> {
     return this.sessions.registerStation(clubId, request?.seatId, request?.name);
+  }
+
+  /** Код клуба для подключения компьютеров: вводится на каждом ПК вместо id и ключа. */
+  @Post("stations/enrollment-code")
+  enrollmentCode(@Param("clubId") clubId: string): Promise<StationEnrollmentCode> {
+    return this.sessions.issueEnrollmentCode(clubId);
   }
 
   @Post("stations/:stationId/token")

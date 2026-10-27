@@ -171,6 +171,14 @@ CREATE TABLE IF NOT EXISTS club_stations (
 
 CREATE INDEX IF NOT EXISTS club_stations_club_idx ON club_stations (club_id);
 
+-- Код клуба для подключения компьютеров: храним только хеш, у клуба один действующий код.
+CREATE TABLE IF NOT EXISTS station_enrollment_codes (
+  code_hash TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS play_sessions (
   id TEXT PRIMARY KEY,
   club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,

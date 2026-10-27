@@ -45,6 +45,32 @@ fn restart_computer() -> Result<(), String> {
     kiosk::restart_if_guest()
 }
 
+/// Настройки компьютера лежат в C:\ProgramData\Zen: общие для всех пользователей Windows,
+/// так что сброс гостевого профиля не заставляет подключать компьютер заново.
+fn config_path() -> std::path::PathBuf {
+    let base = std::env::var_os("ProgramData").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir);
+    base.join("Zen").join("station.json")
+}
+
+#[tauri::command]
+fn load_config() -> Option<String> {
+    std::fs::read_to_string(config_path()).ok()
+}
+
+#[tauri::command]
+fn save_config(raw: String) -> Result<(), String> {
+    let path = config_path();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|error| format!("Не удалось создать {}: {error}", dir.display()))?;
+    }
+    std::fs::write(&path, raw).map_err(|error| format!("Не удалось сохранить {}: {error}", path.display()))
+}
+
+#[tauri::command]
+fn clear_config() {
+    let _ = std::fs::remove_file(config_path());
+}
+
 /// Админ ввёл PIN: закрываемся с особым кодом, сторож откроет обычную Windows.
 #[tauri::command]
 fn admin_exit(app: tauri::AppHandle) {
@@ -60,7 +86,7 @@ pub fn run() {
                 api.prevent_close();
             }
         })
-        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, restart_computer, admin_exit])
+        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, restart_computer, admin_exit, load_config, save_config, clear_config])
         .run(tauri::generate_context!())
         .expect("не удалось запустить Zen");
 }

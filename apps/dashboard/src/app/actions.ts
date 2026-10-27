@@ -11,6 +11,7 @@ import type {
   PlaySession,
   RequestCodeResponse,
   StationCredentials,
+  StationEnrollmentCode,
   TopUpResult,
   UpdateBookingStatusRequest,
   UpdateClubRequest,
@@ -170,6 +171,11 @@ export async function topUpBalance(clubId: string, phone: string, amount: number
 
 export async function registerStation(clubId: string, seatId: string): Promise<HallResult<StationCredentials>> {
   return hallAction(() => adminFetch<StationCredentials>(`/admin/clubs/${clubId}/stations`, { method: "POST", body: JSON.stringify({ seatId }) }), "Не удалось подключить компьютер");
+}
+
+/** Код клуба на сутки: админ вводит его на каждом компьютере зала, прежний код перестаёт работать. */
+export async function issueEnrollmentCode(clubId: string): Promise<HallResult<StationEnrollmentCode>> {
+  return hallAction(() => adminFetch<StationEnrollmentCode>(`/admin/clubs/${clubId}/stations/enrollment-code`, { method: "POST" }), "Не удалось получить код");
 }
 
 export async function rotateStationKey(clubId: string, stationId: string): Promise<HallResult<StationCredentials>> {

@@ -317,6 +317,31 @@ export interface StationCredentials {
   token: string;
 }
 
+/** Код клуба: админ получает его в кабинете и вводит на каждом компьютере вместо id и ключа. */
+export interface StationEnrollmentCode {
+  code: string;
+  expiresAt: string;
+}
+
+export interface StationEnrollmentSeat {
+  seatId: string;
+  label: string;
+  zoneName: string;
+  /** К месту уже привязан компьютер: подключение выдаст ему новый ключ, старый перестанет работать. */
+  taken: boolean;
+}
+
+/** Что компьютер видит, введя код клуба: чей клуб и какие места можно занять. */
+export interface StationEnrollment {
+  clubName: string;
+  seats: StationEnrollmentSeat[];
+}
+
+export interface EnrollStationRequest {
+  code: string;
+  seatId?: string;
+}
+
 export type PlaySessionStatus = "active" | "ended";
 export type PlaySessionEndReason = "player" | "admin" | "expired" | "station";
 

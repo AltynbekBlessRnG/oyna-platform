@@ -25,6 +25,7 @@ import { NotificationsController } from "./social/notifications.controller";
 import { NotificationsService } from "./social/notifications.service";
 import { ChatGateway } from "./social/chat.gateway";
 import { SessionsAdminController } from "./sessions/sessions.admin.controller";
+import { StationsEnrollmentController } from "./sessions/stations-enrollment.controller";
 import { SessionsController } from "./sessions/sessions.controller";
 import { SessionsService } from "./sessions/sessions.service";
 import { StationsGateway } from "./sessions/stations.gateway";
@@ -33,7 +34,7 @@ import { CrmService } from "./crm/crm.service";
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ["../../.env", ".env"] })],
-  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, CrmController],
+  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, CrmController],
   providers: [DatabaseService, ClubsService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService],
 })
 export class AppModule {}

@@ -52,6 +52,12 @@ With-Hive "C:\Users\Default\NTUSER.DAT" { param($hive) Set-GuestPolicies $hive }
 $profile = Get-CimInstance Win32_UserProfile | Where-Object { $_.LocalPath -like "*\$player" } | Select-Object -First 1
 if ($profile -and -not $profile.Loaded) { With-Hive (Join-Path $profile.LocalPath "NTUSER.DAT") { param($hive) Set-GuestPolicies $hive } }
 
+# Здесь Zen хранит, к какому клубу и месту подключён компьютер. Пишет туда сам гость при
+# подключении по коду клуба, поэтому группе «Пользователи» нужна запись.
+$data = Join-Path $env:ProgramData "Zen"
+New-Item -ItemType Directory -Force $data | Out-Null
+icacls $data /grant "*S-1-5-32-545:(OI)(CI)M" | Out-Null
+
 # Смена пользователя в Ctrl+Alt+Del — для всех.
 Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name HideFastUserSwitching -Value 1 -Type DWord
 

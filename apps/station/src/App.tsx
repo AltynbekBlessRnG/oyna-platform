@@ -9,17 +9,29 @@ import { Setup } from "./Setup";
 import { Logo } from "./ui";
 
 export function App() {
-  const [config, setConfig] = useState(loadConfig);
+  // undefined — ещё читаем настройки с диска, null — компьютер не подключён.
+  const [config, setConfig] = useState<StationConfig | null | undefined>(undefined);
   const [notice, setNotice] = useState<string>();
   const [lastApiUrl, setLastApiUrl] = useState<string>();
 
+  useEffect(() => {
+    void loadConfig().then(setConfig);
+  }, []);
+
+  if (config === undefined) {
+    return (
+      <main className="splash">
+        <Logo />
+      </main>
+    );
+  }
   if (!config) {
     return (
       <Setup
         notice={notice}
         apiUrl={lastApiUrl}
         onSave={(next) => {
-          saveConfig(next);
+          void saveConfig(next);
           setNotice(undefined);
           setConfig(next);
         }}
@@ -30,7 +42,7 @@ export function App() {
     <Station
       config={config}
       onRejected={(message) => {
-        clearConfig();
+        void clearConfig();
         setNotice(message);
         setLastApiUrl(config.apiUrl);
         setConfig(null);

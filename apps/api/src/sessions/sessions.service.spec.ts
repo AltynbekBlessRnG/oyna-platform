@@ -143,6 +143,35 @@ describe("SessionsService", () => {
     expect(states.at(-1)).toBeNull();
   });
 
+  it("connects a computer by the club code and gives a reinstalled one a fresh key", async () => {
+    const { code } = await service.issueEnrollmentCode(clubId);
+    expect(code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+
+    const enrollment = await service.lookupEnrollment(code.toLowerCase().replace("-", " "), "10.0.0.1");
+    expect(enrollment.seats.find((seat) => seat.seatId === seatId)?.taken).toBe(false);
+
+    const first = await service.enrollStation(code, seatId, "10.0.0.1");
+    await expect(service.authenticateStation(first.station.id, first.token)).resolves.toMatchObject({ seatId });
+    expect((await service.lookupEnrollment(code, "10.0.0.1")).seats.find((seat) => seat.seatId === seatId)?.taken).toBe(true);
+
+    const again = await service.enrollStation(code, seatId, "10.0.0.1");
+    expect(again.station.id).toBe(first.station.id);
+    await expect(service.authenticateStation(first.station.id, first.token)).rejects.toThrow(UnauthorizedException);
+    await expect(service.authenticateStation(again.station.id, again.token)).resolves.toMatchObject({ seatId });
+  });
+
+  it("forgets the old club code once a new one is issued and stops guessing after ten misses", async () => {
+    const issuedAt = Date.now();
+    const { code: old } = await service.issueEnrollmentCode(clubId, issuedAt);
+    const { code } = await service.issueEnrollmentCode(clubId, issuedAt);
+    await expect(service.lookupEnrollment(old, "10.0.0.2")).rejects.toThrow(UnauthorizedException);
+    await expect(service.lookupEnrollment(code, "10.0.0.9", issuedAt + 25 * 60 * 60_000)).rejects.toThrow(UnauthorizedException);
+
+    for (let attempt = 0; attempt < 9; attempt += 1) await expect(service.lookupEnrollment("AAAA-AAAA", "10.0.0.2")).rejects.toThrow(UnauthorizedException);
+    await expect(service.lookupEnrollment(code, "10.0.0.2")).rejects.toThrow(/Слишком много/);
+    await expect(service.lookupEnrollment(code, "10.0.0.3")).resolves.toMatchObject({ seats: expect.any(Array) });
+  });
+
   it("rejects an expired station code", async () => {
     const { station } = await service.registerStation(clubId, seatId);
     const player = await playerWithBalance("+77010000012", pricePerHour);
