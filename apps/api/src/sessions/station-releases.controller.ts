@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Header, Param, Post, Query, StreamableFile, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Header, Param, Post, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
+import type { IncomingMessage } from "node:http";
 import type { StationRelease } from "@oyna/contracts";
 import { PlatformAdminGuard } from "../auth/club-admin.guard";
-import { StationReleasesService } from "./station-releases.service";
+import { MAX_RELEASE_BYTES, StationReleasesService } from "./station-releases.service";
 
 @Controller()
 export class StationReleasesController {
@@ -19,10 +20,25 @@ export class StationReleasesController {
     return new StreamableFile(await this.releases.binary(version));
   }
 
-  /** Выпуск новой версии: `apps/station/scripts/release.mjs` присылает подписанный Zen.exe. */
+  /**
+   * Выпуск новой версии: `apps/station/scripts/release.mjs` присылает подписанный Zen.exe.
+   * Тело читаем сами и только после проверки прав: общий парсер на 50 МБ дал бы любому
+   * анониму забить память сервера.
+   */
   @Post("admin/station-releases")
   @UseGuards(PlatformAdminGuard)
-  publish(@Query("version") version: string, @Query("signature") signature: string, @Body() binary: Buffer): Promise<StationRelease> {
-    return this.releases.publish(version, signature, binary);
+  async publish(@Query("version") version: string, @Query("signature") signature: string, @Req() request: IncomingMessage): Promise<StationRelease> {
+    return this.releases.publish(version, signature, await readBody(request));
   }
+}
+
+async function readBody(request: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of request) {
+    size += chunk.length;
+    if (size > MAX_RELEASE_BYTES) throw new BadRequestException("Файл больше 50 МБ");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
 }

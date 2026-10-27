@@ -1,3 +1,4 @@
+mod config;
 mod games;
 mod install;
 mod kiosk;
@@ -49,16 +50,15 @@ fn restart_computer() -> Result<(), String> {
     kiosk::restart_if_guest()
 }
 
-/// Настройки компьютера лежат в C:\ProgramData\Zen: общие для всех пользователей Windows,
-/// так что сброс гостевого профиля не заставляет подключать компьютер заново.
+/// Настройки компьютера: общие для всех пользователей Windows, так что сброс гостевого профиля
+/// не заставляет подключать компьютер заново. Гость пишет их при подключении по коду клуба.
 fn config_path() -> std::path::PathBuf {
-    let base = std::env::var_os("ProgramData").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir);
-    base.join("Zen").join("station.json")
+    config::station_dir().join("station.json")
 }
 
 #[tauri::command]
 fn load_config() -> Option<String> {
-    std::fs::read_to_string(config_path()).ok()
+    std::fs::read_to_string(config_path()).ok().or_else(|| std::fs::read_to_string(config::legacy_config_path()).ok())
 }
 
 #[tauri::command]

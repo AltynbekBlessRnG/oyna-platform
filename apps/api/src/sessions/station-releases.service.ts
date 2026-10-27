@@ -11,7 +11,14 @@ interface StoredRelease {
   createdAt: number;
 }
 
-const MAX_RELEASE_BYTES = 50 * 1024 * 1024;
+export const MAX_RELEASE_BYTES = 50 * 1024 * 1024;
+
+function compareVersions(a: string, b: string): number {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  for (let index = 0; index < 3; index += 1) if (left[index] !== right[index]) return left[index] - right[index];
+  return 0;
+}
 
 /**
  * Обновления Zen для компьютеров. Сервер подпись не проверяет и проверять не должен: ключ
@@ -44,11 +51,12 @@ export class StationReleasesService {
 
   async latest(): Promise<StationRelease | null> {
     if (!this.database.configured) {
-      const release = [...this.memory.values()].sort((a, b) => b.createdAt - a.createdAt)[0];
+      const release = [...this.memory.values()].sort((a, b) => compareVersions(b.version, a.version))[0];
       return release ? this.toPublic(release.version, release.sha256, release.signature, release.binary.length) : null;
     }
     const result = await this.database.query<{ version: string; sha256: string; signature: string; size: number }>(
-      "SELECT version, sha256, signature, size FROM station_releases ORDER BY created_at DESC LIMIT 1"
+      // Наибольшая версия, а не последняя загруженная: перезалив старой не откатывает компьютеры.
+      "SELECT version, sha256, signature, size FROM station_releases ORDER BY string_to_array(version, '.')::int[] DESC LIMIT 1"
     );
     const row = result.rows[0];
     return row ? this.toPublic(row.version, row.sha256, row.signature, row.size) : null;

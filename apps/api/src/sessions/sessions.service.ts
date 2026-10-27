@@ -317,6 +317,10 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     }
     if (clubId) return clubId;
     this.enrollmentFailures.set(requester, [...failures, now]);
+    // Карта адресов не должна расти бесконечно: выбрасываем тех, у кого все промахи старше 10 минут.
+    if (this.enrollmentFailures.size > 1_000) {
+      for (const [key, times] of this.enrollmentFailures) if (times.every((at) => at <= now - 10 * 60_000)) this.enrollmentFailures.delete(key);
+    }
     throw new UnauthorizedException("Код клуба неверный или устарел: получите новый в кабинете");
   }
 
@@ -355,7 +359,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       station: this.toStation(record, seat),
       clubName: club.name,
       zone: seat ? { name: seat.zone.name, pricePerHour: seat.zone.pricePerHour } : null,
-      session: (await this.findActiveBySeat(record.seatId)) ?? null
+      session: (await this.findActiveBySeat(record.seatId)) ?? null,
+      serverTime: new Date().toISOString()
     };
   }
 
@@ -545,9 +550,16 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     if (!Number.isInteger(amount) || amount < 1 || amount > MAX_TOP_UP) throw new BadRequestException(`Сумма пополнения от 1 до ${MAX_TOP_UP} ₸`);
     if (!PAYMENT_METHODS.includes(method)) throw new BadRequestException("Способ оплаты: наличные, Kaspi или карта");
     await this.clubs.findOne(clubId);
-    const shiftId = await this.shifts.requireOpen(clubId);
+    await this.shifts.requireOpen(clubId);
     const player = await this.auth.ensureUser(phone, "Игрок Zen");
-    const balance = await this.hall.changeBalance(clubId, player, amount, { kind: "top_up", createdBy: admin.id, createdByName: admin.name, paymentMethod: method, shiftId });
+    const entry = { kind: "top_up" as const, createdBy: admin.id, createdByName: admin.name, paymentMethod: method };
+    // В базе смену держим заблокированной до записи пополнения: если её как раз закрывают,
+    // пополнение дождётся закрытия и получит отказ, а не попадёт задним числом в закрытый отчёт.
+    const balance = this.database.configured
+      ? await this.database.transaction(async (client) =>
+          this.hall.changeBalance(clubId, player, amount, { ...entry, shiftId: await this.shifts.lockOpen(clubId, client) }, client)
+        )
+      : await this.hall.changeBalance(clubId, player, amount, { ...entry, shiftId: await this.shifts.requireOpen(clubId) });
     const session = await this.findStoredActive((item) => item.clubId === clubId && item.userId === player.id, "club_id = $1 AND user_id = $2", [clubId, player.id]);
     if (session) {
       const startedAt = Date.parse(session.startedAt);

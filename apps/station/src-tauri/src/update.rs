@@ -31,7 +31,9 @@ pub fn run() {
 }
 
 fn check_and_install() -> Result<String, String> {
-    let config = std::fs::read_to_string(data_dir().join("station.json")).map_err(|_| "компьютер ещё не подключён к клубу".to_string())?;
+    let config = std::fs::read_to_string(crate::config::station_dir().join("station.json"))
+        .or_else(|_| std::fs::read_to_string(crate::config::legacy_config_path()))
+        .map_err(|_| "компьютер ещё не подключён к клубу".to_string())?;
     let api = serde_json::from_str::<serde_json::Value>(&config).ok().and_then(|value| value["apiUrl"].as_str().map(str::to_string)).ok_or("нет адреса сервера")?;
     let base = api.trim().trim_end_matches('/').trim_end_matches("/api").to_string();
     // Файл настроек может править гость, а работаем мы от SYSTEM: адрес — только данные, не команда.
@@ -58,14 +60,31 @@ fn check_and_install() -> Result<String, String> {
         return Err(format!("подпись версии {} неверна — не ставим", release.version));
     }
 
-    // Запущенный Zen.exe не перезаписать, но переименовать можно: новая версия заработает после перезагрузки.
-    let dir = Path::new(crate::install::INSTALL_DIR);
-    let fresh = dir.join("Zen.new.exe");
-    std::fs::write(&fresh, &binary).map_err(|error| format!("не удалось записать: {error}"))?;
-    let _ = std::fs::remove_file(dir.join("Zen.old.exe"));
-    std::fs::rename(dir.join("Zen.exe"), dir.join("Zen.old.exe")).map_err(|error| format!("не удалось отодвинуть старую версию: {error}"))?;
-    std::fs::rename(&fresh, dir.join("Zen.exe")).map_err(|error| format!("не удалось поставить новую версию: {error}"))?;
+    install_binary(Path::new(crate::install::INSTALL_DIR), &binary)?;
     Ok(format!("поставлена версия {}, заработает после перезагрузки", release.version))
+}
+
+/// Запущенный Zen.exe не перезаписать, но переименовать можно: новая версия заработает после
+/// перезагрузки. На любом сбое Zen.exe остаётся на месте — иначе Windows загрузится в чёрный экран.
+pub fn install_binary(dir: &Path, binary: &[u8]) -> Result<(), String> {
+    let current = dir.join("Zen.exe");
+    let old = dir.join("Zen.old.exe");
+    let fresh = dir.join("Zen.new.exe");
+    // Прошлое обновление ещё ждёт перезагрузки: старый файл занят, поверх него не ставим.
+    if old.exists() && std::fs::remove_file(&old).is_err() {
+        return Err("прошлое обновление ещё ждёт перезагрузки".into());
+    }
+    std::fs::write(&fresh, binary).map_err(|error| format!("не удалось записать: {error}"))?;
+    if let Err(error) = std::fs::rename(&current, &old) {
+        let _ = std::fs::remove_file(&fresh);
+        return Err(format!("не удалось отодвинуть старую версию: {error}"));
+    }
+    if let Err(error) = std::fs::rename(&fresh, &current) {
+        let _ = std::fs::rename(&old, &current);
+        let _ = std::fs::remove_file(&fresh);
+        return Err(format!("не удалось поставить новую версию, оставили прежнюю: {error}"));
+    }
+    Ok(())
 }
 
 pub fn signature_valid(version: &str, sha256: &str, signature_hex: &str) -> bool {
@@ -84,7 +103,8 @@ pub fn is_newer(candidate: &str, current: &str) -> bool {
 
 /// Качаем средствами Windows: адрес передаём переменной окружения, а не текстом команды.
 fn download(url: &str) -> Result<Vec<u8>, String> {
-    let target = std::env::temp_dir().join(format!("zen-download-{}", std::process::id()));
+    // Не во временную папку Windows: туда гость может заранее подложить ссылку с тем же именем.
+    let target = data_dir().join(format!("download-{}", std::process::id()));
     let mut command = std::process::Command::new("powershell");
     command
         .args(["-NoProfile", "-NonInteractive", "-Command", "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri $env:ZEN_URL -OutFile $env:ZEN_OUT"])
@@ -104,9 +124,7 @@ fn download(url: &str) -> Result<Vec<u8>, String> {
     bytes.map_err(|error| error.to_string())
 }
 
-fn data_dir() -> std::path::PathBuf {
-    std::env::var_os("ProgramData").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir).join("Zen")
-}
+use crate::config::data_dir;
 
 fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
@@ -134,6 +152,29 @@ mod tests {
         assert!(!is_newer("0.1.0", "0.1.0"));
         assert!(!is_newer("0.0.9", "0.1.0"));
         assert!(!is_newer("latest", "0.1.0"));
+    }
+
+    #[test]
+    fn keeps_the_working_exe_when_an_update_cannot_be_placed() {
+        let dir = std::env::temp_dir().join(format!("zen-update-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("Zen.exe"), b"v1").unwrap();
+
+        install_binary(&dir, b"v2").unwrap();
+        assert_eq!(std::fs::read(dir.join("Zen.exe")).unwrap(), b"v2");
+        assert_eq!(std::fs::read(dir.join("Zen.old.exe")).unwrap(), b"v1");
+
+        // Старая версия «занята», как запущенный exe: открыта без права удаления — обновление ждёт.
+        let mut options = std::fs::OpenOptions::new();
+        options.read(true);
+        #[cfg(windows)]
+        std::os::windows::fs::OpenOptionsExt::share_mode(&mut options, 0);
+        let held = options.open(dir.join("Zen.old.exe")).unwrap();
+        assert!(install_binary(&dir, b"v3").is_err());
+        assert_eq!(std::fs::read(dir.join("Zen.exe")).unwrap(), b"v2");
+        drop(held);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

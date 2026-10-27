@@ -1,6 +1,6 @@
 import type { StationLoginCode, StationState } from "@oyna/contracts";
 import { useEffect, useState } from "react";
-import type { Link } from "./connection";
+import { type Link, serverNow } from "./connection";
 import { clock, minutesSeconds, money, today } from "./format";
 import type { InstalledGame } from "./platform";
 import { GameCover, Rail } from "./ui";
@@ -93,7 +93,7 @@ function useLoginCode(enabled: boolean, requestCode: () => Promise<StationLoginC
         const next = await requestCode();
         if (cancelled) return;
         setCode(next);
-        timer = setTimeout(load, Math.max(5_000, Date.parse(next.expiresAt) - REFRESH_AHEAD_MS - Date.now()));
+        timer = setTimeout(load, Math.max(5_000, Date.parse(next.expiresAt) - REFRESH_AHEAD_MS - serverNow()));
       } catch {
         if (!cancelled) timer = setTimeout(load, 5_000);
       }

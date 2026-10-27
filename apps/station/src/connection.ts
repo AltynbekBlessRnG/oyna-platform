@@ -23,16 +23,30 @@ export function useStation(config: StationConfig, onCommand: (command: StationCo
     const socket = io(`${base}/stations`, { auth: { stationId: config.stationId, token: config.token }, transports: ["websocket"] });
     socketRef.current = socket;
     let rejected = false;
+    let replaced = false;
+    let retry: ReturnType<typeof setTimeout> | undefined;
     socket.on("connect", () => setLink("online"));
-    socket.on("disconnect", () => !rejected && setLink("offline"));
+    socket.on("disconnect", (reason) => {
+      if (rejected) return;
+      setLink("offline");
+      // Сервер сам закрыл связь (рестарт, сбой базы) — socket.io в этом случае не переподключается сам.
+      // Не повторяем, только если нас вытеснил другой компьютер с тем же ключом: иначе выбивали бы друг друга.
+      if (reason === "io server disconnect" && !replaced) retry = setTimeout(() => socket.connect(), 5_000);
+    });
     socket.on("connect_error", () => !rejected && setLink("offline"));
+    socket.on("replaced", () => {
+      replaced = true;
+    });
     socket.on("auth:error", ({ message }: { message: string }) => {
       rejected = true;
       setRejection(message);
       setLink("rejected");
       socket.disconnect();
     });
-    socket.on("state", (next: StationState) => setState(next));
+    socket.on("state", (next: StationState) => {
+      syncClock(next.serverTime);
+      setState(next);
+    });
     // Сначала подтверждаем получение: перезагрузка может не дать ответить потом.
     socket.on("command", (command: StationCommand, ack?: (reply: { ok: true }) => void) => {
       ack?.({ ok: true });
@@ -41,6 +55,7 @@ export function useStation(config: StationConfig, onCommand: (command: StationCo
     const heartbeat = setInterval(() => socket.connected && socket.emit("heartbeat"), 30_000);
     return () => {
       clearInterval(heartbeat);
+      clearTimeout(retry);
       socket.disconnect();
       socketRef.current = null;
     };
@@ -61,11 +76,26 @@ export function useStation(config: StationConfig, onCommand: (command: StationCo
   return { state, link, rejection, requestCode, endSession };
 }
 
-/** Текущее время, обновляется раз в `step` мс: для таймеров на экране. */
+/**
+ * Часы сервера, продолженные монотонным таймером браузера. Часы Windows не участвуют: если они
+ * спешат или их подкрутили, сессия всё равно кончится тогда же, когда на сервере.
+ */
+let clockBase: { server: number; monotonic: number } | null = null;
+
+function syncClock(serverTime: string | undefined): void {
+  const server = serverTime ? Date.parse(serverTime) : NaN;
+  if (Number.isFinite(server)) clockBase = { server, monotonic: performance.now() };
+}
+
+export function serverNow(): number {
+  return clockBase ? clockBase.server + (performance.now() - clockBase.monotonic) : Date.now();
+}
+
+/** Текущее время сервера, обновляется раз в `step` мс: для таймеров на экране. */
 export function useNow(step = 1_000): number {
-  const [now, setNow] = useState(Date.now);
+  const [now, setNow] = useState(serverNow);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), step);
+    const timer = setInterval(() => setNow(serverNow()), step);
     return () => clearInterval(timer);
   }, [step]);
   return now;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { clearConfig, loadConfig, saveConfig, type StationConfig } from "./config";
-import { useNow, useStation } from "./connection";
+import { serverNow, useNow, useStation } from "./connection";
 import { AdminExit } from "./AdminExit";
 import { Library } from "./Library";
 import { Lock } from "./Lock";
@@ -66,8 +66,9 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
   const now = useNow();
   const games = useGames();
 
-  // Без связи сервер не скажет, что время вышло, поэтому конец сессии считаем и сами.
-  const session = state?.session && Date.parse(state.session.endsAt) > now ? state.session : null;
+  // Пока есть связь, сессию заканчивает сервер. Без связи он об этом не скажет — тогда считаем
+  // сами, по его же часам (см. serverNow), чтобы спешащие часы Windows не обрывали оплаченное время.
+  const session = state?.session && (link === "online" || Date.parse(state.session.endsAt) > now) ? state.session : null;
   const restartAt = useRestartAfter(session?.id);
 
   const locked = !session;
@@ -145,7 +146,7 @@ function useRestartAfter(sessionId: string | undefined): number | null {
     if (sessionId) return setRestartAt(null);
     if (!ended) return;
     void platform.cleanUp();
-    setRestartAt(Date.now() + RESTART_AFTER_MS);
+    setRestartAt(serverNow() + RESTART_AFTER_MS);
   }, [sessionId]);
 
   useEffect(() => {
@@ -153,7 +154,7 @@ function useRestartAfter(sessionId: string | undefined): number | null {
     const timer = setTimeout(() => {
       // Не вышло (не гость или не Windows) — просто остаёмся на экране блокировки.
       platform.restart().catch(() => setRestartAt(null));
-    }, Math.max(0, restartAt - Date.now()));
+    }, Math.max(0, restartAt - serverNow()));
     return () => clearTimeout(timer);
   }, [restartAt]);
 

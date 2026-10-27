@@ -1,4 +1,4 @@
-import { Logger, type OnModuleDestroy } from "@nestjs/common";
+import { Logger, type OnModuleDestroy, UnauthorizedException } from "@nestjs/common";
 import { ConnectedSocket, type OnGatewayConnection, type OnGatewayDisconnect, type OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import type { StationCommand, StationLoginCode, StationState } from "@oyna/contracts";
 import type { Server, Socket } from "socket.io";
@@ -49,13 +49,19 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
       const station = await this.sessions.authenticateStation(String(auth.stationId ?? ""), String(auth.token ?? ""));
       client.data.stationId = station.id;
       // Второе подключение того же компьютера вытесняет первое: онлайн-статус считается по одному сокету.
-      for (const socket of await this.server.in(this.room(station.id)).fetchSockets()) socket.disconnect(true);
+      // Вытесненному говорим об этом, чтобы он не переподключался и не выбивал нового обратно.
+      for (const socket of await this.server.in(this.room(station.id)).fetchSockets()) {
+        socket.emit("replaced");
+        socket.disconnect(true);
+      }
       await client.join(this.room(station.id));
       await this.sessions.setStationOnline(station.id, true);
       client.emit("state", await this.sessions.getStationState(station.id));
     } catch (error) {
       this.logger.warn(`Компьютер не подключён: ${String(error)}`);
-      client.emit("auth:error", { message: "Неверный id компьютера или ключ" });
+      // «Неверный ключ» компьютер понимает как «меня отвязали» и стирает настройки. Поэтому его
+      // говорим только при настоящей ошибке ключа; сбой базы или рестарт — просто разрыв, клиент повторит.
+      if (error instanceof UnauthorizedException) client.emit("auth:error", { message: "Неверный id компьютера или ключ" });
       client.disconnect(true);
     }
   }

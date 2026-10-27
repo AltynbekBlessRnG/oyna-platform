@@ -498,6 +498,8 @@ export interface StationState {
   clubName: string;
   zone: { name: string; pricePerHour: number } | null;
   session: PlaySession | null;
+  /** Время сервера: компьютер считает остаток сессии по нему, а не по своим часам. */
+  serverTime: string;
 }
 
 // ---------- CRM клуба ----------

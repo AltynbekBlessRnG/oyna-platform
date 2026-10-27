@@ -25,6 +25,15 @@ describe("StationReleasesService", () => {
     await expect(releases.binary("9.9.9")).rejects.toThrow(NotFoundException);
   });
 
+  it("advertises the highest version even if an older one was uploaded later", async () => {
+    await releases.publish("0.3.0", signature, Buffer.from("three"));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await releases.publish("0.10.0", signature, Buffer.from("ten"));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await releases.publish("0.2.1", signature, Buffer.from("hotfix for old"));
+    expect((await releases.latest())?.version).toBe("0.10.0");
+  });
+
   it("refuses a release without a proper version, signature or file", async () => {
     await expect(releases.publish("latest", signature, Buffer.from("x"))).rejects.toThrow(BadRequestException);
     await expect(releases.publish("1.0.0", "not-hex", Buffer.from("x"))).rejects.toThrow(BadRequestException);

@@ -52,11 +52,18 @@ With-Hive "C:\Users\Default\NTUSER.DAT" { param($hive) Set-GuestPolicies $hive }
 $profile = Get-CimInstance Win32_UserProfile | Where-Object { $_.LocalPath -like "*\$player" } | Select-Object -First 1
 if ($profile -and -not $profile.Loaded) { With-Hive (Join-Path $profile.LocalPath "NTUSER.DAT") { param($hive) Set-GuestPolicies $hive } }
 
-# Здесь Zen хранит, к какому клубу и месту подключён компьютер. Пишет туда сам гость при
-# подключении по коду клуба, поэтому группе «Пользователи» нужна запись.
+# C:\ProgramData\Zen — только администраторы и SYSTEM: туда пишет обновление от имени SYSTEM,
+# и гость не должен иметь возможности подложить там ссылку на системный файл.
+# По умолчанию ProgramData даёт «Пользователям» создавать файлы, поэтому наследование отключаем.
 $data = Join-Path $env:ProgramData "Zen"
 New-Item -ItemType Directory -Force $data | Out-Null
-icacls $data /grant "*S-1-5-32-545:(OI)(CI)M" | Out-Null
+icacls $data /inheritance:r /grant:r "*S-1-5-32-544:(OI)(CI)F" "*S-1-5-18:(OI)(CI)F" "*S-1-5-32-545:(OI)(CI)RX" | Out-Null
+# Настройки подключения к клубу пишет сам гость при вводе кода клуба — ему отдельная папка.
+$station = Join-Path $data "station"
+New-Item -ItemType Directory -Force $station | Out-Null
+icacls $station /grant "*S-1-5-32-545:(OI)(CI)M" | Out-Null
+$legacy = Join-Path $data "station.json"
+if ((Test-Path $legacy) -and -not (Test-Path (Join-Path $station "station.json"))) { Move-Item $legacy $station }
 
 # Смена пользователя в Ctrl+Alt+Del — для всех.
 Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name HideFastUserSwitching -Value 1 -Type DWord

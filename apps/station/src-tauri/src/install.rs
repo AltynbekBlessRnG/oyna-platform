@@ -52,7 +52,7 @@ pub fn uninstall(quiet: bool) {
 }
 
 fn finish(quiet: bool, result: Result<String, String>, title: &str, next: &str) {
-    let log = std::env::var_os("ProgramData").map(std::path::PathBuf::from).unwrap_or_else(std::env::temp_dir).join("Zen").join("install.log");
+    let log = crate::config::data_dir().join("install.log");
     let text = match &result {
         Ok(output) => format!("{title}\n{output}"),
         Err(error) => format!("Ошибка: {error}"),

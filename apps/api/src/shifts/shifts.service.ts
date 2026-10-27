@@ -1,11 +1,13 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import type { AuthUser, ClubShift, ShiftStaffTotals, ShiftTotals } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
+import type { PoolClient } from "pg";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
 
 const MAX_CASH = 100_000_000;
+const EMPTY_TOTALS: ShiftTotals = { cash: 0, kaspi: 0, card: 0, topUpCount: 0, adjustments: 0, adjustmentCount: 0, playCharged: 0, barOrders: 0, barTotal: 0 };
 
 interface ShiftRecord {
   id: string;
@@ -88,11 +90,15 @@ export class ShiftsService {
     if (!open) throw new NotFoundException("Открытой смены нет");
     const closed: ShiftRecord = { ...open, closedBy: { id: admin.id, name: admin.name }, closedAt: new Date().toISOString(), countedCash, ...(text ? { note: text } : {}) };
     if (!this.database.configured) this.memory.set(open.id, closed);
-    else
-      await this.database.query(
+    else {
+      // Строка смены блокируется на время UPDATE: пополнения, которые держат её через lockOpen,
+      // либо успевают до закрытия, либо после него получают отказ.
+      const result = await this.database.query(
         "UPDATE club_shifts SET closed_by = $2, closed_by_name = $3, closed_at = $4, counted_cash = $5, note = $6 WHERE id = $1 AND closed_at IS NULL",
         [open.id, admin.id, admin.name, closed.closedAt, countedCash, text ?? null]
       );
+      if (result.rowCount === 0) throw new ConflictException("Смену уже закрыл другой сотрудник: обновите страницу");
+    }
     return this.withTotals(closed);
   }
 
@@ -111,7 +117,7 @@ export class ShiftsService {
       const result = await this.database.query<ShiftRow>(`SELECT ${SHIFT_COLUMNS} FROM club_shifts WHERE club_id = $1 ORDER BY opened_at DESC LIMIT $2`, [clubId, limit]);
       records = result.rows.map((row) => this.map(row));
     }
-    return Promise.all(records.map((record) => this.withTotals(record)));
+    return this.withTotalsMany(records);
   }
 
   /** Смена, к которой относится пополнение. Без открытой смены касса деньги не принимает. */
@@ -119,6 +125,13 @@ export class ShiftsService {
     const open = await this.findOpen(clubId);
     if (!open) throw new ConflictException("Откройте смену: без неё касса не принимает деньги");
     return open.id;
+  }
+
+  /** То же, что requireOpen, но держит строку смены до конца транзакции, чтобы её не закрыли посреди пополнения. */
+  async lockOpen(clubId: string, client: PoolClient): Promise<string> {
+    const result = await client.query<{ id: string }>("SELECT id FROM club_shifts WHERE club_id = $1 AND closed_at IS NULL FOR SHARE", [clubId]);
+    if (!result.rows[0]) throw new ConflictException("Откройте смену: без неё касса не принимает деньги");
+    return result.rows[0].id;
   }
 
   async openShiftId(clubId: string): Promise<string | undefined> {
@@ -132,73 +145,92 @@ export class ShiftsService {
   }
 
   private async withTotals(shift: ShiftRecord): Promise<ClubShift> {
-    const { totals, staff } = this.database.configured ? await this.storedTotals(shift) : this.memoryTotals(shift);
-    const expectedCash = shift.openingCash + totals.cash;
-    return {
-      ...shift,
-      totals,
-      expectedCash,
-      ...(shift.countedCash !== undefined ? { difference: shift.countedCash - expectedCash } : {}),
-      staff
-    };
+    return (await this.withTotalsMany([shift]))[0];
   }
 
-  private async storedTotals(shift: ShiftRecord): Promise<{ totals: ShiftTotals; staff: ShiftStaffTotals[] }> {
-    const until = shift.closedAt ?? new Date().toISOString();
+  private async withTotalsMany(shifts: ShiftRecord[]): Promise<ClubShift[]> {
+    if (shifts.length === 0) return [];
+    const computed = this.database.configured ? await this.storedTotals(shifts) : new Map(shifts.map((shift) => [shift.id, this.memoryTotals(shift)]));
+    return shifts.map((shift) => {
+      const { totals, staff } = computed.get(shift.id) ?? { totals: EMPTY_TOTALS, staff: [] };
+      const expectedCash = shift.openingCash + totals.cash;
+      return {
+        ...shift,
+        totals,
+        expectedCash,
+        ...(shift.countedCash !== undefined ? { difference: shift.countedCash - expectedCash } : {}),
+        staff
+      };
+    });
+  }
+
+  /** Четыре запроса на любое число смен: деньги и сотрудники по shift_id, игра и бар — по окну смены. */
+  private async storedTotals(shifts: ShiftRecord[]): Promise<Map<string, { totals: ShiftTotals; staff: ShiftStaffTotals[] }>> {
+    const ids = shifts.map((shift) => shift.id);
     const [money, play, bar, people] = await Promise.all([
-      this.database.query<{ cash: string; kaspi: string; card: string; top_up_count: string; adjustments: string; adjustment_count: string }>(
-        `SELECT COALESCE(SUM(amount) FILTER (WHERE kind = 'top_up' AND payment_method = 'cash'), 0) AS cash,
+      this.database.query<{ shift_id: string; cash: string; kaspi: string; card: string; top_up_count: string; adjustments: string; adjustment_count: string }>(
+        `SELECT shift_id,
+                COALESCE(SUM(amount) FILTER (WHERE kind = 'top_up' AND payment_method = 'cash'), 0) AS cash,
                 COALESCE(SUM(amount) FILTER (WHERE kind = 'top_up' AND payment_method = 'kaspi'), 0) AS kaspi,
                 COALESCE(SUM(amount) FILTER (WHERE kind = 'top_up' AND payment_method = 'card'), 0) AS card,
                 COUNT(*) FILTER (WHERE kind = 'top_up') AS top_up_count,
                 COALESCE(SUM(amount) FILTER (WHERE kind = 'adjustment'), 0) AS adjustments,
                 COUNT(*) FILTER (WHERE kind = 'adjustment') AS adjustment_count
-         FROM club_balance_transactions WHERE shift_id = $1`,
-        [shift.id]
+         FROM club_balance_transactions WHERE shift_id = ANY($1) GROUP BY shift_id`,
+        [ids]
       ),
-      this.database.query<{ charged: string }>(
-        "SELECT COALESCE(SUM(charged), 0) AS charged FROM play_sessions WHERE club_id = $1 AND status = 'ended' AND ended_at >= $2 AND ended_at < $3",
-        [shift.clubId, shift.openedAt, until]
+      this.database.query<{ id: string; charged: string }>(
+        `SELECT s.id, COALESCE(SUM(p.charged), 0) AS charged
+         FROM club_shifts s
+         LEFT JOIN play_sessions p ON p.club_id = s.club_id AND p.status = 'ended' AND p.ended_at >= s.opened_at AND p.ended_at < COALESCE(s.closed_at, NOW())
+         WHERE s.id = ANY($1) GROUP BY s.id`,
+        [ids]
       ),
-      this.database.query<{ orders: string; total: string }>(
-        "SELECT COUNT(*) AS orders, COALESCE(SUM(total), 0) AS total FROM club_orders WHERE club_id = $1 AND status = 'delivered' AND updated_at >= $2 AND updated_at < $3",
-        [shift.clubId, shift.openedAt, until]
+      this.database.query<{ id: string; orders: string; total: string }>(
+        `SELECT s.id, COUNT(o.id) AS orders, COALESCE(SUM(o.total), 0) AS total
+         FROM club_shifts s
+         LEFT JOIN club_orders o ON o.club_id = s.club_id AND o.status = 'delivered' AND o.updated_at >= s.opened_at AND o.updated_at < COALESCE(s.closed_at, NOW())
+         WHERE s.id = ANY($1) GROUP BY s.id`,
+        [ids]
       ),
-      this.database.query<{ created_by: string | null; name: string | null; cash: string; kaspi: string; card: string; top_up_count: string }>(
-        `SELECT t.created_by, COALESCE(MAX(t.created_by_name), MAX(u.name)) AS name,
+      this.database.query<{ shift_id: string; created_by: string | null; name: string | null; cash: string; kaspi: string; card: string; top_up_count: string }>(
+        `SELECT t.shift_id, t.created_by, COALESCE(MAX(t.created_by_name), MAX(u.name)) AS name,
                 COALESCE(SUM(t.amount) FILTER (WHERE t.payment_method = 'cash'), 0) AS cash,
                 COALESCE(SUM(t.amount) FILTER (WHERE t.payment_method = 'kaspi'), 0) AS kaspi,
                 COALESCE(SUM(t.amount) FILTER (WHERE t.payment_method = 'card'), 0) AS card,
                 COUNT(*) AS top_up_count
          FROM club_balance_transactions t LEFT JOIN users u ON u.id = t.created_by
-         WHERE t.shift_id = $1 AND t.kind = 'top_up'
-         GROUP BY t.created_by
+         WHERE t.shift_id = ANY($1) AND t.kind = 'top_up'
+         GROUP BY t.shift_id, t.created_by
          ORDER BY COUNT(*) DESC`,
-        [shift.id]
+        [ids]
       )
     ]);
-    const row = money.rows[0];
-    return {
-      totals: {
-        cash: Number(row?.cash ?? 0),
-        kaspi: Number(row?.kaspi ?? 0),
-        card: Number(row?.card ?? 0),
-        topUpCount: Number(row?.top_up_count ?? 0),
-        adjustments: Number(row?.adjustments ?? 0),
-        adjustmentCount: Number(row?.adjustment_count ?? 0),
-        playCharged: Number(play.rows[0]?.charged ?? 0),
-        barOrders: Number(bar.rows[0]?.orders ?? 0),
-        barTotal: Number(bar.rows[0]?.total ?? 0)
-      },
-      staff: people.rows.map((person) => ({
-        userId: person.created_by ?? "",
-        name: this.staffName(person.created_by, person.name, shift),
-        cash: Number(person.cash),
-        kaspi: Number(person.kaspi),
-        card: Number(person.card),
-        topUpCount: Number(person.top_up_count)
-      }))
-    };
+    const byId = new Map(shifts.map((shift) => [shift.id, shift]));
+    const result = new Map<string, { totals: ShiftTotals; staff: ShiftStaffTotals[] }>(shifts.map((shift) => [shift.id, { totals: { ...EMPTY_TOTALS }, staff: [] }]));
+    for (const row of money.rows) {
+      Object.assign(result.get(row.shift_id)!.totals, {
+        cash: Number(row.cash),
+        kaspi: Number(row.kaspi),
+        card: Number(row.card),
+        topUpCount: Number(row.top_up_count),
+        adjustments: Number(row.adjustments),
+        adjustmentCount: Number(row.adjustment_count)
+      });
+    }
+    for (const row of play.rows) result.get(row.id)!.totals.playCharged = Number(row.charged);
+    for (const row of bar.rows) Object.assign(result.get(row.id)!.totals, { barOrders: Number(row.orders), barTotal: Number(row.total) });
+    for (const row of people.rows) {
+      result.get(row.shift_id)!.staff.push({
+        userId: row.created_by ?? "",
+        name: this.staffName(row.created_by, row.name, byId.get(row.shift_id)!),
+        cash: Number(row.cash),
+        kaspi: Number(row.kaspi),
+        card: Number(row.card),
+        topUpCount: Number(row.top_up_count)
+      });
+    }
+    return result;
   }
 
   private memoryTotals(shift: ShiftRecord): { totals: ShiftTotals; staff: ShiftStaffTotals[] } {

@@ -10,6 +10,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   constructor() {
     const connectionString = process.env.DATABASE_URL;
     this.pool = connectionString ? new Pool({ connectionString, max: 10 }) : null;
+    // Neon засыпает без нагрузки и рвёт простаивающие соединения. Без обработчика pg бросает
+    // необработанную ошибку и роняет весь сервер; пул сам откроет новое соединение при запросе.
+    this.pool?.on("error", (error) => this.logger.warn(`Соединение с базой оборвалось: ${error.message}`));
   }
 
   get configured(): boolean {
