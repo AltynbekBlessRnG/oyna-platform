@@ -75,6 +75,20 @@ fn clear_config() {
     let _ = std::fs::remove_file(config_path());
 }
 
+#[tauri::command]
+fn shutdown_computer() -> Result<(), String> {
+    kiosk::shutdown_if_guest()
+}
+
+/// Сообщение из кабинета: поднимаем окно поверх игры. Игры в эксклюзивном полноэкранном
+/// режиме Windows может не отдать — тогда сообщение появится, как только игрок свернёт игру.
+#[tauri::command]
+fn bring_to_front(window: tauri::WebviewWindow) {
+    let _ = window.unminimize();
+    let _ = window.set_always_on_top(true);
+    let _ = window.set_focus();
+}
+
 /// Админ ввёл PIN: закрываемся с особым кодом, сторож откроет обычную Windows.
 #[tauri::command]
 fn admin_exit(app: tauri::AppHandle) {
@@ -90,7 +104,7 @@ pub fn run() {
                 api.prevent_close();
             }
         })
-        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, restart_computer, admin_exit, load_config, save_config, clear_config])
+        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, restart_computer, shutdown_computer, bring_to_front, admin_exit, load_config, save_config, clear_config])
         .run(tauri::generate_context!())
         .expect("не удалось запустить Zen");
 }

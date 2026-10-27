@@ -65,24 +65,33 @@ pub fn install_keyboard_hook() {}
 /// Гостевой пользователь Windows из `windows/kiosk-setup.ps1`.
 pub const GUEST_USER: &str = "zen-player";
 
-#[cfg(windows)]
 pub fn restart_if_guest() -> Result<(), String> {
+    power_if_guest("/r")
+}
+
+pub fn shutdown_if_guest() -> Result<(), String> {
+    power_if_guest("/s")
+}
+
+/// Только под гостем: компьютер админа, где Zen открыли для проверки, не перезагружаем и не выключаем.
+#[cfg(windows)]
+fn power_if_guest(action: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     if !std::env::var("USERNAME").is_ok_and(|user| user.eq_ignore_ascii_case(GUEST_USER)) {
-        return Err("Перезагрузка только под гостевым пользователем".into());
+        return Err("Перезагрузка и выключение только под гостевым пользователем".into());
     }
     std::process::Command::new("shutdown")
-        .args(["/r", "/t", "0", "/f"])
+        .args([action, "/t", "0", "/f"])
         .creation_flags(CREATE_NO_WINDOW)
         .spawn()
         .map(|_| ())
-        .map_err(|error| format!("Не удалось перезагрузить: {error}"))
+        .map_err(|error| format!("Не удалось выполнить shutdown {action}: {error}"))
 }
 
 #[cfg(not(windows))]
-pub fn restart_if_guest() -> Result<(), String> {
-    Err("Перезагрузка работает только в Windows".into())
+fn power_if_guest(_action: &str) -> Result<(), String> {
+    Err("Перезагрузка и выключение работают только в Windows".into())
 }
 
 /// Режим сторожа: им Windows запускает Zen вместо рабочего стола. Если окно Zen

@@ -1,10 +1,10 @@
 "use client";
 
-import type { ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCredentials } from "@oyna/contracts";
-import { KeyRound, Play, Plug, Square, Unplug, Wallet, X } from "lucide-react";
+import type { ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCommandResult, StationCredentials } from "@oyna/contracts";
+import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, Wallet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, startPlaySession, topUpBalance } from "@/app/actions";
+import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance } from "@/app/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -374,6 +374,7 @@ function SeatPanel(props: {
                     "ещё не подключался"
                   )}
                 </p>
+                {station.online ? <StationControls clubId={clubId} station={station} session={session} isPending={isPending} run={run} /> : null}
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" disabled={isPending} onClick={() => issueKey(() => rotateStationKey(clubId, station.id), "Новый ключ выпущен, старый больше не работает")}>
                     <KeyRound className="size-4" />Новый ключ
@@ -402,6 +403,59 @@ function SeatPanel(props: {
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Сообщение на экран компьютера, перезагрузка и выключение. Если за ПК играют, просим подтвердить. */
+function StationControls({ clubId, station, session, isPending, run }: {
+  clubId: string;
+  station: ClubStation;
+  session?: PlaySession;
+  isPending: boolean;
+  run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
+}) {
+  const [text, setText] = useState("");
+  const [confirm, setConfirm] = useState<"restart" | "shutdown" | null>(null);
+
+  useEffect(() => {
+    if (!confirm) return;
+    const timer = setTimeout(() => setConfirm(null), 5_000);
+    return () => clearTimeout(timer);
+  }, [confirm]);
+
+  const delivered = (result: StationCommandResult, what: string) => (result.delivered ? `ПК ${result.seatLabel}: ${what}` : `ПК ${result.seatLabel} не подтвердил команду — проверьте его`);
+
+  function send(): void {
+    run(() => sendStationCommand(clubId, station.id, { type: "message", text }), (result) => {
+      setText("");
+      return delivered(result, "сообщение показано");
+    });
+  }
+
+  function power(type: "restart" | "shutdown"): void {
+    if (confirm !== type) return setConfirm(type);
+    setConfirm(null);
+    run(() => sendStationCommand(clubId, station.id, { type }), (result) => delivered(result, type === "restart" ? "перезагружается" : "выключается"));
+  }
+
+  const label = (type: "restart" | "shutdown", idle: string) =>
+    confirm === type ? (session ? `За ним играют — точно ${idle.toLowerCase()}?` : `Нажмите ещё раз: ${idle.toLowerCase()}`) : idle;
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex gap-2">
+        <input className={inputClass} aria-label="Сообщение на экран компьютера" placeholder="Сообщение на экран: заказ готов…" maxLength={200} value={text} onChange={(event) => setText(event.target.value)} />
+        <Button size="sm" variant="secondary" className="h-11" disabled={isPending || !text.trim()} onClick={send}><MessageSquare className="size-4" />Отправить</Button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="secondary" disabled={isPending} onClick={() => power("restart")} className={cn(confirm === "restart" && "text-danger")}>
+          <RotateCw className="size-4" />{label("restart", "Перезагрузить")}
+        </Button>
+        <Button size="sm" variant="secondary" disabled={isPending} onClick={() => power("shutdown")} className={cn(confirm === "shutdown" && "text-danger")}>
+          <Power className="size-4" />{label("shutdown", "Выключить")}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -18,6 +18,8 @@ import type {
   PlaySession,
   PaymentMethod,
   PlaySessionEndReason,
+  StationCommand,
+  StationCommandResult,
   StationCredentials,
   StationEnrollment,
   StationEnrollmentCode,
@@ -99,6 +101,8 @@ interface ResolvedSeat {
 
 /** `null` — компьютер удалён или ключ сменён: старое подключение надо разорвать. */
 export type StationListener = (stationId: string, state: StationState | null) => void;
+/** Доставка команды компьютеру; `true`, если он подтвердил получение. Регистрирует шлюз компьютеров. */
+export type StationCommandSender = (stationId: string, command: StationCommand) => Promise<boolean>;
 
 const SESSION_COLUMNS =
   "id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, ended_at, end_reason, charged, limit_minutes";
@@ -119,6 +123,7 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
   private readonly enrollmentFailures = new Map<string, number[]>();
   private readonly connected = new Set<string>();
   private readonly listeners = new Set<StationListener>();
+  private commandSender?: StationCommandSender;
   private sweeper?: NodeJS.Timeout;
 
   constructor(
@@ -151,7 +156,51 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     return () => this.listeners.delete(listener);
   }
 
+  useCommandSender(sender: StationCommandSender): void {
+    this.commandSender = sender;
+  }
+
   // ---------- Компьютеры ----------
+
+  /** Сообщение, перезагрузка или выключение одного компьютера из кабинета. */
+  async sendCommand(clubId: string, stationId: string, command: StationCommand): Promise<StationCommandResult> {
+    const normalized = this.normalizeCommand(command);
+    const record = await this.findStationRecord(stationId);
+    if (!record || record.clubId !== clubId) throw new NotFoundException("Компьютер не найден");
+    const seat = (await this.seatIndex(clubId)).get(record.seatId);
+    if (!this.connected.has(record.id)) throw new ConflictException("Компьютер не на связи: команда не дойдёт");
+    return { stationId: record.id, seatLabel: seat?.seatLabel ?? "—", delivered: await this.deliver(record.id, normalized) };
+  }
+
+  /** Перезагрузить или выключить все свободные компьютеры: тех, за кем играют, не трогаем. */
+  async sendCommandToFree(clubId: string, command: StationCommand): Promise<StationCommandResult[]> {
+    const normalized = this.normalizeCommand(command);
+    if (normalized.type === "message") throw new BadRequestException("Сообщение отправляется одному компьютеру");
+    const [records, seats, active] = await Promise.all([this.findStationRecords(clubId), this.seatIndex(clubId), this.listActive(clubId)]);
+    const busy = new Set(active.map((session) => session.seatId));
+    const targets = records.filter((record) => this.connected.has(record.id) && !busy.has(record.seatId));
+    return Promise.all(
+      targets.map(async (record) => ({ stationId: record.id, seatLabel: seats.get(record.seatId)?.seatLabel ?? "—", delivered: await this.deliver(record.id, normalized) }))
+    );
+  }
+
+  private normalizeCommand(command: StationCommand): StationCommand {
+    if (!command || !["message", "restart", "shutdown"].includes(command.type)) throw new BadRequestException("Команда: message, restart или shutdown");
+    if (command.type !== "message") return { type: command.type };
+    const text = String(command.text ?? "").trim();
+    if (!text || text.length > 200) throw new BadRequestException("Сообщение от 1 до 200 символов");
+    return { type: "message", text };
+  }
+
+  private async deliver(stationId: string, command: StationCommand): Promise<boolean> {
+    if (!this.commandSender) return false;
+    try {
+      return await this.commandSender(stationId, command);
+    } catch (error) {
+      this.logger.warn(`Команда ${command.type} компьютеру ${stationId} не дошла: ${String(error)}`);
+      return false;
+    }
+  }
 
   async listStations(clubId: string): Promise<ClubStation[]> {
     const records = await this.findStationRecords(clubId);

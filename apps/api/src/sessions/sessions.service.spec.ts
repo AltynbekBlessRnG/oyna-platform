@@ -175,6 +175,30 @@ describe("SessionsService", () => {
     await expect(service.lookupEnrollment(code, "10.0.0.3")).resolves.toMatchObject({ seats: expect.any(Array) });
   });
 
+  it("delivers cabinet commands only to online computers and spares the busy ones in bulk", async () => {
+    const sent: { stationId: string; type: string; text?: string }[] = [];
+    service.useCommandSender(async (stationId, command) => {
+      sent.push({ stationId, ...command });
+      return true;
+    });
+    const busy = await service.registerStation(clubId, seatId);
+    const free = await service.registerStation(clubId, otherSeatId);
+    await expect(service.sendCommand(clubId, free.station.id, { type: "restart" })).rejects.toThrow(ConflictException);
+
+    await service.setStationOnline(busy.station.id, true);
+    await service.setStationOnline(free.station.id, true);
+    await expect(service.sendCommand(clubId, free.station.id, { type: "message", text: "   " })).rejects.toThrow(BadRequestException);
+    await expect(service.sendCommand("aim-lab-almaty", free.station.id, { type: "restart" })).rejects.toThrow(NotFoundException);
+    expect(await service.sendCommand(clubId, free.station.id, { type: "message", text: " Заказ готов " })).toMatchObject({ delivered: true, seatLabel: "02" });
+    expect(sent.at(-1)).toEqual({ stationId: free.station.id, type: "message", text: "Заказ готов" });
+
+    const player = await playerWithBalance("+77010000031", pricePerHour);
+    await service.start(clubId, seatId, player);
+    const results = await service.sendCommandToFree(clubId, { type: "shutdown" });
+    expect(results.map((result) => result.stationId)).toEqual([free.station.id]);
+    await expect(service.sendCommandToFree(clubId, { type: "message", text: "всем" })).rejects.toThrow(BadRequestException);
+  });
+
   it("rejects an expired station code", async () => {
     const { station } = await service.registerStation(clubId, seatId);
     const player = await playerWithBalance("+77010000012", pricePerHour);

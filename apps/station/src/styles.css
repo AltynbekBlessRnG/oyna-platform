@@ -759,3 +759,12 @@ button.tile:hover {
   background: rgba(255, 200, 61, 0.14);
   color: var(--accent);
 }
+
+.club-message {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.35;
+  user-select: text;
+}

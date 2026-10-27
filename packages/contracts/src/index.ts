@@ -413,6 +413,22 @@ export interface TopUpResult {
   balance: number;
 }
 
+/** Команда компьютеру из кабинета: сообщение на экран, перезагрузка или выключение. */
+export type StationCommandType = "message" | "restart" | "shutdown";
+
+export interface StationCommand {
+  type: StationCommandType;
+  /** Текст сообщения, только для `message`. */
+  text?: string;
+}
+
+/** Дошла ли команда: компьютер подтверждает её получение. */
+export interface StationCommandResult {
+  stationId: string;
+  seatLabel: string;
+  delivered: boolean;
+}
+
 // ---------- Смены и касса ----------
 
 /** Сколько денег прошло через кассу за смену. */

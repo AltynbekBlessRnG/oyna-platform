@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
-import type { AuthUser, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCredentials, StationEnrollmentCode, TopUpRequest, TopUpResult } from "@oyna/contracts";
+import type { AuthUser, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCommand, StationCommandResult, StationCredentials, StationEnrollmentCode, TopUpRequest, TopUpResult } from "@oyna/contracts";
 import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionsService } from "./sessions.service";
@@ -24,6 +24,17 @@ export class SessionsAdminController {
   @Post("stations/enrollment-code")
   enrollmentCode(@Param("clubId") clubId: string): Promise<StationEnrollmentCode> {
     return this.sessions.issueEnrollmentCode(clubId);
+  }
+
+  /** Свободные компьютеры зала разом: перезагрузить или выключить при закрытии клуба. */
+  @Post("stations/commands")
+  commandFree(@Param("clubId") clubId: string, @Body() command: StationCommand): Promise<StationCommandResult[]> {
+    return this.sessions.sendCommandToFree(clubId, command);
+  }
+
+  @Post("stations/:stationId/commands")
+  command(@Param("clubId") clubId: string, @Param("stationId") stationId: string, @Body() command: StationCommand): Promise<StationCommandResult> {
+    return this.sessions.sendCommand(clubId, stationId, command);
   }
 
   @Post("stations/:stationId/token")

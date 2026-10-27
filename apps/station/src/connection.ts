@@ -1,4 +1,4 @@
-import type { StationLoginCode, StationState } from "@oyna/contracts";
+import type { StationCommand, StationLoginCode, StationState } from "@oyna/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { StationConfig } from "./config";
@@ -9,11 +9,14 @@ export type Link = "connecting" | "online" | "offline" | "rejected";
  * Связь с сервером клуба. Пока связи нет, экран держится на последнем известном состоянии:
  * игрока не выкидывают из-за сети, а свободный компьютер так и остаётся заблокированным.
  */
-export function useStation(config: StationConfig) {
+export function useStation(config: StationConfig, onCommand: (command: StationCommand) => void) {
   const [state, setState] = useState<StationState | null>(null);
   const [link, setLink] = useState<Link>("connecting");
   const [rejection, setRejection] = useState<string>();
   const socketRef = useRef<Socket | null>(null);
+  // Обработчик меняется при каждой отрисовке; сокет переподключать из-за этого нельзя.
+  const commandRef = useRef(onCommand);
+  commandRef.current = onCommand;
 
   useEffect(() => {
     const base = config.apiUrl.replace(/\/+$/, "").replace(/\/api$/, "");
@@ -30,6 +33,11 @@ export function useStation(config: StationConfig) {
       socket.disconnect();
     });
     socket.on("state", (next: StationState) => setState(next));
+    // Сначала подтверждаем получение: перезагрузка может не дать ответить потом.
+    socket.on("command", (command: StationCommand, ack?: (reply: { ok: true }) => void) => {
+      ack?.({ ok: true });
+      commandRef.current(command);
+    });
     const heartbeat = setInterval(() => socket.connected && socket.emit("heartbeat"), 30_000);
     return () => {
       clearInterval(heartbeat);

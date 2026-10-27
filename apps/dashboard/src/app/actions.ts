@@ -12,6 +12,8 @@ import type {
   ManagedClub,
   PlaySession,
   RequestCodeResponse,
+  StationCommand,
+  StationCommandResult,
   StationCredentials,
   StationEnrollmentCode,
   TopUpResult,
@@ -193,6 +195,21 @@ export async function registerStation(clubId: string, seatId: string): Promise<H
 /** Код клуба на сутки: админ вводит его на каждом компьютере зала, прежний код перестаёт работать. */
 export async function issueEnrollmentCode(clubId: string): Promise<HallResult<StationEnrollmentCode>> {
   return hallAction(() => adminFetch<StationEnrollmentCode>(`/admin/clubs/${clubId}/stations/enrollment-code`, { method: "POST" }), "Не удалось получить код");
+}
+
+export async function sendStationCommand(clubId: string, stationId: string, command: StationCommand): Promise<HallResult<StationCommandResult>> {
+  return hallAction(
+    () => adminFetch<StationCommandResult>(`/admin/clubs/${clubId}/stations/${stationId}/commands`, { method: "POST", body: JSON.stringify(command) }),
+    "Команда не отправлена"
+  );
+}
+
+/** Все свободные компьютеры зала: за кем играют, тех не трогаем. */
+export async function commandFreeStations(clubId: string, type: "restart" | "shutdown"): Promise<HallResult<StationCommandResult[]>> {
+  return hallAction(
+    () => adminFetch<StationCommandResult[]>(`/admin/clubs/${clubId}/stations/commands`, { method: "POST", body: JSON.stringify({ type }) }),
+    "Команда не отправлена"
+  );
 }
 
 export async function rotateStationKey(clubId: string, stationId: string): Promise<HallResult<StationCredentials>> {

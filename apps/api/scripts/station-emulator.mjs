@@ -62,6 +62,11 @@ socket.on("auth:error", ({ message }) => {
   console.error(`✗ ${message}`);
   process.exit(1);
 });
+socket.on("command", (command, ack) => {
+  ack?.({ ok: true });
+  const what = { message: `сообщение: «${command.text}»`, restart: "перезагрузиться", shutdown: "выключиться" }[command.type] ?? command.type;
+  console.log(`📣 Команда из кабинета — ${what}`);
+});
 socket.on("state", (next) => {
   state = next;
   render();

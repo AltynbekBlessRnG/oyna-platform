@@ -1,10 +1,12 @@
 import { Logger, type OnModuleDestroy } from "@nestjs/common";
 import { ConnectedSocket, type OnGatewayConnection, type OnGatewayDisconnect, type OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
-import type { StationLoginCode, StationState } from "@oyna/contracts";
+import type { StationCommand, StationLoginCode, StationState } from "@oyna/contracts";
 import type { Server, Socket } from "socket.io";
 import { SessionsService } from "./sessions.service";
 
 type StationSocket = Socket & { data: { stationId?: string } };
+
+const COMMAND_ACK_MS = 5_000;
 
 /**
  * Канал «сервер ↔ компьютер в зале». Клиент подключается с id и ключом компьютера,
@@ -12,6 +14,7 @@ type StationSocket = Socket & { data: { stationId?: string } };
  *
  * От клиента: `login-code` — код для экрана блокировки, `session:end` — игрок
  * завершил сессию на компьютере, `heartbeat` — клиент жив.
+ * Клиенту: `command` — сообщение, перезагрузка или выключение из кабинета; клиент подтверждает получение.
  */
 @WebSocketGateway({ namespace: "stations", cors: { origin: true } })
 export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
@@ -22,6 +25,10 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   constructor(private readonly sessions: SessionsService) {}
 
   afterInit(): void {
+    this.sessions.useCommandSender(async (stationId: string, command: StationCommand) => {
+      const replies = await this.server.to(this.room(stationId)).timeout(COMMAND_ACK_MS).emitWithAck("command", command);
+      return replies.length > 0;
+    });
     this.unsubscribe = this.sessions.onStationChange((stationId, state) => {
       if (state) {
         this.server.to(this.room(stationId)).emit("state", state);

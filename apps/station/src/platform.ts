@@ -27,6 +27,10 @@ export interface Platform {
   setLocked(locked: boolean): Promise<void>;
   /** После сессии: перезагрузка, «заморозка» клуба стирает следы игрока. */
   restart(): Promise<void>;
+  /** Выключение по команде из кабинета, например при закрытии клуба. */
+  shutdown(): Promise<void>;
+  /** Поднять Zen поверх игры, чтобы игрок увидел сообщение из кабинета. */
+  bringToFront(): Promise<void>;
   /** Выйти из Zen в обычную Windows: только после PIN администратора. */
   adminExit(): Promise<void>;
 }
@@ -64,6 +68,8 @@ const demoPlatform: Platform = {
   cleanUp: async () => console.info("[zen] сессия закончилась: игры закрыты, аккаунты игрока разлогинены"),
   setLocked: async () => undefined,
   restart: async () => console.info("[zen] перезагрузка компьютера"),
+  shutdown: async () => console.info("[zen] выключение компьютера"),
+  bringToFront: async () => undefined,
   adminExit: async () => console.info("[zen] выход в Windows")
 };
 
@@ -74,6 +80,8 @@ const windowsPlatform: Platform = {
   cleanUp: () => invoke("clean_up"),
   setLocked: (locked) => invoke("set_locked", { locked }),
   restart: () => invoke("restart_computer"),
+  shutdown: () => invoke("shutdown_computer"),
+  bringToFront: () => invoke("bring_to_front"),
   adminExit: () => invoke("admin_exit")
 };
 

@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { HallBoard } from "@/components/hall-board";
+import { HallPower } from "@/components/hall-power";
 import { ShiftPanel } from "@/components/shift-panel";
 import { StationEnrollment } from "@/components/station-enrollment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,7 +21,10 @@ export default async function HallPage() {
     <AppShell active="hall" club={club} clubs={clubs}>
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <h1 className="text-2xl font-semibold md:text-3xl">Зал и касса</h1>
-        <StationEnrollment clubId={club.id} />
+        <div className="flex flex-wrap items-start gap-3">
+          <HallPower clubId={club.id} />
+          <StationEnrollment clubId={club.id} />
+        </div>
       </header>
       {hall ? <ShiftPanel clubId={club.id} shift={hall.shift} /> : null}
       {hall ? (

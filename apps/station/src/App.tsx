@@ -52,7 +52,17 @@ export function App() {
 }
 
 function Station({ config, onRejected }: { config: StationConfig; onRejected: (message: string) => void }) {
-  const { state, link, rejection, requestCode, endSession } = useStation(config);
+  const [notice, setNotice] = useState<string | null>(null);
+  const { state, link, rejection, requestCode, endSession } = useStation(config, (command) => {
+    if (command.type === "message" && command.text) {
+      setNotice(command.text);
+      void platform.bringToFront();
+    } else if (command.type === "restart") {
+      void platform.restart();
+    } else if (command.type === "shutdown") {
+      void platform.shutdown();
+    }
+  });
   const now = useNow();
   const games = useGames();
 
@@ -61,9 +71,10 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
   const restartAt = useRestartAfter(session?.id);
 
   const locked = !session;
+  // Пока висит сообщение из кабинета, Zen держится поверх игры; закрыли — возвращаем как было.
   useEffect(() => {
-    void platform.setLocked(locked);
-  }, [locked]);
+    void (notice ? platform.bringToFront() : platform.setLocked(locked));
+  }, [locked, notice]);
 
   useEffect(() => {
     if (link === "rejected") onRejected(rejection ?? "Сервер не принял ключ этого компьютера");
@@ -88,8 +99,24 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
   return (
     <>
       {screen}
+      {notice && <ClubMessage text={notice} onClose={() => setNotice(null)} />}
       <AdminExit pinHash={config.adminPinHash} />
     </>
+  );
+}
+
+/** Сообщение администратора: поверх всего, пока игрок не нажмёт «Понятно». */
+function ClubMessage({ text, onClose }: { text: string; onClose: () => void }) {
+  return (
+    <div className="backdrop">
+      <section role="alertdialog" aria-modal="true" aria-label="Сообщение от администратора" className="setup-card">
+        <span className="muted small">Сообщение от администратора</span>
+        <p className="club-message">{text}</p>
+        <button className="primary" autoFocus onClick={onClose}>
+          Понятно
+        </button>
+      </section>
+    </div>
   );
 }
 
