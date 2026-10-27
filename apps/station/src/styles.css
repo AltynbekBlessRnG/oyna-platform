@@ -1,0 +1,695 @@
+:root {
+  --bg: #141414;
+  --panel: #181818;
+  --card: #1e1e1e;
+  --raised: #282828;
+  --line: #262626;
+  --line-strong: #333;
+  --text: #f5f5f5;
+  --muted: #a3a3a3;
+  --faint: #5c5c5c;
+  --accent: #ffc83d;
+  --accent-ink: #141414;
+  --success: #6fdc9b;
+  --danger: #ff6b5e;
+  --display: Unbounded, system-ui, sans-serif;
+  --gap: 16px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Onest, system-ui, sans-serif;
+  font-size: 15px;
+  overflow: hidden;
+  user-select: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input {
+  font: inherit;
+  color: var(--text);
+  user-select: text;
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.grow {
+  flex: 1;
+}
+
+/* ---------- Раскладка: навигация · игры · панель игрока ---------- */
+
+.screen {
+  height: 100%;
+  display: flex;
+}
+
+.rail {
+  width: 96px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--line);
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.logo {
+  margin-bottom: 18px;
+  flex-shrink: 0;
+}
+
+.rail-btn {
+  width: 72px;
+  height: 68px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.rail-btn:hover:not(:disabled) {
+  background: var(--card);
+  color: var(--text);
+}
+
+.rail-btn[aria-current="page"] {
+  background: rgba(255, 200, 61, 0.14);
+  color: var(--accent);
+}
+
+.rail-btn:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+.center {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  overflow: hidden;
+}
+
+.side {
+  width: 300px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+}
+
+/* ---------- Плитки игр: 4 колонки, видно три с половиной ряда, остальное прокручивается ---------- */
+
+.grid {
+  --head: 96px;
+  --row: calc((100vh - 24px - var(--head) - var(--gap) - 3 * var(--gap)) / 3.5);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: max(var(--row), 150px);
+  gap: var(--gap);
+  overflow-y: auto;
+  padding-bottom: 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Над плитками одна строка заголовка, а не поиск с жанрами. */
+.lock-head + .grid {
+  --head: 40px;
+}
+
+.grid.dimmed {
+  opacity: 0.28;
+  overflow: hidden;
+}
+
+.tile {
+  border: 0;
+  padding: 0;
+  text-align: left;
+  background: var(--card);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+button.tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.cover {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  text-align: center;
+  font-family: var(--display);
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.tile-name {
+  height: 50px;
+  flex-shrink: 0;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  margin: 24px 0;
+}
+
+/* ---------- Экран блокировки ---------- */
+
+.lock-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  min-height: 40px;
+}
+
+.lock-head h1 {
+  font-size: 22px;
+}
+
+.side-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.seat {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 28px;
+}
+
+.free {
+  font-size: 13px;
+  color: var(--success);
+  margin-top: 4px;
+}
+
+.time {
+  text-align: right;
+}
+
+.time-now {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.code-card {
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.code-title,
+.hint-title,
+.info-title {
+  font-weight: 600;
+}
+
+.digits {
+  display: flex;
+  gap: 6px;
+}
+
+.digit {
+  width: 38px;
+  height: 52px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--accent);
+}
+
+.digit.gap {
+  margin-left: 6px;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d4d4d4;
+}
+
+.hint {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ---------- Библиотека ---------- */
+
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  max-width: 420px;
+}
+
+.search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chip {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 17px;
+}
+
+.time-card {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.left {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.left.warn {
+  color: var(--accent);
+}
+
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.facts {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  font-size: 14px;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+}
+
+.offline {
+  margin: 0;
+  color: var(--danger);
+}
+
+.side p {
+  margin: 0;
+}
+
+.primary {
+  height: 48px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.danger {
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text);
+}
+
+.danger.confirm {
+  border-color: var(--danger);
+  background: rgba(255, 107, 94, 0.14);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ---------- Окно игры и предупреждение ---------- */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 8, 8, 0.8);
+  display: grid;
+  place-items: center;
+  z-index: 10;
+}
+
+.dialog {
+  width: min(760px, calc(100vw - 48px));
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.dialog-cover {
+  height: 220px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 28px 32px;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 48px;
+}
+
+.dialog-close {
+  align-self: flex-start;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 0;
+  background: rgba(20, 20, 20, 0.25);
+  display: grid;
+  place-items: center;
+}
+
+.dialog-body {
+  padding: 28px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dialog-body h2 {
+  font-size: 26px;
+}
+
+.dialog-body p {
+  margin: 6px 0 0;
+}
+
+.dialog-cards {
+  display: flex;
+  gap: 12px;
+}
+
+.info {
+  flex: 1;
+  background: var(--raised);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.play {
+  align-self: flex-start;
+  height: 56px;
+  padding: 0 40px;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.warning {
+  position: fixed;
+  right: 332px;
+  top: 24px;
+  width: 400px;
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+.warning p {
+  margin: 0;
+  color: #d4d4d4;
+}
+
+.warning .primary {
+  align-self: flex-start;
+  height: 44px;
+}
+
+.warning-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.warning-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(255, 200, 61, 0.14);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+}
+
+.warning-title {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.help {
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.help h1 {
+  font-size: 22px;
+}
+
+.help h2 {
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.help p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ---------- Подключение и заставка ---------- */
+
+.setup,
+.splash {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.splash {
+  align-content: center;
+  gap: 12px;
+  justify-items: center;
+}
+
+.setup-card {
+  width: min(480px, 100%);
+  background: var(--card);
+  border-radius: 24px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setup-card h1 {
+  font-size: 22px;
+}
+
+.setup-card p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.setup-notice {
+  color: var(--danger);
+}
+
+.setup-card label,
+.setup-card details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.setup-card input {
+  height: 44px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+  font-family: ui-monospace, monospace;
+  font-size: 14px;
+}
+
+.setup-card summary {
+  cursor: pointer;
+}
+
+.setup-card details input {
+  width: 100%;
+  margin-top: 6px;
+}

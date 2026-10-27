@@ -225,8 +225,14 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
   async getStationState(stationId: string): Promise<StationState> {
     const record = await this.findStationRecord(stationId);
     if (!record) throw new NotFoundException("Компьютер не найден");
-    const seats = await this.seatIndex(record.clubId);
-    return { station: this.toStation(record, seats.get(record.seatId)), session: (await this.findActiveBySeat(record.seatId)) ?? null };
+    const [seats, club] = await Promise.all([this.seatIndex(record.clubId), this.clubs.findOne(record.clubId)]);
+    const seat = seats.get(record.seatId);
+    return {
+      station: this.toStation(record, seat),
+      clubName: club.name,
+      zone: seat ? { name: seat.zone.name, pricePerHour: seat.zone.pricePerHour } : null,
+      session: (await this.findActiveBySeat(record.seatId)) ?? null
+    };
   }
 
   /** Код для экрана блокировки: игрок вводит или сканирует его в приложении и садится за компьютер. */

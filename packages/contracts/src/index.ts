@@ -378,6 +378,9 @@ export interface StationLoginCode {
 /** Всё, что клиенту на компьютере нужно знать, чтобы заблокировать или открыть экран. */
 export interface StationState {
   station: ClubStation;
+  /** Экран блокировки показывает, чей это клуб и почём место, ещё до входа игрока. */
+  clubName: string;
+  zone: { name: string; pricePerHour: number } | null;
   session: PlaySession | null;
 }
 

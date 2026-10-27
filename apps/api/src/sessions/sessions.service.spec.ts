@@ -136,6 +136,8 @@ describe("SessionsService", () => {
     await service.endFromStation(station.id);
     expect(states.at(-1)?.session).toBeNull();
     expect(states.at(-1)?.station.id).toBe(station.id);
+    expect(states.at(-1)?.zone?.pricePerHour).toBe(pricePerHour);
+    expect(states.at(-1)?.clubName).toBeTruthy();
 
     await service.rotateStationToken(clubId, station.id);
     expect(states.at(-1)).toBeNull();
