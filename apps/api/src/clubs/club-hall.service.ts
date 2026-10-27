@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import type { AuthUser, ClubAccount, ClubOrder, ClubOrderLine, CreateOrderRequest, MenuItem } from "@oyna/contracts";
+import type { AuthUser, ClubAccount, ClubOrder, ClubOrderLine, CreateOrderRequest, MenuItem, PaymentMethod } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import { DatabaseService } from "../database/database.service";
@@ -37,11 +37,24 @@ interface AccountRow {
   created_at: Date | string;
 }
 
+/** Движение по клубному балансу. Пополнения на кассе несут способ оплаты и смену. */
+export interface BalanceEntry {
+  kind: "top_up" | "session" | "adjustment";
+  refId?: string;
+  createdBy?: string;
+  createdByName?: string;
+  reason?: string;
+  paymentMethod?: PaymentMethod;
+  shiftId?: string;
+}
+
 /** Бар и клубные аккаунты игроков: заказ еды с места и своя карточка в каждом клубе. */
 @Injectable()
 export class ClubHallService {
   private readonly memoryOrders = new Map<string, ClubOrder & { userId: string }>();
   private readonly memoryAccounts = new Map<string, ClubAccount>();
+  /** Только без базы: журнал движений по балансам, чтобы отчёт смены работал и в памяти. */
+  readonly memoryTransactions: (BalanceEntry & { clubId: string; userId: string; amount: number; createdAt: number })[] = [];
 
   constructor(
     private readonly database: DatabaseService,
@@ -170,7 +183,7 @@ export class ClubHallService {
     clubId: string,
     user: Pick<AuthUser, "id" | "name">,
     delta: number,
-    entry: { kind: "top_up" | "session" | "adjustment"; refId?: string; createdBy?: string; reason?: string },
+    entry: BalanceEntry,
     client?: PoolClient
   ): Promise<number> {
     if (!Number.isInteger(delta)) throw new BadRequestException("Сумма должна быть целым числом");
@@ -179,6 +192,7 @@ export class ClubHallService {
       if (account.balance + delta < 0) throw new BadRequestException("Недостаточно средств на балансе");
       const updated = { ...account, balance: account.balance + delta };
       this.memoryAccounts.set(`${clubId}:${user.id}`, updated);
+      this.memoryTransactions.push({ ...entry, clubId, userId: user.id, amount: delta, createdAt: Date.now() });
       return updated.balance;
     }
     const run = <T extends QueryResultRow>(text: string, values: unknown[]) => (client ? client.query<T>(text, values) : this.database.query<T>(text, values));
@@ -192,8 +206,8 @@ export class ClubHallService {
     );
     if (result.rowCount === 0) throw new BadRequestException("Недостаточно средств на балансе");
     await run(
-      "INSERT INTO club_balance_transactions (id, club_id, user_id, amount, kind, ref_id, created_by, reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-      [randomUUID(), clubId, user.id, delta, entry.kind, entry.refId ?? null, entry.createdBy ?? null, entry.reason ?? null]
+      "INSERT INTO club_balance_transactions (id, club_id, user_id, amount, kind, ref_id, created_by, created_by_name, reason, payment_method, shift_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+      [randomUUID(), clubId, user.id, delta, entry.kind, entry.refId ?? null, entry.createdBy ?? null, entry.createdByName ?? null, entry.reason ?? null, entry.paymentMethod ?? null, entry.shiftId ?? null]
     );
     return result.rows[0].balance;
   }

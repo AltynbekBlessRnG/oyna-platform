@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { HallBoard } from "@/components/hall-board";
+import { ShiftPanel } from "@/components/shift-panel";
 import { StationEnrollment } from "@/components/station-enrollment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiUrl, type HallSnapshot, loadActiveClub, loadHall, requireSession } from "@/lib/api";
@@ -21,6 +22,7 @@ export default async function HallPage() {
         <h1 className="text-2xl font-semibold md:text-3xl">Зал и касса</h1>
         <StationEnrollment clubId={club.id} />
       </header>
+      {hall ? <ShiftPanel clubId={club.id} shift={hall.shift} /> : null}
       {hall ? (
         <HallBoard clubId={club.id} hall={hall} apiUrl={apiUrl.replace(/\/api\/?$/, "")} />
       ) : (

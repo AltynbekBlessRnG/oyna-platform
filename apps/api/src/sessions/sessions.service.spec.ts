@@ -6,6 +6,7 @@ import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
 import { NotificationsService } from "../social/notifications.service";
+import { ShiftsService } from "../shifts/shifts.service";
 import { SessionsService } from "./sessions.service";
 
 describe("SessionsService", () => {
@@ -25,7 +26,9 @@ describe("SessionsService", () => {
     hall = new ClubHallService(database, clubs);
     const auth = new AuthService(database);
     bookings = new BookingsService(clubs, database, new NotificationsService(database));
-    service = new SessionsService(database, clubs, hall, auth, bookings);
+    const shifts = new ShiftsService(database, clubs, hall);
+    service = new SessionsService(database, clubs, hall, auth, bookings, shifts);
+    await shifts.open(clubId, 0, admin);
     const [zone] = await clubs.findZones(clubId);
     zoneId = zone.id;
     pricePerHour = zone.pricePerHour;

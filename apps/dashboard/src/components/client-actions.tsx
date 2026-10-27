@@ -1,11 +1,12 @@
 "use client";
 
-import type { ClientNote } from "@oyna/contracts";
+import type { ClientNote, PaymentMethod } from "@oyna/contracts";
 import { Trash2, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { addClientNote, adjustClientBalance, deleteClientNote, setClientTags, topUpClient } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PAYMENT_LABELS, PaymentMethodPicker } from "@/components/payment-method";
 import { dayTime, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +23,7 @@ export function ClientBalance({ clubId, userId, phone, balance }: { clubId: stri
   const [mode, setMode] = useState<"top_up" | "adjustment">("top_up");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>("cash");
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -30,8 +32,8 @@ export function ClientBalance({ clubId, userId, phone, balance }: { clubId: stri
     setResult(null);
     startTransition(async () => {
       if (mode === "top_up") {
-        const response = await topUpClient(clubId, userId, phone, value);
-        setResult(response.ok ? { ok: true, text: `Пополнено на ${money(value)}, баланс ${money(response.data.balance)}` } : { ok: false, text: response.message });
+        const response = await topUpClient(clubId, userId, phone, value, method);
+        setResult(response.ok ? { ok: true, text: `Пополнено на ${money(value)} (${PAYMENT_LABELS[method].toLowerCase()}), баланс ${money(response.data.balance)}` } : { ok: false, text: response.message });
         if (response.ok) setAmount("");
         return;
       }
@@ -74,6 +76,7 @@ export function ClientBalance({ clubId, userId, phone, balance }: { clubId: stri
           value={amount}
           onChange={(event) => setAmount(mode === "top_up" ? event.target.value.replace(/\D/g, "") : event.target.value.replace(/[^\d-]/g, ""))}
         />
+        {mode === "top_up" ? <PaymentMethodPicker value={method} onChange={setMethod} /> : null}
         {mode === "adjustment" ? (
           <input className={inputClass} aria-label="Причина" placeholder="Причина: сбой ПК, ошибка кассы…" maxLength={200} value={reason} onChange={(event) => setReason(event.target.value)} />
         ) : null}

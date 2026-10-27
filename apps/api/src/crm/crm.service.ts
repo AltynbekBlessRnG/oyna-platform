@@ -18,6 +18,7 @@ import { randomUUID } from "node:crypto";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
+import { ShiftsService } from "../shifts/shifts.service";
 
 /** Весь Казахстан живёт по UTC+5: дни и часы в отчётах считаются по времени клуба. */
 export const CLUB_TIME_ZONE = "Asia/Almaty";
@@ -118,7 +119,8 @@ export class CrmService {
   constructor(
     private readonly database: DatabaseService,
     private readonly clubs: ClubsService,
-    private readonly hall: ClubHallService
+    private readonly hall: ClubHallService,
+    private readonly shifts?: ShiftsService
   ) {}
 
   async listClients(
@@ -189,7 +191,9 @@ export class CrmService {
     const text = reason?.trim() ?? "";
     if (text.length < 3 || text.length > 200) throw new BadRequestException("Укажите причину корректировки, от 3 до 200 символов");
     const user = await this.assertClient(clubId, userId);
-    return this.hall.changeBalance(clubId, user, amount, { kind: "adjustment", createdBy: author.id, reason: text });
+    // Корректировка попадает в отчёт открытой смены: владелец видит, кто и сколько добавил руками.
+    const shiftId = await this.shifts?.openShiftId(clubId);
+    return this.hall.changeBalance(clubId, user, amount, { kind: "adjustment", createdBy: author.id, createdByName: author.name, reason: text, ...(shiftId ? { shiftId } : {}) });
   }
 
   async analytics(clubId: string, days: number, now = Date.now()): Promise<ClubAnalytics> {

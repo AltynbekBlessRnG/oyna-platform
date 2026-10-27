@@ -16,6 +16,7 @@ import type {
   ClubStation,
   ClubZone,
   PlaySession,
+  PaymentMethod,
   PlaySessionEndReason,
   StationCredentials,
   StationEnrollment,
@@ -32,12 +33,14 @@ import { BookingsService, type SeatReservation } from "../bookings/bookings.serv
 import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
+import { ShiftsService } from "../shifts/shifts.service";
 
 const MAX_SESSION_MINUTES = 12 * 60;
 const LOGIN_CODE_TTL_MS = 2 * 60_000;
 const SWEEP_INTERVAL_MS = 15_000;
 const CLAIM_ATTEMPTS_PER_MINUTE = 10;
 const MAX_TOP_UP = 1_000_000;
+const PAYMENT_METHODS: PaymentMethod[] = ["cash", "kaspi", "card"];
 const ENROLLMENT_CODE_TTL_MS = 24 * 60 * 60_000;
 // Без 0/O, 1/I/L: код читают с экрана кабинета и набирают руками на каждом компьютере.
 const ENROLLMENT_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -123,7 +126,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     private readonly clubs: ClubsService,
     private readonly hall: ClubHallService,
     private readonly auth: AuthService,
-    private readonly bookings: BookingsService
+    private readonly bookings: BookingsService,
+    private readonly shifts: ShiftsService
   ) {
     bookings.useSessionOccupancy(async (clubId, from, to) =>
       (await this.listActive(clubId)).filter((session) => Date.parse(session.startedAt) < to && Date.parse(session.endsAt) > from).map((session) => session.seatId)
@@ -488,11 +492,13 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
    * Пополнение с кассы. Если игрок уже сидит за компьютером, его сессия
    * сразу продлевается на новые деньги, но не дальше выбранного при запуске времени.
    */
-  async topUp(clubId: string, phone: string, amount: number, admin: AuthUser): Promise<TopUpResult> {
+  async topUp(clubId: string, phone: string, amount: number, admin: AuthUser, method: PaymentMethod = "cash"): Promise<TopUpResult> {
     if (!Number.isInteger(amount) || amount < 1 || amount > MAX_TOP_UP) throw new BadRequestException(`Сумма пополнения от 1 до ${MAX_TOP_UP} ₸`);
+    if (!PAYMENT_METHODS.includes(method)) throw new BadRequestException("Способ оплаты: наличные, Kaspi или карта");
     await this.clubs.findOne(clubId);
+    const shiftId = await this.shifts.requireOpen(clubId);
     const player = await this.auth.ensureUser(phone, "Игрок Zen");
-    const balance = await this.hall.changeBalance(clubId, player, amount, { kind: "top_up", createdBy: admin.id });
+    const balance = await this.hall.changeBalance(clubId, player, amount, { kind: "top_up", createdBy: admin.id, createdByName: admin.name, paymentMethod: method, shiftId });
     const session = await this.findStoredActive((item) => item.clubId === clubId && item.userId === player.id, "club_id = $1 AND user_id = $2", [clubId, player.id]);
     if (session) {
       const startedAt = Date.parse(session.startedAt);

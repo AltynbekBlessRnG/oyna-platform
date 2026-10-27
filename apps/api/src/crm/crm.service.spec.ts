@@ -8,6 +8,7 @@ import { CLUB_CATALOG } from "../clubs/clubs.data";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
 import { SessionsService } from "../sessions/sessions.service";
+import { ShiftsService } from "../shifts/shifts.service";
 import { NotificationsService } from "../social/notifications.service";
 import { CrmService } from "./crm.service";
 
@@ -46,8 +47,10 @@ describe("CrmService on PostgreSQL", () => {
     const hall = new ClubHallService(database, clubs);
     auth = new AuthService(database);
     const bookings = new BookingsService(clubs, database, new NotificationsService(database));
-    sessions = new SessionsService(database, clubs, hall, auth, bookings);
-    crm = new CrmService(database, clubs, hall);
+    const shifts = new ShiftsService(database, clubs, hall);
+    sessions = new SessionsService(database, clubs, hall, auth, bookings, shifts);
+    crm = new CrmService(database, clubs, hall, shifts);
+    await shifts.open(clubId, 0, admin);
     const [zone] = await clubs.findZones(clubId);
     zoneId = zone.id;
     pricePerHour = zone.pricePerHour;

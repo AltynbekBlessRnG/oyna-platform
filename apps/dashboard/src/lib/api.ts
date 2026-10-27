@@ -1,4 +1,4 @@
-import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubClientsResponse, ClubSeatMap, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
+import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubClientsResponse, ClubSeatMap, ClubShift, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
 import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
@@ -108,17 +108,26 @@ export interface HallSnapshot {
   seatMap: ClubSeatMap;
   stations: ClubStation[];
   sessions: PlaySession[];
+  /** Открытая смена кассы; без неё пополнять балансы нельзя. */
+  shift: ClubShift | null;
 }
 
 /** Зал для кассы: карта мест, компьютеры с клиентом Zen и идущие сессии. */
 export async function loadHall(clubId: string): Promise<HallSnapshot> {
-  const [seatMapResponse, stations, sessions] = await Promise.all([
+  const [seatMapResponse, stations, sessions, shift] = await Promise.all([
     fetch(`${apiUrl}/clubs/${clubId}/seatmap`, { cache: "no-store" }),
     adminFetch<ClubStation[]>(`/admin/clubs/${clubId}/stations`),
-    adminFetch<PlaySession[]>(`/admin/clubs/${clubId}/sessions`)
+    adminFetch<PlaySession[]>(`/admin/clubs/${clubId}/sessions`),
+    adminFetch<ClubShift | null>(`/admin/clubs/${clubId}/shifts/current`)
   ]);
   if (!seatMapResponse.ok) throw new ApiError(`Карта зала недоступна (${seatMapResponse.status})`, seatMapResponse.status);
-  return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions };
+  // Нет открытой смены — API отвечает пустым телом.
+  return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions, shift: shift ?? null };
+}
+
+/** История смен кассы, новые сверху. */
+export async function loadShifts(clubId: string): Promise<ClubShift[]> {
+  return adminFetch<ClubShift[]>(`/admin/clubs/${clubId}/shifts`);
 }
 
 /** Аналитика нужна базе данных: без неё API отвечает 503, и кабинет показывает пояснение вместо нулей. */

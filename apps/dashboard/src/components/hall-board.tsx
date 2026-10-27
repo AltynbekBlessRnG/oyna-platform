@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClubStation, ClubZone, PlaySession, SeatMapSeat, StationCredentials } from "@oyna/contracts";
+import type { ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCredentials } from "@oyna/contracts";
 import { KeyRound, Play, Plug, Square, Unplug, Wallet, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -8,6 +8,7 @@ import { endPlaySession, type HallResult, registerStation, removeStation, rotate
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PAYMENT_LABELS, PaymentMethodPicker } from "@/components/payment-method";
 import type { HallSnapshot } from "@/lib/api";
 import { clock, duration, minutesUntil, money, playerLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -135,7 +136,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
       <div className="space-y-6">
         {message && !selected ? <Notice message={message} /> : null}
         <ActiveSessions sessions={hall.sessions} stationBySeat={stationBySeat} now={now} onSelect={select} showZone={hall.seatMap.zones.length > 1} />
-        <TopUpCard clubId={clubId} run={run} isPending={isPending} onToppedUp={setLastPhone} />
+        <TopUpCard clubId={clubId} run={run} isPending={isPending} onToppedUp={setLastPhone} shiftOpen={Boolean(hall.shift)} />
       </div>
 
       {selected ? (
@@ -405,20 +406,22 @@ function SeatPanel(props: {
   );
 }
 
-function TopUpCard({ clubId, run, isPending, onToppedUp }: {
+function TopUpCard({ clubId, run, isPending, onToppedUp, shiftOpen }: {
   clubId: string;
+  shiftOpen: boolean;
   onToppedUp: (phone: string) => void;
   run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
   isPending: boolean;
 }) {
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>("cash");
 
   function submit(): void {
-    run(() => topUpBalance(clubId, phone, Number(amount)), (result) => {
+    run(() => topUpBalance(clubId, phone, Number(amount), method), (result) => {
       setAmount("");
       onToppedUp(phone);
-      return `${playerLabel(result.playerName, phone.replace(/\D/g, "").slice(-4))}: +${money(result.amount)}, на балансе ${money(result.balance)}`;
+      return `${playerLabel(result.playerName, phone.replace(/\D/g, "").slice(-4))}: +${money(result.amount)} (${PAYMENT_LABELS[method].toLowerCase()}), на балансе ${money(result.balance)}`;
     });
   }
 
@@ -433,8 +436,9 @@ function TopUpCard({ clubId, run, isPending, onToppedUp }: {
             <Button key={value} size="sm" variant="secondary" onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
           ))}
         </div>
-        <Button disabled={isPending || phone.replace(/\D/g, "").length < 10 || !amount} onClick={submit}>Пополнить</Button>
-        <p className="text-xs text-muted-foreground">Если игрок уже за компьютером, его время сразу продлится.</p>
+        <PaymentMethodPicker value={method} onChange={setMethod} />
+        <Button disabled={isPending || !shiftOpen || phone.replace(/\D/g, "").length < 10 || !amount} onClick={submit}>Пополнить</Button>
+        <p className="text-xs text-muted-foreground">{shiftOpen ? "Если игрок уже за компьютером, его время сразу продлится." : "Откройте смену вверху страницы, чтобы принимать деньги."}</p>
       </CardContent>
     </Card>
   );

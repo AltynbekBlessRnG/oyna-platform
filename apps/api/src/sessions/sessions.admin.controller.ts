@@ -53,6 +53,6 @@ export class SessionsAdminController {
 
   @Post("top-ups")
   topUp(@Param("clubId") clubId: string, @CurrentUser() admin: AuthUser, @Body() request: TopUpRequest): Promise<TopUpResult> {
-    return this.sessions.topUp(clubId, request?.phone ?? "", request?.amount, admin);
+    return this.sessions.topUp(clubId, request?.phone ?? "", request?.amount, admin, request?.method);
   }
 }

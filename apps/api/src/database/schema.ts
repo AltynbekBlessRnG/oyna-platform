@@ -227,6 +227,30 @@ CREATE TABLE IF NOT EXISTS club_balance_transactions (
 
 CREATE INDEX IF NOT EXISTS club_balance_transactions_account_idx ON club_balance_transactions (club_id, user_id, created_at DESC);
 
+-- Смены кассы: у клуба одна открытая смена, через неё идут все пополнения.
+CREATE TABLE IF NOT EXISTS club_shifts (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  opened_by TEXT NOT NULL,
+  opened_by_name TEXT NOT NULL,
+  opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  opening_cash INTEGER NOT NULL CHECK (opening_cash >= 0),
+  closed_by TEXT,
+  closed_by_name TEXT,
+  closed_at TIMESTAMPTZ,
+  counted_cash INTEGER CHECK (counted_cash >= 0),
+  note TEXT
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS club_shifts_open_idx ON club_shifts (club_id) WHERE closed_at IS NULL;
+CREATE INDEX IF NOT EXISTS club_shifts_club_idx ON club_shifts (club_id, opened_at DESC);
+
+ALTER TABLE club_balance_transactions ADD COLUMN IF NOT EXISTS payment_method TEXT CHECK (payment_method IN ('cash', 'kaspi', 'card'));
+ALTER TABLE club_balance_transactions ADD COLUMN IF NOT EXISTS shift_id TEXT;
+-- Имя сотрудника на момент операции: в отчёте смены оно нужно, даже если сотрудника нет в users.
+ALTER TABLE club_balance_transactions ADD COLUMN IF NOT EXISTS created_by_name TEXT;
+CREATE INDEX IF NOT EXISTS club_balance_transactions_shift_idx ON club_balance_transactions (shift_id) WHERE shift_id IS NOT NULL;
+
 -- CRM: теги клиента в клубе, заметки сотрудников и ручные корректировки баланса.
 ALTER TABLE club_accounts ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE club_balance_transactions ADD COLUMN IF NOT EXISTS reason TEXT;

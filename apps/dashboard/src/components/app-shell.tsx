@@ -1,5 +1,5 @@
 import type { ManagedClub } from "@oyna/contracts";
-import { BarChart3, LayoutDashboard, LogOut, Monitor, Settings, Users } from "lucide-react";
+import { Banknote, BarChart3, LayoutDashboard, LogOut, Monitor, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/actions";
@@ -7,11 +7,12 @@ import { ClubSwitcher } from "@/components/club-switcher";
 import { ZenMark } from "@/components/zen-mark";
 import { cn } from "@/lib/utils";
 
-export type ShellSection = "overview" | "hall" | "clients" | "analytics" | "settings";
+export type ShellSection = "overview" | "hall" | "shifts" | "clients" | "analytics" | "settings";
 
 const NAVIGATION: { key: ShellSection; label: string; short: string; icon: typeof Monitor; href: string }[] = [
   { key: "overview", label: "Обзор", short: "Обзор", icon: LayoutDashboard, href: "/" },
   { key: "hall", label: "Зал и касса", short: "Зал", icon: Monitor, href: "/hall" },
+  { key: "shifts", label: "Смены", short: "Смены", icon: Banknote, href: "/shifts" },
   { key: "clients", label: "Клиенты", short: "Клиенты", icon: Users, href: "/clients" },
   { key: "analytics", label: "Аналитика", short: "Отчёты", icon: BarChart3, href: "/analytics" },
   { key: "settings", label: "Настройки", short: "Клуб", icon: Settings, href: "/settings" }
@@ -71,7 +72,7 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
         <main className="min-w-0 flex-1 p-4 pb-28 md:p-8 lg:pb-8">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Разделы кабинета">
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Разделы кабинета">
         {NAVIGATION.map(({ key, short, icon: Icon, href }) => (
           <Link
             key={key}

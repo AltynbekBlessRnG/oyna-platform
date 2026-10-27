@@ -28,6 +28,8 @@ import { SessionsAdminController } from "./sessions/sessions.admin.controller";
 import { StationsEnrollmentController } from "./sessions/stations-enrollment.controller";
 import { StationReleasesController } from "./sessions/station-releases.controller";
 import { StationReleasesService } from "./sessions/station-releases.service";
+import { ShiftsController } from "./shifts/shifts.controller";
+import { ShiftsService } from "./shifts/shifts.service";
 import { SessionsController } from "./sessions/sessions.controller";
 import { SessionsService } from "./sessions/sessions.service";
 import { StationsGateway } from "./sessions/stations.gateway";
@@ -36,7 +38,7 @@ import { CrmService } from "./crm/crm.service";
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ["../../.env", ".env"] })],
-  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, StationReleasesController, CrmController],
-  providers: [DatabaseService, ClubsService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService],
+  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, StationReleasesController, ShiftsController, CrmController],
+  providers: [DatabaseService, ClubsService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
 })
 export class AppModule {}

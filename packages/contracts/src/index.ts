@@ -395,9 +395,14 @@ export interface ClaimStationRequest {
   minutes?: number;
 }
 
+/** Как игрок отдал деньги на кассе: наличные считаются при закрытии смены, Kaspi и карта — сверяются с банком. */
+export type PaymentMethod = "cash" | "kaspi" | "card";
+
 export interface TopUpRequest {
   phone: string;
   amount: number;
+  /** Без указания — наличные. */
+  method?: PaymentMethod;
 }
 
 export interface TopUpResult {
@@ -406,6 +411,63 @@ export interface TopUpResult {
   playerName: string;
   amount: number;
   balance: number;
+}
+
+// ---------- Смены и касса ----------
+
+/** Сколько денег прошло через кассу за смену. */
+export interface ShiftTotals {
+  cash: number;
+  kaspi: number;
+  card: number;
+  topUpCount: number;
+  /** Ручные корректировки баланса из CRM: сумма со знаком и сколько их было. */
+  adjustments: number;
+  adjustmentCount: number;
+  /** Списано с балансов за игру в сессиях, закончившихся в эту смену. */
+  playCharged: number;
+  /** Заказы бара из приложения, выданные в эту смену. */
+  barOrders: number;
+  barTotal: number;
+}
+
+/** Кто из сотрудников сколько пробил за смену. */
+export interface ShiftStaffTotals {
+  userId: string;
+  name: string;
+  cash: number;
+  kaspi: number;
+  card: number;
+  topUpCount: number;
+}
+
+export interface ClubShift {
+  id: string;
+  clubId: string;
+  openedBy: { id: string; name: string };
+  openedAt: string;
+  /** Наличные в кассе на начало смены. */
+  openingCash: number;
+  closedBy?: { id: string; name: string };
+  closedAt?: string;
+  /** Сколько наличных пересчитали при закрытии. */
+  countedCash?: number;
+  note?: string;
+  totals: ShiftTotals;
+  /** Сколько наличных должно быть в кассе: на начало плюс наличные пополнения. */
+  expectedCash: number;
+  /** Посчитано минус ожидалось: меньше нуля — недостача. Только у закрытой смены. */
+  difference?: number;
+  staff: ShiftStaffTotals[];
+}
+
+export interface OpenShiftRequest {
+  openingCash: number;
+}
+
+export interface CloseShiftRequest {
+  countedCash: number;
+  note?: string;
 }
 
 export interface StationLoginCode {

@@ -4,6 +4,8 @@ import type {
   AuthSession,
   BookingReceipt,
   ChallengeStatusResponse,
+  ClubShift,
+  PaymentMethod,
   ClubSummary,
   ClientNote,
   ClubZone,
@@ -165,8 +167,23 @@ export async function endPlaySession(clubId: string, sessionId: string): Promise
   return hallAction(() => adminFetch<PlaySession>(`/admin/clubs/${clubId}/sessions/${sessionId}/end`, { method: "POST" }), "Не удалось завершить сессию");
 }
 
-export async function topUpBalance(clubId: string, phone: string, amount: number): Promise<HallResult<TopUpResult>> {
-  return hallAction(() => adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount }) }), "Не удалось пополнить баланс");
+export async function topUpBalance(clubId: string, phone: string, amount: number, method: PaymentMethod = "cash"): Promise<HallResult<TopUpResult>> {
+  return hallAction(() => adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount, method }) }), "Не удалось пополнить баланс");
+}
+
+export async function openShift(clubId: string, openingCash: number): Promise<HallResult<ClubShift>> {
+  const result = await hallAction(() => adminFetch<ClubShift>(`/admin/clubs/${clubId}/shifts`, { method: "POST", body: JSON.stringify({ openingCash }) }), "Не удалось открыть смену");
+  revalidatePath("/shifts");
+  return result;
+}
+
+export async function closeShift(clubId: string, countedCash: number, note: string): Promise<HallResult<ClubShift>> {
+  const result = await hallAction(
+    () => adminFetch<ClubShift>(`/admin/clubs/${clubId}/shifts/current/close`, { method: "POST", body: JSON.stringify({ countedCash, note }) }),
+    "Не удалось закрыть смену"
+  );
+  revalidatePath("/shifts");
+  return result;
 }
 
 export async function registerStation(clubId: string, seatId: string): Promise<HallResult<StationCredentials>> {
@@ -239,9 +256,9 @@ export async function adjustClientBalance(clubId: string, userId: string, amount
   }
 }
 
-export async function topUpClient(clubId: string, userId: string, phone: string, amount: number): Promise<HallResult<TopUpResult>> {
+export async function topUpClient(clubId: string, userId: string, phone: string, amount: number, method: PaymentMethod = "cash"): Promise<HallResult<TopUpResult>> {
   try {
-    const result = await adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount }) });
+    const result = await adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount, method }) });
     revalidateClient(userId);
     revalidatePath("/hall");
     return { ok: true, data: result };
