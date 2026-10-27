@@ -171,6 +171,16 @@ CREATE TABLE IF NOT EXISTS club_stations (
 
 CREATE INDEX IF NOT EXISTS club_stations_club_idx ON club_stations (club_id);
 
+-- Версии Zen.exe для компьютеров зала. Файл хранится здесь же: ~4 МБ на версию.
+CREATE TABLE IF NOT EXISTS station_releases (
+  version TEXT PRIMARY KEY,
+  sha256 TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  file BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Код клуба для подключения компьютеров: храним только хеш, у клуба один действующий код.
 CREATE TABLE IF NOT EXISTS station_enrollment_codes (
   code_hash TEXT PRIMARY KEY,

@@ -1,12 +1,16 @@
 mod games;
+mod install;
 mod kiosk;
+mod update;
 mod vdf;
 
 use games::InstalledGame;
 use std::sync::atomic::Ordering;
 use tauri::WindowEvent;
 
+pub use install::{install, uninstall};
 pub use kiosk::run_guard;
+pub use update::run as run_update;
 
 #[tauri::command]
 fn list_games() -> Vec<InstalledGame> {

@@ -1,6 +1,6 @@
 [package]
 name = "zen-station"
-version = "0.1.0"
+version = "0.1.1"
 description = "Zen на компьютере в зале клуба"
 edition = "2021"
 
@@ -16,10 +16,12 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
+ed25519-dalek = "2"
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }
 
 [features]
 # Сборка для клубов берёт экраны из dist внутри exe, а не с dev-сервера.

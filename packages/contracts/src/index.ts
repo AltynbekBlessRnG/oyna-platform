@@ -342,6 +342,19 @@ export interface EnrollStationRequest {
   seatId?: string;
 }
 
+/**
+ * Версия программы Zen для компьютеров зала. Подпись Ed25519 над `zen-station:<version>:<sha256>`
+ * ставится ключом, который есть только у разработчика; компьютер без верной подписи обновление не ставит.
+ */
+export interface StationRelease {
+  version: string;
+  sha256: string;
+  signature: string;
+  size: number;
+  /** Путь на этом же сервере, откуда скачать Zen.exe. */
+  url: string;
+}
+
 export type PlaySessionStatus = "active" | "ended";
 export type PlaySessionEndReason = "player" | "admin" | "expired" | "station";
 

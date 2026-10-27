@@ -7,6 +7,8 @@ async function bootstrap(): Promise<void> {
   // На Render запрос приходит через прокси: адрес клиента — в X-Forwarded-For.
   // Без этого все компьютеры клубов выглядели бы одним адресом для лимита неверных кодов.
   app.set("trust proxy", true);
+  // Новые версии Zen.exe приходят сырым телом запроса; JSON остаётся с обычным лимитом.
+  app.useBodyParser("raw", { type: "application/octet-stream", limit: "50mb" });
   app.enableCors();
   app.setGlobalPrefix("api");
   await app.listen(process.env.PORT ?? 4000);
