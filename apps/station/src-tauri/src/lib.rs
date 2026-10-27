@@ -37,6 +37,14 @@ fn set_locked(window: tauri::WebviewWindow, locked: bool) {
     }
 }
 
+/// Сессия кончилась: перезагружаемся, и «заморозка» клуба (Shadow Defender, Deep Freeze и т. п.)
+/// возвращает компьютер в чистое состояние для следующего игрока. Только под гостем:
+/// компьютер админа, на котором Zen открыли для проверки, перезагружать нельзя.
+#[tauri::command]
+fn restart_computer() -> Result<(), String> {
+    kiosk::restart_if_guest()
+}
+
 /// Админ ввёл PIN: закрываемся с особым кодом, сторож откроет обычную Windows.
 #[tauri::command]
 fn admin_exit(app: tauri::AppHandle) {
@@ -52,7 +60,7 @@ pub fn run() {
                 api.prevent_close();
             }
         })
-        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, admin_exit])
+        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, restart_computer, admin_exit])
         .run(tauri::generate_context!())
         .expect("не удалось запустить Zen");
 }

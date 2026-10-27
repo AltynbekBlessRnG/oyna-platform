@@ -62,6 +62,29 @@ pub fn install_keyboard_hook() {
 #[cfg(not(windows))]
 pub fn install_keyboard_hook() {}
 
+/// Гостевой пользователь Windows из `windows/kiosk-setup.ps1`.
+pub const GUEST_USER: &str = "zen-player";
+
+#[cfg(windows)]
+pub fn restart_if_guest() -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    if !std::env::var("USERNAME").is_ok_and(|user| user.eq_ignore_ascii_case(GUEST_USER)) {
+        return Err("Перезагрузка только под гостевым пользователем".into());
+    }
+    std::process::Command::new("shutdown")
+        .args(["/r", "/t", "0", "/f"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("Не удалось перезагрузить: {error}"))
+}
+
+#[cfg(not(windows))]
+pub fn restart_if_guest() -> Result<(), String> {
+    Err("Перезагрузка работает только в Windows".into())
+}
+
 /// Режим сторожа: им Windows запускает Zen вместо рабочего стола. Если окно Zen
 /// закроют или оно упадёт, сторож поднимает его снова; выход админа — открыть Windows.
 pub fn run_guard() {

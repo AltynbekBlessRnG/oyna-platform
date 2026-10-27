@@ -25,6 +25,8 @@ export interface Platform {
   cleanUp(): Promise<void>;
   /** Свободный компьютер держит Zen поверх всего и закрывает Win, Alt+Tab и Alt+F4. */
   setLocked(locked: boolean): Promise<void>;
+  /** После сессии: перезагрузка, «заморозка» клуба стирает следы игрока. */
+  restart(): Promise<void>;
   /** Выйти из Zen в обычную Windows: только после PIN администратора. */
   adminExit(): Promise<void>;
 }
@@ -61,6 +63,7 @@ const demoPlatform: Platform = {
   launch: async (game) => console.info(`[zen] запуск ${game.name} через ${LAUNCHER_NAMES[game.launcher]}`),
   cleanUp: async () => console.info("[zen] сессия закончилась: игры закрыты, аккаунты игрока разлогинены"),
   setLocked: async () => undefined,
+  restart: async () => console.info("[zen] перезагрузка компьютера"),
   adminExit: async () => console.info("[zen] выход в Windows")
 };
 
@@ -70,6 +73,7 @@ const windowsPlatform: Platform = {
   launch: (game) => invoke("launch_game", { game }),
   cleanUp: () => invoke("clean_up"),
   setLocked: (locked) => invoke("set_locked", { locked }),
+  restart: () => invoke("restart_computer"),
   adminExit: () => invoke("admin_exit")
 };
 
