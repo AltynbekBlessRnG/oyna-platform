@@ -387,7 +387,8 @@ export interface StationState {
  * Сегмент клиента: VIP — топ-10 % по тратам или тег VIP; постоянный — 4+ дня визитов за 30 дней
  * и был не позже двух недель назад; новый — впервые пришёл за последние 14 дней; спящий — 30+ дней без визитов.
  */
-export type ClientSegment = "vip" | "regular" | "new" | "sleeping" | "occasional";
+/** `never` — завёл клубный аккаунт или бронировал, но ни разу не пришёл. */
+export type ClientSegment = "vip" | "regular" | "new" | "sleeping" | "occasional" | "never";
 
 export interface ClubClient {
   userId: string;

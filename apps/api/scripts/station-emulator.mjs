@@ -49,7 +49,9 @@ function render() {
   const session = state.session;
   if (!session) return void showLockScreen().catch((error) => console.error("Не удалось получить код:", error.message));
   clearTimeout(codeTimer);
-  const print = () => console.log(`🎮 ${state.station.name}: играет ${session.playerName}, зона «${session.zoneName}», осталось ${left(session.endsAt)} (до ${time(session.endsAt)})`);
+  // Гостя без имени касса заводит как «Игрок Zen»; на экране ПК его узнают по хвосту номера, как в кабинете.
+  const player = session.playerName === "Игрок Zen" && session.playerPhoneTail ? `Гость ··${session.playerPhoneTail}` : session.playerName;
+  const print = () => console.log(`🎮 ${state.station.name}: играет ${player}, зона «${session.zoneName}», осталось ${left(session.endsAt)} (до ${time(session.endsAt)})`);
   print();
   tickTimer = setInterval(print, 60_000);
 }

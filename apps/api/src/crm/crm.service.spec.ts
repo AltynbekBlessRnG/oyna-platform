@@ -68,6 +68,13 @@ describe("CrmService on PostgreSQL", () => {
     const sleeping = await player("sleeping", "+77011110005", "Тимур");
     await play(sleeping, 45, 60, "05");
     await database.query("UPDATE club_accounts SET created_at = $3 WHERE club_id = $1 AND user_id = $2", [clubId, sleeping.id, new Date(now - 45 * DAY).toISOString()]);
+    // Завёл аккаунт месяц назад, но так и не пришёл.
+    const ghost = await player("ghost", "+77011110006", "Алия");
+    await database.query("INSERT INTO club_accounts (club_id, user_id, nickname, created_at) VALUES ($1, $2, $3, $4)", [clubId, ghost.id, ghost.name, new Date(now - 30 * DAY).toISOString()]);
+    // Администратор клуба пополнил себе баланс для проверки кассы — в клиентах его быть не должно.
+    const staff = await player("staff", "+77011110007", "Администратор");
+    await database.query("INSERT INTO club_memberships (club_id, user_id, role) VALUES ($1, $2, 'admin')", [clubId, staff.id]);
+    await sessions.topUp(clubId, staff.phone, 500, admin);
     for (const key of ["vip", "regular", "fresh", "lost"]) {
       const first = await database.query<{ at: Date }>("SELECT MIN(started_at) AS at FROM play_sessions WHERE user_id = $1", [players[key].id]);
       await database.query("UPDATE club_accounts SET created_at = $3 WHERE club_id = $1 AND user_id = $2", [clubId, players[key].id, first.rows[0].at]);
@@ -86,13 +93,15 @@ describe("CrmService on PostgreSQL", () => {
   it("puts every client into the right segment", async () => {
     const { clients, segments, total } = await crm.listClients(clubId, {}, now);
     const byId = new Map(clients.map((client) => [client.userId, client]));
-    expect(total).toBe(5);
+    expect(total).toBe(6);
+    expect(byId.has(players.staff.id)).toBe(false);
     expect(byId.get(players.vip.id)?.segment).toBe("vip");
     expect(byId.get(players.regular.id)?.segment).toBe("regular");
     expect(byId.get(players.fresh.id)?.segment).toBe("new");
     expect(byId.get(players.sleeping.id)?.segment).toBe("sleeping");
     expect(byId.get(players.lost.id)).toMatchObject({ segment: "occasional", atRisk: true });
-    expect(segments).toEqual({ vip: 1, regular: 1, new: 1, sleeping: 1, occasional: 1 });
+    expect(byId.get(players.ghost.id)?.segment).toBe("never");
+    expect(segments).toEqual({ vip: 1, regular: 1, new: 1, sleeping: 1, occasional: 1, never: 1 });
   });
 
   it("sums time and bar spending and ignores cancelled orders", async () => {

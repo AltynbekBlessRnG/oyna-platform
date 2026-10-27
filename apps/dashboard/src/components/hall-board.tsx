@@ -28,6 +28,14 @@ const REFRESH_MS = 15_000;
 const ENDING_SOON_MIN = 15;
 
 /**
+ * ПК «пропал», только если идёт игра и его клиент уже выходил на связь. Компьютер, который подключили
+ * к месту минуту назад и ещё не запустили, тревогой не считается.
+ */
+function pcLost(session: PlaySession | undefined, station: ClubStation | undefined): boolean {
+  return Boolean(session && station && !station.online && station.lastSeenAt);
+}
+
+/**
  * Касса: карта зала с живыми сессиями, посадка игрока, пополнение и подключение компьютеров.
  * Язык мест тот же, что в приложении игрока: золотой контур — свободно, заливка — занято, пунктир — бронь.
  */
@@ -37,6 +45,8 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
   const [now, setNow] = useState<number | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [credentials, setCredentials] = useState<StationCredentials | null>(null);
+  // Номер из пополнения подставляется в посадку: обычно кассир сначала берёт деньги, потом сажает.
+  const [lastPhone, setLastPhone] = useState("");
   const [isPending, startTransition] = useTransition();
 
   // Касса смотрит на зал весь день: подтягиваем свежие данные и пересчитываем остаток времени.
@@ -60,7 +70,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
   const stationBySeat = new Map<string, ClubStation>(hall.stations.map((station) => [station.seatId, station]));
   const sessionBySeat = new Map<string, PlaySession>(hall.sessions.map((session) => [session.seatId, session]));
   const selected = hall.seatMap.zones.flatMap(({ zone, seats }) => seats.map((seat) => ({ seat, zone }))).find((entry) => entry.seat.id === selectedId);
-  const lostCount = hall.sessions.filter((session) => stationBySeat.get(session.seatId)?.online === false).length;
+  const lostCount = hall.sessions.filter((session) => pcLost(session, stationBySeat.get(session.seatId))).length;
   const online = hall.stations.filter((station) => station.online).length;
 
   function select(seatId: string): void {
@@ -125,7 +135,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
       <div className="space-y-6">
         {message && !selected ? <Notice message={message} /> : null}
         <ActiveSessions sessions={hall.sessions} stationBySeat={stationBySeat} now={now} onSelect={select} showZone={hall.seatMap.zones.length > 1} />
-        <TopUpCard clubId={clubId} run={run} isPending={isPending} />
+        <TopUpCard clubId={clubId} run={run} isPending={isPending} onToppedUp={setLastPhone} />
       </div>
 
       {selected ? (
@@ -139,6 +149,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
           apiUrl={apiUrl}
           message={message}
           credentials={credentials}
+          initialPhone={lastPhone}
           isPending={isPending}
           run={run}
           onCredentials={setCredentials}
@@ -157,7 +168,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect }: {
   selected: boolean;
   onSelect: () => void;
 }) {
-  const lost = Boolean(session && station && !station.online);
+  const lost = pcLost(session, station);
   const soon = Boolean(session && now && minutesUntil(session.endsAt, now) <= ENDING_SOON_MIN);
   return (
     <button
@@ -179,7 +190,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect }: {
       <span className="flex items-center justify-between">
         <strong className={cn("font-display text-base", !session && seat.status === "free" ? "text-primary" : "text-foreground")}>{seat.label}</strong>
         {station ? (
-          <span className={cn("size-2 rounded-full", station.online ? "bg-success" : "bg-danger")} title={station.online ? "ПК на связи" : "ПК не отвечает"} />
+          <span className={cn("size-2 rounded-full", station.online ? "bg-success" : lost ? "bg-danger" : "bg-muted-foreground/50")} title={station.online ? "ПК на связи" : "ПК не на связи"} />
         ) : null}
       </span>
       {session ? (
@@ -216,7 +227,7 @@ function ActiveSessions({ sessions, stationBySeat, now, onSelect, showZone }: {
         ) : (
           <ul className="-mx-2">
             {sorted.map((session) => {
-              const lost = stationBySeat.get(session.seatId)?.online === false;
+              const lost = pcLost(session, stationBySeat.get(session.seatId));
               return (
                 <li key={session.id}>
                   <button type="button" onClick={() => onSelect(session.seatId)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-secondary">
@@ -252,15 +263,17 @@ function SeatPanel(props: {
   apiUrl: string;
   message: { ok: boolean; text: string } | null;
   credentials: StationCredentials | null;
+  initialPhone: string;
   isPending: boolean;
   run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
-  onCredentials: (credentials: StationCredentials) => void;
+  onCredentials: (credentials: StationCredentials | null) => void;
   onClose: () => void;
 }) {
-  const { clubId, entry, session, station, now, apiUrl, message, credentials, isPending, run, onCredentials, onClose } = props;
-  const [phone, setPhone] = useState("");
+  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, isPending, run, onCredentials, onClose } = props;
+  const [phone, setPhone] = useState(initialPhone);
   const [minutes, setMinutes] = useState("");
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [confirmUnbind, setConfirmUnbind] = useState(false);
   const { seat, zone } = entry;
 
   function start(): void {
@@ -275,6 +288,14 @@ function SeatPanel(props: {
     if (!confirmEnd) return setConfirmEnd(true);
     setConfirmEnd(false);
     run(() => endPlaySession(clubId, current.id), (ended) => `Сессия завершена, списано ${money(ended.charged ?? 0)}`);
+  }
+
+  // После отвязки ключ на ПК придётся ставить заново, поэтому, как и завершение сессии, — со второго нажатия.
+  function unbind(current: ClubStation): void {
+    if (!confirmUnbind) return setConfirmUnbind(true);
+    setConfirmUnbind(false);
+    onCredentials(null);
+    run(() => removeStation(clubId, current.id), () => "Компьютер отвязан от места");
   }
 
   function issueKey(action: () => Promise<HallResult<StationCredentials>>, text: string): void {
@@ -306,14 +327,14 @@ function SeatPanel(props: {
           {message ? <Notice message={message} /> : null}
 
           {session ? (
-            <div className={cn("grid gap-3 rounded-xl p-4", station && !station.online ? "bg-danger/10" : "bg-secondary")}>
+            <div className={cn("grid gap-3 rounded-xl p-4", pcLost(session, station) ? "bg-danger/10" : "bg-secondary")}>
               <div>
                 <p className="font-semibold">{playerLabel(session.playerName, session.playerPhoneTail)}</p>
                 <p className="text-muted-foreground">
                   с {clock(session.startedAt)} до {clock(session.endsAt)}
                   {now ? `, осталось ${duration(minutesUntil(session.endsAt, now))}` : ""}
                 </p>
-                {station && !station.online ? (
+                {pcLost(session, station) ? (
                   <p className="mt-2 text-danger">Компьютер не отвечает. Время идёт: проверьте ПК или завершите сессию, чтобы не списывать лишнее.</p>
                 ) : null}
               </div>
@@ -343,15 +364,21 @@ function SeatPanel(props: {
             {station ? (
               <>
                 <p className="text-muted-foreground">
-                  {station.name}, {station.online ? <span className="text-success">на связи</span> : <span className="text-danger">не отвечает</span>}
-                  {station.lastSeenAt ? `, был в ${clock(station.lastSeenAt)}` : ", ещё не подключался"}
+                  {station.name},{" "}
+                  {station.online ? (
+                    <span className="text-success">на связи</span>
+                  ) : station.lastSeenAt ? (
+                    <><span className="text-danger">не отвечает</span>, был в {clock(station.lastSeenAt)}</>
+                  ) : (
+                    "ещё не подключался"
+                  )}
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" variant="secondary" disabled={isPending} onClick={() => issueKey(() => rotateStationKey(clubId, station.id), "Новый ключ выпущен, старый больше не работает")}>
                     <KeyRound className="size-4" />Новый ключ
                   </Button>
-                  <Button size="sm" variant="secondary" disabled={isPending} onClick={() => run(() => removeStation(clubId, station.id), () => "Компьютер отвязан от места")}>
-                    <Unplug className="size-4" />Отвязать
+                  <Button size="sm" variant="secondary" disabled={isPending} onClick={() => unbind(station)}>
+                    <Unplug className="size-4" />{confirmUnbind ? "Нажмите ещё раз, чтобы отвязать" : "Отвязать"}
                   </Button>
                 </div>
               </>
@@ -378,8 +405,9 @@ function SeatPanel(props: {
   );
 }
 
-function TopUpCard({ clubId, run, isPending }: {
+function TopUpCard({ clubId, run, isPending, onToppedUp }: {
   clubId: string;
+  onToppedUp: (phone: string) => void;
   run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
   isPending: boolean;
 }) {
@@ -389,6 +417,7 @@ function TopUpCard({ clubId, run, isPending }: {
   function submit(): void {
     run(() => topUpBalance(clubId, phone, Number(amount)), (result) => {
       setAmount("");
+      onToppedUp(phone);
       return `${playerLabel(result.playerName, phone.replace(/\D/g, "").slice(-4))}: +${money(result.amount)}, на балансе ${money(result.balance)}`;
     });
   }

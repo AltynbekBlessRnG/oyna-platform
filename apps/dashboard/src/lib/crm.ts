@@ -5,10 +5,11 @@ export const SEGMENTS: Record<ClientSegment, { label: string; hint: string; tone
   regular: { label: "Постоянные", hint: "4+ дня за месяц, были на этой неделе или прошлой", tone: "success" },
   new: { label: "Новые", hint: "впервые пришли за последние 14 дней", tone: "neutral" },
   occasional: { label: "Иногда", hint: "заходят время от времени", tone: "neutral" },
-  sleeping: { label: "Спящие", hint: "больше 30 дней без визитов", tone: "neutral" }
+  sleeping: { label: "Спящие", hint: "больше 30 дней без визитов", tone: "neutral" },
+  never: { label: "Не приходили", hint: "завели аккаунт или бронировали, но ни разу не были", tone: "neutral" }
 };
 
-export const SEGMENT_ORDER: ClientSegment[] = ["vip", "regular", "new", "occasional", "sleeping"];
+export const SEGMENT_ORDER: ClientSegment[] = ["vip", "regular", "new", "occasional", "sleeping", "never"];
 
 export const SORTS: { value: ClientSort; label: string }[] = [
   { value: "lastVisit", label: "по последнему визиту" },

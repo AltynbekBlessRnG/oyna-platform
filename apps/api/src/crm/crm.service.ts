@@ -98,13 +98,15 @@ SELECT f.user_id, u.name, u.phone, a.nickname,
        COALESCE(t.topped_up, 0) AS topped_up,
        COALESCE(b.bookings_count, 0) AS bookings_count, COALESCE(b.cancelled_bookings, 0) AS cancelled_bookings
 FROM first_seen f
-JOIN users u ON u.id = f.user_id AND u.deleted_at IS NULL
+JOIN users u ON u.id = f.user_id AND u.deleted_at IS NULL AND u.role <> 'platform_admin'
 LEFT JOIN club_accounts a ON a.club_id = $1 AND a.user_id = f.user_id
 LEFT JOIN visit_stats v ON v.user_id = f.user_id
 LEFT JOIN session_stats s ON s.user_id = f.user_id
 LEFT JOIN order_stats o ON o.user_id = f.user_id
 LEFT JOIN booking_stats b ON b.user_id = f.user_id
 LEFT JOIN topup_stats t ON t.user_id = f.user_id
+-- Сотрудники клуба — не клиенты: их тестовые брони и пополнения не должны попадать в CRM.
+WHERE NOT EXISTS (SELECT 1 FROM club_memberships m WHERE m.club_id = $1 AND m.user_id = f.user_id)
 `;
 
 /**
@@ -125,7 +127,7 @@ export class CrmService {
     now = Date.now()
   ): Promise<ClubClientsResponse> {
     const all = await this.loadClients(clubId, now);
-    const segments: Record<ClientSegment, number> = { vip: 0, regular: 0, new: 0, sleeping: 0, occasional: 0 };
+    const segments: Record<ClientSegment, number> = { vip: 0, regular: 0, new: 0, sleeping: 0, occasional: 0, never: 0 };
     for (const client of all) segments[client.segment] += 1;
 
     const query = options.search?.trim().toLowerCase() ?? "";
@@ -265,6 +267,8 @@ export class CrmService {
       // Постоянный ходит прямо сейчас: кто был часто, но пропал на две недели, уже не постоянный, а в зоне риска.
       else if (client.visitDays30 >= 4 && idleDays < 14) segment = "regular";
       else if (now - Date.parse(client.firstSeenAt) <= 14 * DAY_MS) segment = "new";
+      // Без единого визита «спящим» не назвать: человек ещё не пришёл, ему нужен другой разговор.
+      else if (!client.lastVisitAt) segment = "never";
       else if (idleDays > 30) segment = "sleeping";
       else segment = "occasional";
       const loyal = vip || client.visitDays >= 4;

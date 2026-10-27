@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
 import type { AuthUser, AvailabilitySnapshot, BookingReceipt, BookingStatus, ClubAvailability, ClubSeatMap, ClubZone, CreateBookingRequest, SeatMapSeat } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
@@ -34,8 +34,13 @@ export interface SeatReservation {
   end: number;
 }
 
+/** Как часто снимаются заявки, на которые клуб не ответил до начала брони. */
+const UNANSWERED_SWEEP_MS = 60_000;
+
 @Injectable()
-export class BookingsService {
+export class BookingsService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(BookingsService.name);
+  private sweeper?: NodeJS.Timeout;
   private readonly memoryBookings = new Map<string, BookingReceipt & { userId: string; playerPhone: string }>();
   private sessionOccupancy?: SessionOccupancy;
 
@@ -47,6 +52,50 @@ export class BookingsService {
 
   useSessionOccupancy(source: SessionOccupancy): void {
     this.sessionOccupancy = source;
+  }
+
+  onModuleInit(): void {
+    this.sweeper = setInterval(() => {
+      this.expireUnanswered().catch((error: unknown) => this.logger.error(`Не удалось снять просроченные заявки: ${String(error)}`));
+    }, UNANSWERED_SWEEP_MS);
+    this.sweeper.unref();
+  }
+
+  onModuleDestroy(): void {
+    clearInterval(this.sweeper);
+  }
+
+  /**
+   * Заявка, на которую клуб не ответил до начала брони, уже бессмысленна: снимаем её, освобождаем места
+   * и говорим игроку, что клуб не успел ответить, — иначе она висит в очереди кассы неделями.
+   */
+  async expireUnanswered(now = Date.now()): Promise<number> {
+    let expired: { userId: string; receipt: BookingReceipt }[];
+    if (!this.database.configured) {
+      expired = [...this.memoryBookings.values()]
+        .filter((booking) => booking.status === "pending" && Date.parse(booking.startAt) <= now)
+        .map((booking) => {
+          const updated = { ...booking, status: "cancelled" as const, updatedAt: new Date(now).toISOString() };
+          this.memoryBookings.set(booking.id, updated);
+          return { userId: booking.userId, receipt: this.stripInternal(updated) };
+        });
+    } else {
+      const result = await this.database.query<BookingRow>(
+        "UPDATE bookings SET status = 'cancelled', updated_at = NOW() WHERE status = 'pending' AND start_at <= $1 RETURNING *",
+        [new Date(now).toISOString()]
+      );
+      expired = result.rows.map((row) => ({ userId: row.user_id, receipt: this.mapRow(row) }));
+    }
+    for (const { userId, receipt } of expired) {
+      const club = await this.clubsService.findOne(receipt.clubId).catch(() => undefined);
+      await this.notifications.create(userId, {
+        type: "booking_status",
+        title: "Клуб не успел ответить на заявку",
+        body: `${club?.name ?? "Клуб"} не подтвердил бронь до её начала, заявка снята. Места можно забронировать заново.`,
+        href: `/bookings?id=${receipt.id}`
+      });
+    }
+    return expired.length;
   }
 
   /** Действующие брони одного места, которые ещё не закончились к моменту `from`. */

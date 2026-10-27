@@ -66,6 +66,17 @@ describe("BookingsService", () => {
     expect(cancelled.status).toBe("cancelled");
   });
 
+  it("withdraws a request the club never answered once its start has passed", async () => {
+    const player: AuthUser = { ...user, id: "user-late" };
+    const request = await service.create({ clubId: "vertex-arena", zoneId: "vip", seatIds: ["vertex-arena-vip-03"], startAt, durationHours: 1, playerName: "" }, player);
+    expect(await service.expireUnanswered(Date.parse(startAt) - 60_000)).toBe(0);
+    expect(await service.expireUnanswered(Date.parse(startAt) + 60_000)).toBe(1);
+    const [withdrawn] = await service.findForUser(player.id);
+    expect(withdrawn).toMatchObject({ id: request.id, status: "cancelled" });
+    const [notification] = await notifications.list(player.id);
+    expect(notification.title).toBe("Клуб не успел ответить на заявку");
+  });
+
   it("marks a seat busy while the session runs and reserved before it starts", async () => {
     const now = Date.now();
     const running: CreateBookingRequest = {
