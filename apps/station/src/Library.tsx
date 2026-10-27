@@ -57,13 +57,13 @@ export function Library({
                   <Icon name="search" size={18} />
                   <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти игру" aria-label="Найти игру" />
                 </label>
-                <div className="chips" role="group" aria-label="Жанр">
+                {genres.length > 1 && <div className="chips" role="group" aria-label="Жанр">
                   {genres.map((name) => (
                     <button key={name} className="chip" aria-pressed={genre === name} onClick={() => setGenre(name)}>
                       {name}
                     </button>
                   ))}
-                </div>
+                </div>}
               </header>
             ) : (
               <header className="lock-head">
@@ -169,8 +169,8 @@ function GameDialog({ game, session, onClose, onPlay }: { game: InstalledGame; s
   return (
     <div className="backdrop" onClick={onClose}>
       <section role="dialog" aria-modal="true" aria-label={game.name} className="dialog" onClick={(event) => event.stopPropagation()}>
-        <div className="dialog-cover" style={{ background: game.bg, color: game.ink }}>
-          <span>{game.logo}</span>
+        <div className="dialog-cover" style={game.cover ? { background: `center / cover no-repeat url(${game.cover})` } : { background: game.bg, color: game.ink }}>
+          <span>{game.cover ? "" : game.logo}</span>
           <button className="dialog-close" aria-label="Закрыть" onClick={onClose}>
             <Icon name="close" size={18} />
           </button>

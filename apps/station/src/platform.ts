@@ -1,4 +1,6 @@
-/** Игра, найденная на этом компьютере. Обложку пока рисуем сами: цвет и надпись. */
+import { invoke, isTauri } from "@tauri-apps/api/core";
+
+/** Игра, найденная на этом компьютере. Без обложки из лаунчера рисуем плитку сами: цвет и надпись. */
 export interface InstalledGame {
   id: string;
   name: string;
@@ -7,6 +9,8 @@ export interface InstalledGame {
   logo: string;
   bg: string;
   ink: string;
+  /** Обложка из кэша лаунчера, `data:` URL. */
+  cover?: string;
 }
 
 /**
@@ -54,4 +58,11 @@ const demoPlatform: Platform = {
   cleanUp: async () => console.info("[zen] сессия закончилась: игры закрыты, аккаунты игрока разлогинены")
 };
 
-export const platform: Platform = demoPlatform;
+/** Оболочка Windows (`src-tauri`): настоящие игры с диска. */
+const windowsPlatform: Platform = {
+  listGames: () => invoke<InstalledGame[]>("list_games"),
+  launch: (game) => invoke("launch_game", { game }),
+  cleanUp: () => invoke("clean_up")
+};
+
+export const platform: Platform = isTauri() ? windowsPlatform : demoPlatform;

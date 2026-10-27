@@ -18,7 +18,7 @@ export function Lock({ state, games, link, now, requestCode }: { state: StationS
       <main className="center">
         <header className="lock-head">
           <h1>{state.clubName}</h1>
-          <span className="muted">на этом компьютере {gamesCount(games.length)} — войдите, чтобы играть</span>
+          <span className="muted">{games.length > 0 ? `на этом компьютере ${gamesCount(games.length)} — войдите, чтобы играть` : "войдите по коду, чтобы начать"}</span>
         </header>
         <div className="grid dimmed" aria-hidden="true">
           {games.map((game) => (

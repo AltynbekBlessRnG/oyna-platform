@@ -166,9 +166,13 @@ h2 {
   scrollbar-color: var(--line-strong) transparent;
 }
 
-/* Над плитками одна строка заголовка, а не поиск с жанрами. */
+/* Над плитками одна строка заголовка или только поиск, а не поиск с жанрами. */
 .lock-head + .grid {
   --head: 40px;
+}
+
+.filters:not(:has(.chips)) + .grid {
+  --head: 44px;
 }
 
 .grid.dimmed {
@@ -203,6 +207,10 @@ button.tile:hover {
   font-family: var(--display);
   font-weight: 700;
   line-height: 1.05;
+}
+
+.cover-art {
+  background: var(--raised) center / cover no-repeat;
 }
 
 .tile-name {

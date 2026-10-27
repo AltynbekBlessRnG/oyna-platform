@@ -77,6 +77,7 @@ export function Rail({ active, onSelect }: { active?: View; onSelect?: (view: Vi
 
 export function GameCover({ game, large }: { game: InstalledGame; large?: boolean }) {
   const size = game.logo.length > 10 ? 18 : game.logo.length > 6 ? 24 : 34;
+  if (game.cover) return <div className="cover cover-art" style={{ backgroundImage: `url(${game.cover})` }} role="img" aria-label={game.name} />;
   return (
     <div className="cover" style={{ background: game.bg, color: game.ink }}>
       <span style={{ fontSize: large ? size * 1.8 : size }}>{game.logo}</span>
