@@ -23,6 +23,10 @@ export interface Platform {
   launch(game: InstalledGame): Promise<void>;
   /** Сессия закончилась: закрыть игры, выйти из аккаунтов, стереть данные входа. */
   cleanUp(): Promise<void>;
+  /** Свободный компьютер держит Zen поверх всего и закрывает Win, Alt+Tab и Alt+F4. */
+  setLocked(locked: boolean): Promise<void>;
+  /** Выйти из Zen в обычную Windows: только после PIN администратора. */
+  adminExit(): Promise<void>;
 }
 
 export const LAUNCHER_NAMES: Record<InstalledGame["launcher"], string> = {
@@ -55,14 +59,18 @@ const DEMO_GAMES: InstalledGame[] = [
 const demoPlatform: Platform = {
   listGames: async () => DEMO_GAMES,
   launch: async (game) => console.info(`[zen] запуск ${game.name} через ${LAUNCHER_NAMES[game.launcher]}`),
-  cleanUp: async () => console.info("[zen] сессия закончилась: игры закрыты, аккаунты игрока разлогинены")
+  cleanUp: async () => console.info("[zen] сессия закончилась: игры закрыты, аккаунты игрока разлогинены"),
+  setLocked: async () => undefined,
+  adminExit: async () => console.info("[zen] выход в Windows")
 };
 
 /** Оболочка Windows (`src-tauri`): настоящие игры с диска. */
 const windowsPlatform: Platform = {
   listGames: () => invoke<InstalledGame[]>("list_games"),
   launch: (game) => invoke("launch_game", { game }),
-  cleanUp: () => invoke("clean_up")
+  cleanUp: () => invoke("clean_up"),
+  setLocked: (locked) => invoke("set_locked", { locked }),
+  adminExit: () => invoke("admin_exit")
 };
 
 export const platform: Platform = isTauri() ? windowsPlatform : demoPlatform;

@@ -3,6 +3,8 @@ export interface StationConfig {
   apiUrl: string;
   stationId: string;
   token: string;
+  /** SHA-256 PIN администратора: по нему Zen выпускает в обычную Windows. */
+  adminPinHash?: string;
 }
 
 // В браузере настройки живут в localStorage. Оболочка для Windows будет хранить их
@@ -35,4 +37,9 @@ export function clearConfig(): void {
   } catch {
     // Нечего стирать.
   }
+}
+
+export async function hashPin(pin: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`zen-admin:${pin}`));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }

@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { DEFAULT_API_URL, type StationConfig } from "./config";
+import { DEFAULT_API_URL, hashPin, type StationConfig } from "./config";
 import { Logo } from "./ui";
 
 /** Первый запуск: администратор вводит id и ключ, которые кабинет показал при подключении места. */
@@ -7,15 +7,16 @@ export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (conf
   const [apiUrl, setApiUrl] = useState(initialApiUrl ?? DEFAULT_API_URL);
   const [stationId, setStationId] = useState("");
   const [token, setToken] = useState("");
+  const [pin, setPin] = useState("");
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    onSave({ apiUrl: apiUrl.trim(), stationId: stationId.trim(), token: token.trim() });
+    onSave({ apiUrl: apiUrl.trim(), stationId: stationId.trim(), token: token.trim(), adminPinHash: await hashPin(pin) });
   };
 
   return (
     <main className="setup">
-      <form className="setup-card" onSubmit={submit}>
+      <form className="setup-card" onSubmit={(event) => void submit(event)}>
         <Logo />
         <h1>Подключить компьютер к клубу</h1>
         <p className="muted">
@@ -30,6 +31,11 @@ export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (conf
         <label>
           Ключ
           <input value={token} onChange={(event) => setToken(event.target.value)} required spellCheck={false} />
+        </label>
+        <label>
+          PIN администратора
+          <input value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))} required minLength={4} inputMode="numeric" type="password" />
+          <span className="small">Чтобы выйти из Zen в Windows для обслуживания: Ctrl+Alt+Shift+F12 и этот PIN.</span>
         </label>
         <details>
           <summary>Адрес сервера</summary>

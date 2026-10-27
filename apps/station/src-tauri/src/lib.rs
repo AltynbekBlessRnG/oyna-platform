@@ -1,7 +1,12 @@
 mod games;
+mod kiosk;
 mod vdf;
 
 use games::InstalledGame;
+use std::sync::atomic::Ordering;
+use tauri::WindowEvent;
+
+pub use kiosk::run_guard;
 
 #[tauri::command]
 fn list_games() -> Vec<InstalledGame> {
@@ -21,9 +26,33 @@ fn clean_up() -> Result<(), String> {
     Ok(())
 }
 
+/// Свободный компьютер: Zen поверх всего и системные клавиши закрыты.
+/// Во время сессии окно отпускаем, чтобы игра могла выйти на передний план.
+#[tauri::command]
+fn set_locked(window: tauri::WebviewWindow, locked: bool) {
+    kiosk::LOCKED.store(locked, Ordering::Relaxed);
+    let _ = window.set_always_on_top(locked);
+    if locked {
+        let _ = window.set_focus();
+    }
+}
+
+/// Админ ввёл PIN: закрываемся с особым кодом, сторож откроет обычную Windows.
+#[tauri::command]
+fn admin_exit(app: tauri::AppHandle) {
+    app.exit(kiosk::ADMIN_EXIT_CODE);
+}
+
 pub fn run() {
+    kiosk::install_keyboard_hook();
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up])
+        .on_window_event(|_window, event| {
+            // Alt+F4 и прочие попытки закрыть окно: выйти из Zen можно только через PIN админа.
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+            }
+        })
+        .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, admin_exit])
         .run(tauri::generate_context!())
         .expect("не удалось запустить Zen");
 }

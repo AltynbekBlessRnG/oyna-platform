@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { clearConfig, loadConfig, saveConfig, type StationConfig } from "./config";
 import { useNow, useStation } from "./connection";
+import { AdminExit } from "./AdminExit";
 import { Library } from "./Library";
 import { Lock } from "./Lock";
 import { platform, type InstalledGame } from "./platform";
@@ -47,20 +48,31 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
   const session = state?.session && Date.parse(state.session.endsAt) > now ? state.session : null;
   useCleanUpAfter(session?.id);
 
+  const locked = !session;
+  useEffect(() => {
+    void platform.setLocked(locked);
+  }, [locked]);
+
   useEffect(() => {
     if (link === "rejected") onRejected(rejection ?? "Сервер не принял ключ этого компьютера");
   }, [link, rejection, onRejected]);
 
-  if (!state) {
-    return (
+  const screen = !state ? (
       <main className="splash">
         <Logo />
         <p className="muted">{link === "offline" ? "Нет связи с сервером клуба. Пробуем снова…" : "Подключаемся к клубу…"}</p>
       </main>
+    ) : !session ? (
+      <Lock state={state} games={games} link={link} now={now} requestCode={requestCode} />
+    ) : (
+      <Library key={session.id} state={state} session={session} games={games} link={link} now={now} endSession={endSession} />
     );
-  }
-  if (!session) return <Lock state={state} games={games} link={link} now={now} requestCode={requestCode} />;
-  return <Library key={session.id} state={state} session={session} games={games} link={link} now={now} endSession={endSession} />;
+  return (
+    <>
+      {screen}
+      <AdminExit pinHash={config.adminPinHash} />
+    </>
+  );
 }
 
 function useGames(): InstalledGame[] {
