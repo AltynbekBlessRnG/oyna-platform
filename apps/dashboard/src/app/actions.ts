@@ -3,6 +3,7 @@
 import type {
   AuthSession,
   BookingReceipt,
+  ChallengeStatusResponse,
   ClubSummary,
   ClientNote,
   ClubZone,
@@ -38,23 +39,24 @@ export async function updateBookingStatus(clubId: string, id: string, status: Up
   return booking;
 }
 
-export async function requestAdminCode(phone: string): Promise<{ challengeId?: string; devCode?: string; message?: string }> {
+export async function requestAdminCode(phone: string): Promise<{ challengeId?: string; devCode?: string; telegramBotUrl?: string; message?: string }> {
   try {
     const response = await fetch(`${apiUrl}/auth/request-code`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ phone })
     });
+    if (response.status === 429) return { message: ((await response.json().catch(() => ({}))) as { message?: string }).message ?? "Код уже отправлен. Подождите минуту." };
     if (!response.ok) return { message: "Проверьте номер телефона в формате +7XXXXXXXXXX" };
-    const { challengeId, devCode } = (await response.json()) as RequestCodeResponse;
-    return { challengeId, devCode };
+    const { challengeId, devCode, telegramBotUrl } = (await response.json()) as RequestCodeResponse;
+    return { challengeId, devCode, telegramBotUrl };
   } catch {
     return { message: "API недоступен. Запустите pnpm dev:api и повторите." };
   }
 }
 
 export async function confirmAdminCode(challengeId: string, code: string): Promise<ActionResult> {
-  let clubs: ManagedClub[];
+  let session: AuthSession;
   try {
     const response = await fetch(`${apiUrl}/auth/verify-code`, {
       method: "POST",
@@ -62,7 +64,34 @@ export async function confirmAdminCode(challengeId: string, code: string): Promi
       body: JSON.stringify({ challengeId, code })
     });
     if (!response.ok) return { ok: false, message: "Неверный или просроченный код" };
-    const session = (await response.json()) as AuthSession;
+    session = (await response.json()) as AuthSession;
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось войти") };
+  }
+  return finishAdminLogin(session);
+}
+
+/**
+ * Форма опрашивает это действие, пока администратор подтверждает номер в Telegram.
+ * `pending: true` — номер ещё не подтверждён, спросим снова.
+ */
+export async function checkAdminTelegram(challengeId: string): Promise<ActionResult & { pending?: boolean }> {
+  let status: ChallengeStatusResponse;
+  try {
+    const response = await fetch(`${apiUrl}/auth/challenges/${encodeURIComponent(challengeId)}`, { cache: "no-store" });
+    if (!response.ok) return { ok: false, pending: true, message: "" };
+    status = (await response.json()) as ChallengeStatusResponse;
+  } catch {
+    // Сеть моргнула: просто спросим в следующий раз.
+    return { ok: false, pending: true, message: "" };
+  }
+  if (status.status !== "verified" || !status.session) return { ok: false, pending: true, message: "" };
+  return finishAdminLogin(status.session);
+}
+
+async function finishAdminLogin(session: AuthSession): Promise<ActionResult> {
+  let clubs: ManagedClub[];
+  try {
     // Клуб ещё неизвестен: временно кладём токен, чтобы запросить список доступных клубов.
     await startSession(session.accessToken, "");
     clubs = await loadManagedClubs();
