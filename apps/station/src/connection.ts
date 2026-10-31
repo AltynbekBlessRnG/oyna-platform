@@ -1,7 +1,9 @@
-import type { StationCommand, StationLoginCode, StationState } from "@oyna/contracts";
+import type { CreateOrderRequest, StationCommand, StationLoginCode, StationOrderResult, StationState } from "@oyna/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
 import type { StationConfig } from "./config";
+
+export type StationOrderRequest = Pick<CreateOrderRequest, "lines" | "comment">;
 
 export type Link = "connecting" | "online" | "offline" | "rejected";
 
@@ -73,7 +75,14 @@ export function useStation(config: StationConfig, onCommand: (command: StationCo
     setState((await socket.timeout(10_000).emitWithAck("session:end")) as StationState);
   }, []);
 
-  return { state, link, rejection, requestCode, endSession };
+  /** Заказ из бара к этому месту: место сервер знает сам по ключу компьютера. */
+  const placeOrder = useCallback(async (request: StationOrderRequest): Promise<StationOrderResult> => {
+    const socket = socketRef.current;
+    if (!socket?.connected) throw new Error("Нет связи с сервером");
+    return (await socket.timeout(10_000).emitWithAck("order", request)) as StationOrderResult;
+  }, []);
+
+  return { state, link, rejection, requestCode, endSession, placeOrder };
 }
 
 /**

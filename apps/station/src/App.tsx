@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { clearConfig, loadConfig, saveConfig, type StationConfig } from "./config";
 import { serverNow, useNow, useStation } from "./connection";
 import { AdminExit } from "./AdminExit";
+import { useClubInfo } from "./club";
 import { Library } from "./Library";
 import { Lock } from "./Lock";
 import { platform, type InstalledGame } from "./platform";
@@ -53,7 +54,7 @@ export function App() {
 
 function Station({ config, onRejected }: { config: StationConfig; onRejected: (message: string) => void }) {
   const [notice, setNotice] = useState<string | null>(null);
-  const { state, link, rejection, requestCode, endSession } = useStation(config, (command) => {
+  const { state, link, rejection, requestCode, endSession, placeOrder } = useStation(config, (command) => {
     if (command.type === "message" && command.text) {
       setNotice(command.text);
       void platform.bringToFront();
@@ -65,6 +66,7 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
   });
   const now = useNow();
   const games = useGames();
+  const club = useClubInfo(config.apiUrl, state?.station.clubId, link === "online");
 
   // Пока есть связь, сессию заканчивает сервер. Без связи он об этом не скажет — тогда считаем
   // сами, по его же часам (см. serverNow), чтобы спешащие часы Windows не обрывали оплаченное время.
@@ -93,9 +95,9 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
       <p className="muted">Компьютер перезагрузится через {Math.max(0, Math.ceil((restartAt - now) / 1_000))} с и будет готов для следующего игрока.</p>
     </main>
   ) : !session ? (
-    <Lock state={state} games={games} link={link} now={now} requestCode={requestCode} />
+    <Lock state={state} games={games} club={club} link={link} now={now} requestCode={requestCode} />
   ) : (
-    <Library key={session.id} state={state} session={session} games={games} link={link} now={now} endSession={endSession} />
+    <Library key={session.id} state={state} session={session} games={games} club={club} link={link} now={now} endSession={endSession} placeOrder={placeOrder} />
   );
   return (
     <>

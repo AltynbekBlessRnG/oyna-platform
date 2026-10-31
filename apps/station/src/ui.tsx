@@ -2,6 +2,28 @@ import type { ReactNode } from "react";
 import type { InstalledGame } from "./platform";
 
 const ICONS: Record<string, ReactNode> = {
+  home: (
+    <>
+      <path d="M4 10.5L12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />
+    </>
+  ),
+  bar: (
+    <>
+      <path d="M6 8h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z" />
+      <path d="M17 9.5h1.5a2.5 2.5 0 0 1 0 5H17" />
+      <path d="M9 3.5c-.6.8-.6 1.7 0 2.5M12.5 3.5c-.6.8-.6 1.7 0 2.5" />
+    </>
+  ),
+  trophy: (
+    <>
+      <path d="M8 4h8v5a4 4 0 0 1-8 0z" />
+      <path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4" />
+      <path d="M12 13v4M8.5 20h7M10 17h4" />
+    </>
+  ),
+  plus: <path d="M12 6v12M6 12h12" />,
+  minus: <path d="M6 12h12" />,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   games: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />
@@ -49,24 +71,30 @@ export function Logo() {
   );
 }
 
-export type View = "games" | "recent" | "help";
+export type View = "home" | "games" | "bar" | "recent" | "help";
 
 const RAIL: { view: View; label: string }[] = [
+  { view: "home", label: "Главная" },
   { view: "games", label: "Игры" },
+  { view: "bar", label: "Бар" },
   { view: "recent", label: "Недавние" }
 ];
 
-/** Левая колонка навигации. На экране блокировки та же, но неактивная. */
-export function Rail({ active, onSelect }: { active?: View; onSelect?: (view: View) => void }) {
-  const locked = !onSelect;
+/** Левая колонка навигации игрока. `badges` — счётчики на кнопках, например позиций в корзине бара. */
+export function Rail({ active, onSelect, badges }: { active: View; onSelect: (view: View) => void; badges?: Partial<Record<View, number>> }) {
   const button = (view: View, label: string) => (
-    <button key={view} className="rail-btn" aria-current={active === view ? "page" : undefined} disabled={locked} onClick={() => onSelect?.(view)}>
+    <button key={view} className="rail-btn" aria-current={active === view ? "page" : undefined} onClick={() => onSelect(view)}>
       <Icon name={view} />
       {label}
+      {badges?.[view] ? (
+        <span className="rail-badge" aria-label={`в корзине ${badges[view]}`}>
+          {badges[view]}
+        </span>
+      ) : null}
     </button>
   );
   return (
-    <nav className="rail" aria-label={locked ? "Разделы откроются после входа" : "Разделы"}>
+    <nav className="rail" aria-label="Разделы">
       <Logo />
       {RAIL.map(({ view, label }) => button(view, label))}
       <span className="grow" />

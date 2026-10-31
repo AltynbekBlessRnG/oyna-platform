@@ -10,6 +10,8 @@
   --faint: #5c5c5c;
   --accent: #ffc83d;
   --accent-ink: #141414;
+  --accent-soft: rgba(255, 200, 61, 0.14);
+  --accent-line: rgba(255, 200, 61, 0.38);
   --success: #6fdc9b;
   --danger: #ff6b5e;
   --display: Unbounded, system-ui, sans-serif;
@@ -83,8 +85,7 @@ h2 {
 .grow {
   flex: 1;
 }
-
-/* ---------- Раскладка: навигация · игры · панель игрока ---------- */
+/* ---------- Раскладка игрока: навигация · верхняя строка · раздел ---------- */
 
 .screen {
   height: 100%;
@@ -108,6 +109,7 @@ h2 {
 }
 
 .rail-btn {
+  position: relative;
   width: 4.8rem;
   height: 4.5333rem;
   border: 0;
@@ -122,29 +124,134 @@ h2 {
   gap: 0.4rem;
 }
 
-.rail-btn:hover:not(:disabled) {
+.rail-btn:hover {
   background: var(--card);
   color: var(--text);
 }
 
 .rail-btn[aria-current="page"] {
-  background: rgba(255, 200, 61, 0.14);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
-.rail-btn:disabled {
-  color: var(--faint);
-  cursor: default;
+.rail-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.8rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.7333rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
 }
 
-.center {
+.app {
   flex: 1;
   min-width: 0;
-  padding: 1.6rem 1.6rem 0;
   display: flex;
   flex-direction: column;
-  gap: var(--gap);
+}
+
+.topbar {
+  min-height: 5.6rem;
+  flex-shrink: 0;
+  padding: 0.9333rem 1.6rem;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 0.6667rem;
+}
+
+.greeting {
+  display: flex;
+  align-items: center;
+  gap: 0.9333rem;
+  min-width: 0;
+}
+
+.greeting > div {
+  min-width: 0;
+}
+
+.greeting h1,
+.topbar-title {
+  font-size: 1.4667rem;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill {
+  height: 2.6667rem;
+  padding: 0 0.9333rem;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  font-size: 0.9333rem;
+  flex-shrink: 0;
+}
+
+.pill strong {
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.time-pill svg {
+  color: var(--muted);
+}
+
+.time-pill.warn {
+  border-color: var(--accent-line);
+}
+
+.time-pill.warn strong,
+.time-pill.warn svg {
+  color: var(--accent);
+}
+
+.offline-pill {
+  color: var(--danger);
+  border-color: rgba(255, 107, 94, 0.4);
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar .danger {
+  height: 2.6667rem;
+  padding: 0 1.2rem;
+  flex-shrink: 0;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.page {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.8667rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.page-lead {
+  margin: 0;
 }
 
 .side {
@@ -159,7 +266,40 @@ h2 {
   overflow-y: auto;
 }
 
-/* ---------- Плитки игр: колонок столько, сколько влезает по ширине, остальное прокручивается ---------- */
+.side p {
+  margin: 0;
+}
+
+/* Заголовок блока: название слева, пояснение рядом, действие справа. */
+.block-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  margin-bottom: 0.9333rem;
+}
+
+.block-head h2 {
+  font-size: 1.0667rem;
+  white-space: nowrap;
+}
+
+.link-btn {
+  margin-left: auto;
+  border: 0;
+  padding: 0.2rem 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9333rem;
+  white-space: nowrap;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+/* ---------- Плитки игр ---------- */
 
 .grid {
   display: grid;
@@ -172,11 +312,6 @@ h2 {
   scrollbar-color: var(--line-strong) transparent;
 }
 
-.grid.dimmed {
-  opacity: 0.28;
-  overflow: hidden;
-}
-
 .tile {
   border: 0;
   padding: 0;
@@ -186,12 +321,14 @@ h2 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  transition: background 0.12s ease;
 }
 
+/* Обводка рисуется поверх содержимого, поэтому её не обрезает строка полки. */
 button.tile:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 0 2px var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--raised);
 }
 
 /* Пропорции шапки Steam (460×215): плитка не растягивается ни на каком мониторе. */
@@ -217,11 +354,28 @@ button.tile:hover {
   padding: 0 0.9333rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.6667rem;
   font-weight: 600;
   font-size: 0.9333rem;
   white-space: nowrap;
+}
+
+.tile-name > span:first-child {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Жанр уступает место названию: сжимается первым. */
+.tile-genre {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.8rem;
 }
 
 .empty {
@@ -230,52 +384,229 @@ button.tile:hover {
 
 /* ---------- Экран блокировки ---------- */
 
-.lock-head {
+.lock {
+  height: 100%;
   display: flex;
-  align-items: baseline;
-  gap: 0.9333rem;
-  min-height: 2.6667rem;
+  /* Тёплый свет из-за часов: единственная подсветка на экране. */
+  background: radial-gradient(ellipse 70% 60% at 8% -12%, rgba(255, 200, 61, 0.11), transparent 70%), var(--bg);
 }
 
-.lock-head h1 {
-  font-size: 1.4667rem;
-}
-
-.side-head {
+.lock-main {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 1.8667rem;
+  padding: 2.1333rem 2.4rem;
+  overflow: hidden;
 }
 
-.side-head {
+.lock-hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "brand brand"
+    "clock meta";
+  align-items: end;
+  column-gap: 2.1333rem;
+  row-gap: 1.0667rem;
+}
+
+.lock-brand {
+  grid-area: brand;
+  display: flex;
+  align-items: center;
   gap: 0.8rem;
 }
 
-.seat {
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 1.7333rem;
-  white-space: nowrap;
+.lock-brand .logo {
+  margin: 0;
 }
 
-.free {
-  font-size: 0.8667rem;
-  color: var(--success);
-  margin-top: 0.2667rem;
-}
-
-.time {
-  text-align: right;
-  white-space: nowrap;
-}
-
-.time-now {
+.lock-club {
   font-family: var(--display);
   font-weight: 600;
   font-size: 1.2rem;
 }
 
+.lock-clock {
+  grid-area: clock;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 7.4667rem;
+  line-height: 0.82;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.lock-meta {
+  grid-area: meta;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.lock-date {
+  display: block;
+  font-size: 1.3333rem;
+  font-weight: 600;
+}
+
+.lock-date::first-letter {
+  text-transform: uppercase;
+}
+
+.lock-zone {
+  color: var(--muted);
+  font-size: 1.0667rem;
+}
+
+.lock-zone strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Витрина: две ленты обложек на всю ширину, края растворяются. */
+.showcase {
+  flex: 1;
+  min-height: 9.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9333rem;
+}
+
+.showcase-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9333rem;
+}
+
+.showcase-head h2 {
+  font-size: 1.0667rem;
+}
+
+.showcase-rows {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--gap);
+  margin: 0 -2.4rem;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.showcase-row {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 11.3333rem;
+  overflow: hidden;
+}
+
+/* На невысоком экране две ленты: третья сжала бы обложки до марок. */
+@media (max-height: 900px) {
+  .showcase-row:nth-child(3) {
+    display: none;
+  }
+}
+
+.showcase-track {
+  height: 100%;
+  width: max-content;
+  display: flex;
+  gap: var(--gap);
+  /* Отступ справа равен промежутку: сдвиг ровно на половину ленты приходит в ту же картинку. */
+  padding-right: var(--gap);
+  animation: drift 180s linear infinite;
+  will-change: transform;
+}
+
+.showcase-row.reverse .showcase-track {
+  animation-direction: reverse;
+  animation-duration: 210s;
+}
+
+.showcase-item {
+  height: 100%;
+  flex-shrink: 0;
+  border-radius: 0.9333rem;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.showcase-item .cover {
+  height: 100%;
+  width: auto;
+}
+
+@keyframes drift {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Нижний ряд: сколько блоков влезает в одну строку, лишние не показываем. */
+.lock-info {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  grid-template-rows: auto;
+  grid-auto-rows: 0;
+  column-gap: var(--gap);
+  row-gap: 0;
+  overflow: hidden;
+}
+
+.lock-info:empty {
+  display: none;
+}
+
+.lock-side {
+  gap: 1.3333rem;
+}
+
+.lock-side .board {
+  padding: 1.0667rem;
+  flex-shrink: 0;
+}
+
+.seat-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2667rem;
+}
+
+.seat {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 4.2667rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.free {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9333rem;
+  color: var(--success);
+  margin-top: 0.4rem;
+}
+
+.free-dot {
+  width: 0.5333rem;
+  height: 0.5333rem;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 0 0.2667rem rgba(111, 220, 155, 0.16);
+}
+
+/* Код — как билет на вход: линия отрыва с вырезами по краям. */
 .code-card {
+  position: relative;
+  overflow: hidden;
   background: var(--card);
   border: 1px solid var(--accent);
   border-radius: 1.2rem;
@@ -283,6 +614,32 @@ button.tile:hover {
   display: flex;
   flex-direction: column;
   gap: 0.9333rem;
+}
+
+.code-perforation {
+  position: relative;
+  margin: 0.2667rem -1.2rem;
+  border-top: 2px dashed var(--line-strong);
+}
+
+.code-perforation::before,
+.code-perforation::after {
+  content: "";
+  position: absolute;
+  top: -0.7333rem;
+  width: 1.3333rem;
+  height: 1.3333rem;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+}
+
+.code-perforation::before {
+  left: -0.7333rem;
+}
+
+.code-perforation::after {
+  right: -0.7333rem;
 }
 
 .code-title,
@@ -328,7 +685,372 @@ button.tile:hover {
   gap: 0.4rem;
 }
 
-/* ---------- Библиотека ---------- */
+/* ---------- Блоки клуба: прайс, турнир, бар ---------- */
+
+.board,
+.bar-preview {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  padding: 1.2rem 1.3333rem;
+  min-width: 0;
+}
+
+.board-rows,
+.bar-preview-items,
+.cart-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.board-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: baseline;
+  column-gap: 0.6667rem;
+  row-gap: 0.2rem;
+  padding: 0.6667rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.board-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.board-name {
+  grid-column: 1;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.0667rem;
+}
+
+/* Точки от названия до цены, как в прайсе на стене. */
+.board-leader {
+  grid-column: 2;
+  align-self: end;
+  margin-bottom: 0.3rem;
+  border-bottom: 2px dotted var(--line-strong);
+}
+
+.board-was {
+  grid-column: 3;
+  color: var(--faint);
+  font-size: 0.8667rem;
+}
+
+.board-price {
+  grid-column: 4;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.board-detail {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  color: var(--muted);
+  font-size: 0.8667rem;
+}
+
+.board-row.base .board-price {
+  color: var(--text);
+}
+
+.board-row.off {
+  opacity: 0.4;
+}
+
+.board-row.off .board-price {
+  color: var(--text);
+}
+
+.tourney {
+  min-width: 0;
+  min-height: 13.3333rem;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  background: var(--raised) center / cover no-repeat;
+  display: flex;
+}
+
+.tourney-shade {
+  flex: 1;
+  padding: 1.2rem 1.3333rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1.0667rem;
+  background: linear-gradient(180deg, rgba(20, 20, 20, 0.3) 0%, rgba(20, 20, 20, 0.86) 55%, rgba(20, 20, 20, 0.96) 100%);
+}
+
+.tourney-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.tourney-badge,
+.tourney-seats {
+  height: 2rem;
+  padding: 0 0.7333rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tourney-badge {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.tourney-seats {
+  background: rgba(20, 20, 20, 0.6);
+  color: var(--text);
+}
+
+.tourney-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5333rem;
+}
+
+.tourney h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.3333rem;
+  line-height: 1.2;
+}
+
+.tourney-when {
+  margin: 0;
+  color: #d4d4d4;
+}
+
+.tourney-facts {
+  margin: 0.2667rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.6rem;
+}
+
+.tourney-facts dt {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.tourney-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.tourney-cta {
+  margin: 0;
+  font-size: 0.8667rem;
+  color: var(--accent);
+}
+
+.bar-preview-items {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.bar-preview-items li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2667rem;
+  min-width: 0;
+}
+
+.bar-preview-items .dish-photo {
+  aspect-ratio: 5 / 4;
+  border-radius: 0.8rem;
+  margin-bottom: 0.2667rem;
+}
+
+.bar-preview-name {
+  font-size: 0.8667rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-preview-price {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 0.9333rem;
+}
+
+.dish-photo {
+  display: block;
+  width: 100%;
+  object-fit: cover;
+  background: var(--raised);
+}
+
+.dish-photo.fallback {
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2.1333rem;
+  color: rgba(245, 245, 245, 0.7);
+}
+
+.dish-photo.drinks {
+  background: #1e3a46;
+}
+
+.dish-photo.food {
+  background: #4a2a1d;
+}
+
+.dish-photo.snacks {
+  background: #4a3c19;
+}
+
+.dish-photo.other {
+  background: #2e2c3d;
+}
+
+/* ---------- Главная ---------- */
+
+.home-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+.card-label {
+  font-weight: 600;
+  font-size: 0.9333rem;
+  color: var(--muted);
+}
+
+.time-card {
+  border-radius: 1.2rem;
+  padding: 1.3333rem 1.4667rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6667rem;
+  border: 1px solid var(--accent-line);
+  background: linear-gradient(155deg, rgba(255, 200, 61, 0.16), rgba(255, 200, 61, 0.02) 65%), var(--card);
+}
+
+.time-card .card-label {
+  color: var(--accent);
+}
+
+.left {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 4.8rem;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  margin: 0.2667rem 0 0.4rem;
+}
+
+.time-card.warn .left {
+  color: var(--accent);
+}
+
+.money-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1.2rem;
+  padding: 1.3333rem 1.4667rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6667rem;
+}
+
+.money {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 2.6667rem;
+  line-height: 1.05;
+  margin: 0.2667rem 0 0.4rem;
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  margin: auto 0 0;
+  padding-top: 0.9333rem;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.4rem 0.8rem;
+  font-size: 0.9333rem;
+}
+
+.facts dt {
+  color: var(--muted);
+}
+
+.facts dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+}
+
+.bar {
+  height: 0.4rem;
+  border-radius: 0.2rem;
+  background: var(--raised);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* Полка: одна строка обложек, сколько влезает по ширине. Лишние уходят в нулевые строки. */
+.shelf-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  grid-template-rows: auto;
+  grid-auto-rows: 0;
+  column-gap: var(--gap);
+  row-gap: 0;
+  overflow: hidden;
+}
+
+.shelf-row .tile:focus-visible {
+  outline-offset: -2px;
+}
+
+.home-extra {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(26rem, 1fr));
+  gap: var(--gap);
+}
+
+/* ---------- Игры ---------- */
+
+.games-page {
+  overflow: hidden;
+  gap: var(--gap);
+  padding-bottom: 0;
+}
+
+.games-page .grid {
+  flex: 1;
+  min-height: 0;
+}
 
 .filters {
   display: flex;
@@ -361,6 +1083,7 @@ button.tile:hover {
   gap: 0.5333rem;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 
 .chip {
@@ -374,17 +1097,15 @@ button.tile:hover {
   white-space: nowrap;
 }
 
+.chip:hover {
+  color: var(--text);
+}
+
 .chip[aria-pressed="true"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
   font-weight: 600;
-}
-
-.player {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
 }
 
 .avatar {
@@ -401,84 +1122,249 @@ button.tile:hover {
   flex-shrink: 0;
 }
 
-.player-name {
-  font-weight: 600;
-  font-size: 1.1333rem;
+/* ---------- Бар ---------- */
+
+.bar-view {
+  flex: 1;
+  min-width: 0;
+  display: flex;
 }
 
-.time-card {
+.menu-section h2 {
+  font-size: 1.0667rem;
+  margin-bottom: 0.9333rem;
+}
+
+.dishes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14.6667rem, 1fr));
+  gap: var(--gap);
+}
+
+.dish {
   background: var(--card);
-  border-radius: 1.2rem;
-  padding: 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 1.0667rem;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5333rem;
 }
 
-.left {
+.dish > .dish-photo {
+  aspect-ratio: 16 / 10;
+}
+
+.dish-body {
+  flex: 1;
+  padding: 0.9333rem 1.0667rem 1.0667rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.dish-text h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.dish-text p {
+  margin: 0.2rem 0 0;
+}
+
+.dish-foot {
+  margin-top: auto;
+  min-height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6667rem;
+}
+
+.dish-price {
   font-family: var(--display);
-  font-weight: 700;
-  font-size: 2.9333rem;
-  line-height: 1;
+  font-weight: 600;
+  font-size: 1.0667rem;
+  white-space: nowrap;
 }
 
-.money-card {
-  background: var(--card);
-  border-radius: 1.2rem;
-  padding: 1.2rem;
+.dish.unavailable {
+  opacity: 0.45;
+}
+
+.dish.unavailable .dish-photo {
+  filter: grayscale(1);
+}
+
+.add-btn {
+  height: 2.4rem;
+  padding: 0 0.9333rem 0 0.6667rem;
+  border-radius: 0.6667rem;
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9333rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.add-btn:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.stepper {
+  height: 2.4rem;
+  border-radius: 0.6667rem;
+  background: var(--raised);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.stepper button {
+  width: 2.4rem;
+  height: 100%;
+  border: 0;
+  border-radius: 0.6667rem;
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+
+.stepper button:hover:not(:disabled) {
+  background: var(--line-strong);
+}
+
+.stepper button:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+.stepper-count {
+  min-width: 1.6rem;
+  text-align: center;
+  font-family: var(--display);
+  font-weight: 600;
+}
+
+.cart {
+  width: 24rem;
+  flex-shrink: 0;
+  border-left: 1px solid var(--line);
+  background: var(--panel);
+  padding: 1.6rem 1.3333rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.0667rem;
+  overflow-y: auto;
+}
+
+.cart .block-head {
+  margin-bottom: 0;
+}
+
+.cart p {
+  margin: 0;
+}
+
+.cart-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6667rem;
+}
+
+.cart-lines li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.6667rem;
+}
+
+.cart-lines.done li {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.cart-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cart-sum {
+  min-width: 5.3333rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cart-comment {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
 }
 
-.money {
+.cart-comment input {
+  height: 2.6667rem;
+  padding: 0 0.9333rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--line-strong);
+  background: var(--bg);
+}
+
+.cart-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 0.9333rem;
+  border-top: 1px solid var(--line);
+}
+
+.cart-total strong {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 1.8667rem;
-  line-height: 1.1;
+  font-size: 1.6rem;
 }
 
-.left.warn {
-  color: var(--accent);
+.order-btn {
+  width: 100%;
 }
 
-.bar {
-  height: 0.4rem;
-  border-radius: 0.2rem;
-  background: var(--raised);
-  overflow: hidden;
+.order-done {
+  display: flex;
+  flex-direction: column;
+  gap: 1.0667rem;
 }
 
-.bar span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
+.order-done h2 {
+  font-size: 1.3333rem;
+  line-height: 1.25;
 }
 
-.facts {
-  margin: 0;
+.order-check {
+  width: 3.7333rem;
+  height: 3.7333rem;
+  border-radius: 50%;
+  background: rgba(111, 220, 155, 0.14);
+  color: var(--success);
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.4rem 0.8rem;
-  font-size: 0.9333rem;
+  place-items: center;
+  animation: pop 0.32s cubic-bezier(0.3, 1.5, 0.6, 1);
 }
 
-.facts dt {
-  color: var(--muted);
+@keyframes pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
 }
 
-.facts dd {
-  margin: 0;
-  text-align: right;
-}
+/* ---------- Кнопки ---------- */
 
 .offline {
   margin: 0;
   color: var(--danger);
-}
-
-.side p {
-  margin: 0;
 }
 
 .primary {
@@ -491,12 +1377,34 @@ button.tile:hover {
   font-weight: 700;
 }
 
+.primary:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.secondary {
+  height: 3.2rem;
+  padding: 0 1.6rem;
+  border-radius: 0.8rem;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  font-weight: 600;
+}
+
+.secondary:hover {
+  background: var(--card);
+}
+
 .danger {
   height: 3.2rem;
   border-radius: 0.8rem;
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--text);
+}
+
+.danger:hover {
+  border-color: var(--danger);
 }
 
 .danger.confirm {
@@ -588,8 +1496,8 @@ button.tile:hover {
 
 .warning {
   position: fixed;
-  right: calc(20rem + 2.1333rem);
-  top: 1.6rem;
+  right: 1.6rem;
+  top: 6.6667rem;
   width: 26.6667rem;
   background: var(--card);
   border: 1px solid var(--accent);
@@ -632,27 +1540,6 @@ button.tile:hover {
   font-family: var(--display);
   font-weight: 600;
   font-size: 1.2rem;
-}
-
-.help {
-  max-width: 42.6667rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.6rem;
-}
-
-.help h1 {
-  font-size: 1.4667rem;
-}
-
-.help h2 {
-  font-size: 1.0667rem;
-  margin-bottom: 0.4rem;
-}
-
-.help p {
-  margin: 0;
-  line-height: 1.5;
 }
 
 /* ---------- Подключение и заставка ---------- */
@@ -781,4 +1668,30 @@ button.tile:hover {
   font-size: 1.4667rem;
   line-height: 1.35;
   user-select: text;
+}
+
+/* ---------- Помощь ---------- */
+
+.help section {
+  max-width: 42.6667rem;
+}
+
+.help h2 {
+  font-size: 1.0667rem;
+  margin-bottom: 0.4rem;
+}
+
+.help p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Без движения по просьбе системы: ленты витрины стоят, всплывающие окна появляются сразу. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
