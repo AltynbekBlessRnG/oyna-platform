@@ -13,7 +13,7 @@
   --success: #6fdc9b;
   --danger: #ff6b5e;
   --display: Unbounded, system-ui, sans-serif;
-  --gap: 16px;
+  --gap: 1.0667rem;
   color-scheme: dark;
 }
 
@@ -28,11 +28,19 @@ body,
   margin: 0;
 }
 
+/*
+ * Все размеры в rem, а rem растёт с высотой экрана: 15px на 1080 строк, 14px на 768, до 21px на 1440.
+ * Широкий монитор (2560×1080, 3440×1440) не раздувает интерфейс, а получает больше колонок игр.
+ */
+html {
+  font-size: clamp(14px, 1.389vh, 21px);
+}
+
 body {
   background: var(--bg);
   color: var(--text);
   font-family: Onest, system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 1rem;
   overflow: hidden;
   user-select: none;
 }
@@ -68,7 +76,7 @@ h2 {
 }
 
 .small {
-  font-size: 13px;
+  font-size: 0.8667rem;
   line-height: 1.5;
 }
 
@@ -84,34 +92,34 @@ h2 {
 }
 
 .rail {
-  width: 96px;
+  width: 6.4rem;
   flex-shrink: 0;
   border-right: 1px solid var(--line);
-  padding: 20px 12px;
+  padding: 1.3333rem 0.8rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 0.4rem;
 }
 
 .logo {
-  margin-bottom: 18px;
+  margin-bottom: 1.2rem;
   flex-shrink: 0;
 }
 
 .rail-btn {
-  width: 72px;
-  height: 68px;
+  width: 4.8rem;
+  height: 4.5333rem;
   border: 0;
-  border-radius: 16px;
+  border-radius: 1.0667rem;
   background: transparent;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 0.7333rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 0.4rem;
 }
 
 .rail-btn:hover:not(:disabled) {
@@ -132,7 +140,7 @@ h2 {
 .center {
   flex: 1;
   min-width: 0;
-  padding: 24px 24px 0;
+  padding: 1.6rem 1.6rem 0;
   display: flex;
   flex-direction: column;
   gap: var(--gap);
@@ -140,39 +148,28 @@ h2 {
 }
 
 .side {
-  width: 300px;
+  width: 20rem;
   flex-shrink: 0;
   border-left: 1px solid var(--line);
   background: var(--panel);
-  padding: 24px 20px;
+  padding: 1.6rem 1.3333rem;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 1.2rem;
   overflow-y: auto;
 }
 
-/* ---------- Плитки игр: 4 колонки, видно три с половиной ряда, остальное прокручивается ---------- */
+/* ---------- Плитки игр: колонок столько, сколько влезает по ширине, остальное прокручивается ---------- */
 
 .grid {
-  --head: 96px;
-  --row: calc((100vh - 24px - var(--head) - var(--gap) - 3 * var(--gap)) / 3.5);
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  grid-auto-rows: max(var(--row), 150px);
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  align-content: start;
   gap: var(--gap);
   overflow-y: auto;
-  padding-bottom: 24px;
+  padding-bottom: 1.6rem;
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
-}
-
-/* Над плитками одна строка заголовка или только поиск, а не поиск с жанрами. */
-.lock-head + .grid {
-  --head: 40px;
-}
-
-.filters:not(:has(.chips)) + .grid {
-  --head: 44px;
 }
 
 .grid.dimmed {
@@ -185,7 +182,7 @@ h2 {
   padding: 0;
   text-align: left;
   background: var(--card);
-  border-radius: 14px;
+  border-radius: 0.9333rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -197,12 +194,13 @@ button.tile:hover {
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+/* Пропорции шапки Steam (460×215): плитка не растягивается ни на каком мониторе. */
 .cover {
-  flex: 1;
+  aspect-ratio: 460 / 215;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 0.8rem;
   text-align: center;
   font-family: var(--display);
   font-weight: 700;
@@ -214,20 +212,20 @@ button.tile:hover {
 }
 
 .tile-name {
-  height: 50px;
+  height: 3.3333rem;
   flex-shrink: 0;
-  padding: 0 14px;
+  padding: 0 0.9333rem;
   display: flex;
   align-items: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.9333rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .empty {
-  margin: 24px 0;
+  margin: 1.6rem 0;
 }
 
 /* ---------- Экран блокировки ---------- */
@@ -235,12 +233,12 @@ button.tile:hover {
 .lock-head {
   display: flex;
   align-items: baseline;
-  gap: 14px;
-  min-height: 40px;
+  gap: 0.9333rem;
+  min-height: 2.6667rem;
 }
 
 .lock-head h1 {
-  font-size: 22px;
+  font-size: 1.4667rem;
 }
 
 .side-head {
@@ -250,20 +248,20 @@ button.tile:hover {
 }
 
 .side-head {
-  gap: 12px;
+  gap: 0.8rem;
 }
 
 .seat {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 26px;
+  font-size: 1.7333rem;
   white-space: nowrap;
 }
 
 .free {
-  font-size: 13px;
+  font-size: 0.8667rem;
   color: var(--success);
-  margin-top: 4px;
+  margin-top: 0.2667rem;
 }
 
 .time {
@@ -274,17 +272,17 @@ button.tile:hover {
 .time-now {
   font-family: var(--display);
   font-weight: 600;
-  font-size: 18px;
+  font-size: 1.2rem;
 }
 
 .code-card {
   background: var(--card);
   border: 1px solid var(--accent);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 1.2rem;
+  padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0.9333rem;
 }
 
 .code-title,
@@ -295,31 +293,31 @@ button.tile:hover {
 
 .digits {
   display: flex;
-  gap: 6px;
+  gap: 0.4rem;
 }
 
 .digit {
-  width: 38px;
-  height: 52px;
-  border-radius: 10px;
+  width: 2.5333rem;
+  height: 3.4667rem;
+  border-radius: 0.6667rem;
   background: var(--bg);
   border: 1px solid var(--line-strong);
   display: grid;
   place-items: center;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 26px;
+  font-size: 1.7333rem;
   color: var(--accent);
 }
 
 .digit.gap {
-  margin-left: 6px;
+  margin-left: 0.4rem;
 }
 
 .steps {
   margin: 0;
-  padding-left: 18px;
-  font-size: 13px;
+  padding-left: 1.2rem;
+  font-size: 0.8667rem;
   line-height: 1.6;
   color: #d4d4d4;
 }
@@ -327,7 +325,7 @@ button.tile:hover {
 .hint {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.4rem;
 }
 
 /* ---------- Библиотека ---------- */
@@ -335,20 +333,20 @@ button.tile:hover {
 .filters {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.8rem;
 }
 
 .search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
+  gap: 0.6667rem;
+  height: 2.9333rem;
+  padding: 0 0.9333rem;
+  border-radius: 0.8rem;
   background: var(--card);
   border: 1px solid var(--line-strong);
   color: var(--muted);
-  max-width: 420px;
+  max-width: 28rem;
 }
 
 .search input {
@@ -360,19 +358,19 @@ button.tile:hover {
 
 .chips {
   display: flex;
-  gap: 8px;
+  gap: 0.5333rem;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .chip {
-  height: 32px;
-  padding: 0 14px;
+  height: 2.1333rem;
+  padding: 0 0.9333rem;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 0.8667rem;
   white-space: nowrap;
 }
 
@@ -386,12 +384,12 @@ button.tile:hover {
 .player {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.8rem;
 }
 
 .avatar {
-  width: 48px;
-  height: 48px;
+  width: 3.2rem;
+  height: 3.2rem;
   border-radius: 50%;
   background: var(--accent);
   color: var(--accent-ink);
@@ -399,29 +397,45 @@ button.tile:hover {
   place-items: center;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 20px;
+  font-size: 1.3333rem;
   flex-shrink: 0;
 }
 
 .player-name {
   font-weight: 600;
-  font-size: 17px;
+  font-size: 1.1333rem;
 }
 
 .time-card {
   background: var(--card);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 1.2rem;
+  padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0.5333rem;
 }
 
 .left {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 44px;
+  font-size: 2.9333rem;
   line-height: 1;
+}
+
+.money-card {
+  background: var(--card);
+  border-radius: 1.2rem;
+  padding: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.money {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.8667rem;
+  line-height: 1.1;
 }
 
 .left.warn {
@@ -429,8 +443,8 @@ button.tile:hover {
 }
 
 .bar {
-  height: 6px;
-  border-radius: 3px;
+  height: 0.4rem;
+  border-radius: 0.2rem;
   background: var(--raised);
   overflow: hidden;
 }
@@ -445,8 +459,8 @@ button.tile:hover {
   margin: 0;
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 6px 12px;
-  font-size: 14px;
+  gap: 0.4rem 0.8rem;
+  font-size: 0.9333rem;
 }
 
 .facts dt {
@@ -468,18 +482,18 @@ button.tile:hover {
 }
 
 .primary {
-  height: 48px;
-  padding: 0 24px;
+  height: 3.2rem;
+  padding: 0 1.6rem;
   border: 0;
-  border-radius: 12px;
+  border-radius: 0.8rem;
   background: var(--accent);
   color: var(--accent-ink);
   font-weight: 700;
 }
 
 .danger {
-  height: 48px;
-  border-radius: 12px;
+  height: 3.2rem;
+  border-radius: 0.8rem;
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--text);
@@ -504,29 +518,29 @@ button.tile:hover {
 }
 
 .dialog {
-  width: min(760px, calc(100vw - 48px));
+  width: min(50.6667rem, calc(100vw - 3.2rem));
   background: var(--card);
   border: 1px solid var(--line-strong);
-  border-radius: 24px;
+  border-radius: 1.6rem;
   overflow: hidden;
 }
 
 .dialog-cover {
-  height: 220px;
+  height: 14.6667rem;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding: 28px 32px;
+  padding: 1.8667rem 2.1333rem;
   font-family: var(--display);
   font-weight: 700;
-  font-size: 48px;
+  font-size: 3.2rem;
 }
 
 .dialog-close {
   align-self: flex-start;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 2.9333rem;
+  height: 2.9333rem;
+  border-radius: 0.8rem;
   border: 0;
   background: rgba(20, 20, 20, 0.25);
   display: grid;
@@ -534,57 +548,57 @@ button.tile:hover {
 }
 
 .dialog-body {
-  padding: 28px 32px 32px;
+  padding: 1.8667rem 2.1333rem 2.1333rem;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 1.3333rem;
 }
 
 .dialog-body h2 {
-  font-size: 26px;
+  font-size: 1.7333rem;
 }
 
 .dialog-body p {
-  margin: 6px 0 0;
+  margin: 0.4rem 0 0;
 }
 
 .dialog-cards {
   display: flex;
-  gap: 12px;
+  gap: 0.8rem;
 }
 
 .info {
   flex: 1;
   background: var(--raised);
-  border-radius: 16px;
-  padding: 16px;
+  border-radius: 1.0667rem;
+  padding: 1.0667rem;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0.4rem;
 }
 
 .play {
   align-self: flex-start;
-  height: 56px;
-  padding: 0 40px;
+  height: 3.7333rem;
+  padding: 0 2.6667rem;
   font-family: var(--display);
   font-weight: 600;
-  font-size: 18px;
+  font-size: 1.2rem;
 }
 
 .warning {
   position: fixed;
-  right: 332px;
-  top: 24px;
-  width: 400px;
+  right: calc(20rem + 2.1333rem);
+  top: 1.6rem;
+  width: 26.6667rem;
   background: var(--card);
   border: 1px solid var(--accent);
-  border-radius: 20px;
-  padding: 20px 22px;
+  border-radius: 1.3333rem;
+  padding: 1.3333rem 1.4667rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  gap: 0.8rem;
+  box-shadow: 0 1.0667rem 3.2rem rgba(0, 0, 0, 0.45);
   z-index: 20;
 }
 
@@ -595,19 +609,19 @@ button.tile:hover {
 
 .warning .primary {
   align-self: flex-start;
-  height: 44px;
+  height: 2.9333rem;
 }
 
 .warning-head {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 0.8rem;
 }
 
 .warning-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 2.9333rem;
+  height: 2.9333rem;
+  border-radius: 0.8rem;
   background: rgba(255, 200, 61, 0.14);
   color: var(--accent);
   display: grid;
@@ -617,23 +631,23 @@ button.tile:hover {
 .warning-title {
   font-family: var(--display);
   font-weight: 600;
-  font-size: 18px;
+  font-size: 1.2rem;
 }
 
 .help {
-  max-width: 640px;
+  max-width: 42.6667rem;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 1.6rem;
 }
 
 .help h1 {
-  font-size: 22px;
+  font-size: 1.4667rem;
 }
 
 .help h2 {
-  font-size: 16px;
-  margin-bottom: 6px;
+  font-size: 1.0667rem;
+  margin-bottom: 0.4rem;
 }
 
 .help p {
@@ -648,27 +662,27 @@ button.tile:hover {
   height: 100%;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 1.6rem;
 }
 
 .splash {
   align-content: center;
-  gap: 12px;
+  gap: 0.8rem;
   justify-items: center;
 }
 
 .setup-card {
-  width: min(480px, 100%);
+  width: min(32rem, 100%);
   background: var(--card);
-  border-radius: 24px;
-  padding: 32px;
+  border-radius: 1.6rem;
+  padding: 2.1333rem;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 1.0667rem;
 }
 
 .setup-card h1 {
-  font-size: 22px;
+  font-size: 1.4667rem;
 }
 
 .setup-card p {
@@ -684,19 +698,19 @@ button.tile:hover {
 .setup-card details {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 13px;
+  gap: 0.4rem;
+  font-size: 0.8667rem;
   color: var(--muted);
 }
 
 .setup-card input {
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
+  height: 2.9333rem;
+  padding: 0 0.9333rem;
+  border-radius: 0.8rem;
   border: 1px solid var(--line-strong);
   background: var(--bg);
   font-family: ui-monospace, monospace;
-  font-size: 14px;
+  font-size: 0.9333rem;
 }
 
 .setup-card summary {
@@ -705,31 +719,31 @@ button.tile:hover {
 
 .setup-card details input {
   width: 100%;
-  margin-top: 6px;
+  margin-top: 0.4rem;
 }
 
 .setup-card.wide {
-  width: min(720px, 100%);
+  width: min(48rem, 100%);
 }
 
 .code-input {
   font-family: var(--display) !important;
-  font-size: 22px !important;
-  letter-spacing: 4px;
+  font-size: 1.4667rem !important;
+  letter-spacing: 0.2667rem;
   text-transform: uppercase;
 }
 
 .seat-picker {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-  gap: 8px;
-  max-height: 320px;
+  grid-template-columns: repeat(auto-fill, minmax(4.8rem, 1fr));
+  gap: 0.5333rem;
+  max-height: 21.3333rem;
   overflow-y: auto;
 }
 
 .seat-option {
-  height: 60px;
-  border-radius: 12px;
+  height: 4rem;
+  border-radius: 0.8rem;
   border: 1px solid var(--line-strong);
   background: var(--bg);
   display: flex;
@@ -739,13 +753,13 @@ button.tile:hover {
   gap: 2px;
   font-family: var(--display);
   font-weight: 600;
-  font-size: 16px;
+  font-size: 1.0667rem;
 }
 
 .seat-option small {
   font-family: Onest, system-ui, sans-serif;
   font-weight: 400;
-  font-size: 11px;
+  font-size: 0.7333rem;
   color: var(--muted);
 }
 
@@ -764,7 +778,7 @@ button.tile:hover {
   margin: 0;
   font-family: var(--display);
   font-weight: 600;
-  font-size: 22px;
+  font-size: 1.4667rem;
   line-height: 1.35;
   user-select: text;
 }

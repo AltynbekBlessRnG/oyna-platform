@@ -80,7 +80,8 @@ export function GameCover({ game, large }: { game: InstalledGame; large?: boolea
   if (game.cover) return <div className="cover cover-art" style={{ backgroundImage: `url(${game.cover})` }} role="img" aria-label={game.name} />;
   return (
     <div className="cover" style={{ background: game.bg, color: game.ink }}>
-      <span style={{ fontSize: large ? size * 1.8 : size }}>{game.logo}</span>
+      {/* Размер в rem, чтобы надпись росла вместе с плиткой на больших экранах (15px — базовый rem). */}
+      <span style={{ fontSize: `${(large ? size * 1.8 : size) / 15}rem` }}>{game.logo}</span>
     </div>
   );
 }

@@ -8,6 +8,22 @@ import { GameCover, Icon, Rail, type View } from "./ui";
 const WARN_BEFORE_MS = 5 * 60_000;
 const ALL = "Все";
 
+// Новые поля сервера, пока их нет в контракте: баланс игрока и предоплаченный пакет.
+// Старый сервер их не присылает — тогда строку с деньгами просто не показываем.
+type StationStateWithBalance = StationState & { playerBalance?: number };
+type SessionWithPackage = PlaySession & { packageName?: string };
+
+/**
+ * Сколько денег останется после уже сыгранного. Сервер списывает в конце сессии, каждая начатая
+ * минута целиком и не дольше оплаченного времени, а `playerBalance` приходит ещё без этого списания.
+ */
+function balanceLeft(balance: number, session: PlaySession, now: number): number {
+  const start = Date.parse(session.startedAt);
+  const end = Math.min(now, Date.parse(session.endsAt));
+  const minutes = Math.max(0, Math.ceil((end - start) / 60_000));
+  return Math.max(0, balance - Math.ceil((minutes * session.pricePerHour) / 60));
+}
+
 /** Игрок вошёл: библиотека игр, оставшееся время и выход. */
 export function Library({
   state,
@@ -93,7 +109,7 @@ export function Library({
   );
 }
 
-function SessionPanel({ state, session, link, now, endSession }: { state: StationState; session: PlaySession; link: Link; now: number; endSession: () => Promise<void> }) {
+function SessionPanel({ state, session, link, now, endSession }: { state: StationStateWithBalance; session: SessionWithPackage; link: Link; now: number; endSession: () => Promise<void> }) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string>();
   const name = playerLabel(session.playerName, session.playerPhoneTail);
@@ -140,6 +156,22 @@ function SessionPanel({ state, session, link, now, endSession }: { state: Statio
           до {clock(session.endsAt)} · начали в {clock(session.startedAt)}
         </span>
       </section>
+
+      {session.packageName ? (
+        <section className="money-card" aria-label="Пакет">
+          <span className="muted small">Пакет</span>
+          <span className="money">{session.packageName}</span>
+          <span className="muted small">уже оплачен</span>
+        </section>
+      ) : (
+        state.playerBalance !== undefined && (
+          <section className="money-card" aria-label="Баланс">
+            <span className="muted small">На балансе</span>
+            <span className="money">{money(balanceLeft(state.playerBalance, session, now))}</span>
+            <span className="muted small">с учётом сыгранного времени</span>
+          </section>
+        )
+      )}
 
       <dl className="facts">
         <dt>Тариф</dt>
