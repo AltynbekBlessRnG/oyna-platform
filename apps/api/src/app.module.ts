@@ -3,6 +3,7 @@ import { HealthController } from "./health/health.controller";
 import { ClubsController } from "./clubs/clubs.controller";
 import { ClubsService } from "./clubs/clubs.service";
 import { ClubPackagesService } from "./clubs/club-packages.service";
+import { HallLayoutService } from "./clubs/hall-layout.service";
 import { BookingsController } from "./bookings/bookings.controller";
 import { BookingsService } from "./bookings/bookings.service";
 import { AuthController } from "./auth/auth.controller";
@@ -40,6 +41,6 @@ import { CrmService } from "./crm/crm.service";
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ["../../.env", ".env"] })],
   controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, StationReleasesController, ShiftsController, CrmController],
-  providers: [DatabaseService, ClubsService, ClubPackagesService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
+  providers: [DatabaseService, ClubsService, ClubPackagesService, HallLayoutService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
 })
 export class AppModule {}

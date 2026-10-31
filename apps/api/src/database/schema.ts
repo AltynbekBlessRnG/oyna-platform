@@ -299,4 +299,13 @@ CREATE INDEX IF NOT EXISTS club_packages_club_idx ON club_packages (club_id, sor
 ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS package_id TEXT;
 ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS package_name TEXT;
 ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS package_price INTEGER;
+
+-- Схема зала: где стоят компьютеры, диваны, бар и вход. Одна на клуб.
+CREATE TABLE IF NOT EXISTS club_hall_layouts (
+  club_id TEXT PRIMARY KEY REFERENCES clubs(id) ON DELETE CASCADE,
+  columns INTEGER NOT NULL CHECK (columns BETWEEN 4 AND 80),
+  rows INTEGER NOT NULL CHECK (rows BETWEEN 4 AND 60),
+  items JSONB NOT NULL DEFAULT '[]',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;

@@ -197,6 +197,34 @@ export interface ClubPackage {
   active: boolean;
 }
 
+/** Что можно поставить на схему зала. `seat` — место с компьютером, остальное — обстановка для ориентира. */
+export type HallLayoutItemKind = "seat" | "sofa" | "console" | "billiards" | "vr" | "bar" | "reception" | "wc" | "entrance" | "wall" | "label";
+
+/** Элемент схемы зала. Координаты и размеры — в клетках сетки. */
+export interface HallLayoutItem {
+  id: string;
+  kind: HallLayoutItemKind;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** Для `seat`: какое место из зон клуба здесь стоит. */
+  seatId?: string;
+  /** Для `label` и по желанию для обстановки: подпись на схеме. */
+  label?: string;
+}
+
+/** Схема зала, как она стоит в реальности. Нет схемы — кабинет рисует места по зонам. */
+export interface HallLayout {
+  clubId: string;
+  columns: number;
+  rows: number;
+  items: HallLayoutItem[];
+  updatedAt?: string;
+}
+
+export type SaveHallLayoutRequest = Pick<HallLayout, "columns" | "rows" | "items">;
+
 export type UpsertPackageRequest = Omit<ClubPackage, "clubId" | "id"> & { id?: string };
 
 export interface ClubAdminView {

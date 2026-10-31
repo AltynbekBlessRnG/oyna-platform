@@ -7,7 +7,9 @@ import type {
   ClubPackage,
   ClubSummary,
   ClubZone,
+  HallLayout,
   ManagedClub,
+  SaveHallLayoutRequest,
   UpdateClubRequest,
   UpsertPackageRequest,
   UpsertZoneRequest
@@ -16,6 +18,7 @@ import { AdminIdentityGuard, ClubAdminGuard, PlatformAdminGuard } from "../auth/
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ClubAccessService } from "./club-access.service";
 import { ClubPackagesService } from "./club-packages.service";
+import { HallLayoutService } from "./hall-layout.service";
 import { CLUB_CATALOG, type ClubCatalogEntry } from "./clubs.data";
 import { ClubsService } from "./clubs.service";
 
@@ -24,7 +27,8 @@ export class ClubsAdminController {
   constructor(
     private readonly clubs: ClubsService,
     private readonly access: ClubAccessService,
-    private readonly packages: ClubPackagesService
+    private readonly packages: ClubPackagesService,
+    private readonly layouts: HallLayoutService
   ) {}
 
   /** Клубы, доступные текущему сотруднику: кабинет выбирает активный клуб из этого списка. */
@@ -70,6 +74,18 @@ export class ClubsAdminController {
   @UseGuards(ClubAdminGuard)
   replacePackages(@Param("clubId") clubId: string, @Body() request: { packages: UpsertPackageRequest[] }): Promise<ClubPackage[]> {
     return this.packages.replace(clubId, request?.packages);
+  }
+
+  @Get("clubs/:clubId/layout")
+  @UseGuards(ClubAdminGuard)
+  layout(@Param("clubId") clubId: string): Promise<HallLayout | null> {
+    return this.layouts.find(clubId);
+  }
+
+  @Put("clubs/:clubId/layout")
+  @UseGuards(ClubAdminGuard)
+  saveLayout(@Param("clubId") clubId: string, @Body() request: SaveHallLayoutRequest): Promise<HallLayout> {
+    return this.layouts.save(clubId, request);
   }
 
   @Get("clubs/:clubId/members")
