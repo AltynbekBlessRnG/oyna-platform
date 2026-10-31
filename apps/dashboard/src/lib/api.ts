@@ -1,4 +1,4 @@
-import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubClientsResponse, ClubSeatMap, ClubShift, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
+import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubClientsResponse, ClubPackage, ClubSeatMap, ClubShift, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
 import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
@@ -110,19 +110,22 @@ export interface HallSnapshot {
   sessions: PlaySession[];
   /** Открытая смена кассы; без неё пополнять балансы нельзя. */
   shift: ClubShift | null;
+  /** Пакеты клуба для посадки; выключенные сюда не попадают. */
+  packages: ClubPackage[];
 }
 
 /** Зал для кассы: карта мест, компьютеры с клиентом Zen и идущие сессии. */
 export async function loadHall(clubId: string): Promise<HallSnapshot> {
-  const [seatMapResponse, stations, sessions, shift] = await Promise.all([
+  const [seatMapResponse, stations, sessions, shift, packages] = await Promise.all([
     fetch(`${apiUrl}/clubs/${clubId}/seatmap`, { cache: "no-store" }),
     adminFetch<ClubStation[]>(`/admin/clubs/${clubId}/stations`),
     adminFetch<PlaySession[]>(`/admin/clubs/${clubId}/sessions`),
-    adminFetch<ClubShift | null>(`/admin/clubs/${clubId}/shifts/current`)
+    adminFetch<ClubShift | null>(`/admin/clubs/${clubId}/shifts/current`),
+    adminFetch<ClubPackage[]>(`/admin/clubs/${clubId}/packages`)
   ]);
   if (!seatMapResponse.ok) throw new ApiError(`Карта зала недоступна (${seatMapResponse.status})`, seatMapResponse.status);
   // Нет открытой смены — API отвечает пустым телом.
-  return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions, shift: shift ?? null };
+  return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions, shift: shift ?? null, packages: packages.filter((pack) => pack.active) };
 }
 
 /** История смен кассы, новые сверху. */

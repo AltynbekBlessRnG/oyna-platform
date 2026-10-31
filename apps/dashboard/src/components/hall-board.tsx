@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCommandResult, StationCredentials } from "@oyna/contracts";
+import type { ClubPackage, ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCommandResult, StationCredentials } from "@oyna/contracts";
 import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
@@ -30,6 +30,28 @@ const REFRESH_MS = 15_000;
 const ENDING_SOON_MIN = 15;
 /** Кассир берёт с гостя деньги, а не минуты: быстрые суммы для посадки. */
 const SEAT_AMOUNTS = [300, 500, 1000, 2000];
+
+/** Час клуба по Алматы (UTC+5): пакеты продаются в свои часы, как их проверяет сервер. */
+function clubMinuteOfDay(now: number): number {
+  return Math.floor((now / 60_000 + 5 * 60) % 1440);
+}
+
+function toMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function packageOpen(pack: ClubPackage, now: number): boolean {
+  if (!pack.availableFrom || !pack.availableTo) return true;
+  const minute = clubMinuteOfDay(now);
+  const from = toMinutes(pack.availableFrom);
+  const to = toMinutes(pack.availableTo);
+  return from < to ? minute >= from && minute < to : minute >= from || minute < to;
+}
+
+function packageTerms(pack: ClubPackage): string {
+  return pack.kind === "duration" ? duration(pack.durationMinutes ?? 0) : `до ${pack.endsAt}`;
+}
 
 /** Сколько минут покупает сумма по цене зоны. Бесплатная зона — без ограничения (undefined). */
 function minutesFor(amount: number, pricePerHour: number): number | undefined {
@@ -154,6 +176,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
           message={message}
           credentials={credentials}
           initialPhone={lastPhone}
+          packages={hall.packages.filter((pack) => pack.zoneIds.length === 0 || pack.zoneIds.includes(selected.zone.id))}
           isPending={isPending}
           run={run}
           onCredentials={setCredentials}
@@ -268,23 +291,29 @@ function SeatPanel(props: {
   message: { ok: boolean; text: string } | null;
   credentials: StationCredentials | null;
   initialPhone: string;
+  packages: ClubPackage[];
   isPending: boolean;
   run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
   onCredentials: (credentials: StationCredentials | null) => void;
   onClose: () => void;
 }) {
-  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, isPending, run, onCredentials, onClose } = props;
+  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, packages, isPending, run, onCredentials, onClose } = props;
   const [phone, setPhone] = useState(initialPhone);
   const [amount, setAmount] = useState("");
+  const [packageId, setPackageId] = useState<string | null>(null);
+  const chosenPackage = packages.find((pack) => pack.id === packageId);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmUnbind, setConfirmUnbind] = useState(false);
   const { seat, zone } = entry;
 
   function start(): void {
-    run(() => startPlaySession(clubId, seat.id, phone, minutesFor(Number(amount), zone.pricePerHour)), (started) => {
+    const minutes = chosenPackage ? undefined : minutesFor(Number(amount), zone.pricePerHour);
+    run(() => startPlaySession(clubId, seat.id, phone, minutes, chosenPackage?.id), (started) => {
       setPhone("");
       setAmount("");
-      return `${playerLabel(started.playerName, started.playerPhoneTail)} сидит за местом ${started.seatLabel} до ${clock(started.endsAt)}`;
+      setPackageId(null);
+      const paid = started.packageName ? `, пакет «${started.packageName}» оплачен (${money(started.packagePrice ?? 0)})` : "";
+      return `${playerLabel(started.playerName, started.playerPhoneTail)} сидит за местом ${started.seatLabel} до ${clock(started.endsAt)}${paid}`;
     });
   }
 
@@ -318,6 +347,7 @@ function SeatPanel(props: {
           <div className={cn("grid gap-3 rounded-xl p-4", pcLost(session, station) ? "bg-danger/10" : "bg-secondary")}>
             <div>
               <p className="font-semibold">{playerLabel(session.playerName, session.playerPhoneTail)}</p>
+              {session.packageName ? <p className="text-primary">Пакет «{session.packageName}», оплачен {money(session.packagePrice ?? 0)}</p> : null}
               <p className="text-muted-foreground">
                 с {clock(session.startedAt)} до {clock(session.endsAt)}
                 {now ? `, осталось ${duration(minutesUntil(session.endsAt, now))}` : ""}
@@ -339,7 +369,35 @@ function SeatPanel(props: {
               <span className="text-muted-foreground">Телефон игрока</span>
               <input className={inputClass} inputMode="tel" autoComplete="off" placeholder="+7 7XX XXX XX XX" value={phone} onChange={(event) => setPhone(event.target.value)} />
             </label>
-            {zone.pricePerHour > 0 ? (
+            {packages.length > 0 ? (
+              <div className="grid gap-1.5">
+                <span className="text-muted-foreground">Пакет</span>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant={chosenPackage ? "secondary" : "default"} aria-pressed={!chosenPackage} onClick={() => setPackageId(null)}>По балансу</Button>
+                  {packages.map((pack) => {
+                    const open = now === null || packageOpen(pack, now);
+                    return (
+                      <Button
+                        key={pack.id}
+                        size="sm"
+                        variant={pack.id === packageId ? "default" : "secondary"}
+                        aria-pressed={pack.id === packageId}
+                        disabled={!open}
+                        title={open ? undefined : `Продаётся с ${pack.availableFrom} до ${pack.availableTo}`}
+                        onClick={() => setPackageId(pack.id)}
+                      >
+                        {pack.name} · {money(pack.price)}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {chosenPackage ? (
+              <p className="rounded-xl bg-secondary px-3 py-2">
+                {packageTerms(chosenPackage)}, с баланса сразу спишется {money(chosenPackage.price)}. Пополнение время пакета не продлевает.
+              </p>
+            ) : zone.pricePerHour > 0 ? (
               <div className="grid gap-1.5">
                 <label className="grid gap-1.5">
                   <span className="text-muted-foreground">На сколько тенге (пусто — пока хватает баланса)</span>

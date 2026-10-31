@@ -171,9 +171,13 @@ async function hallAction<T>(work: () => Promise<T>, fallback: string): Promise<
   }
 }
 
-export async function startPlaySession(clubId: string, seatId: string, phone: string, minutes?: number): Promise<HallResult<PlaySession>> {
+export async function startPlaySession(clubId: string, seatId: string, phone: string, minutes?: number, packageId?: string): Promise<HallResult<PlaySession>> {
   return hallAction(
-    () => adminFetch<PlaySession>(`/admin/clubs/${clubId}/sessions`, { method: "POST", body: JSON.stringify({ seatId, phone, ...(minutes ? { minutes } : {}) }) }),
+    () =>
+      adminFetch<PlaySession>(`/admin/clubs/${clubId}/sessions`, {
+        method: "POST",
+        body: JSON.stringify({ seatId, phone, ...(minutes ? { minutes } : {}), ...(packageId ? { packageId } : {}) })
+      }),
     "Не удалось запустить сессию"
   );
 }
