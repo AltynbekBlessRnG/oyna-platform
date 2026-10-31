@@ -52,13 +52,23 @@ fn restart_computer() -> Result<(), String> {
 
 /// Настройки компьютера: общие для всех пользователей Windows, так что сброс гостевого профиля
 /// не заставляет подключать компьютер заново. Гость пишет их при подключении по коду клуба.
+/// Новый файл создаётся в папке `station` и наследует её права: гость может его переписать.
+/// Старый `station.json` мог переехать туда из закрытой папки с правами «только чтение».
 fn config_path() -> std::path::PathBuf {
+    config::station_dir().join("config.json")
+}
+
+fn previous_config_path() -> std::path::PathBuf {
     config::station_dir().join("station.json")
 }
 
 #[tauri::command]
 fn load_config() -> Option<String> {
-    std::fs::read_to_string(config_path()).ok().or_else(|| std::fs::read_to_string(config::legacy_config_path()).ok())
+    // Есть новый файл — верим только ему, даже пустому: так «забыть клуб» не воскрешает старый ключ.
+    if config_path().exists() {
+        return std::fs::read_to_string(config_path()).ok().filter(|raw| !raw.trim().is_empty());
+    }
+    std::fs::read_to_string(previous_config_path()).ok().or_else(|| std::fs::read_to_string(config::legacy_config_path()).ok())
 }
 
 #[tauri::command]
@@ -72,7 +82,7 @@ fn save_config(raw: String) -> Result<(), String> {
 
 #[tauri::command]
 fn clear_config() {
-    let _ = std::fs::remove_file(config_path());
+    let _ = std::fs::write(config_path(), "");
 }
 
 #[tauri::command]

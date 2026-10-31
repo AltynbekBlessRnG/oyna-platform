@@ -64,6 +64,8 @@ New-Item -ItemType Directory -Force $station | Out-Null
 icacls $station /grant "*S-1-5-32-545:(OI)(CI)M" | Out-Null
 $legacy = Join-Path $data "station.json"
 if ((Test-Path $legacy) -and -not (Test-Path (Join-Path $station "station.json"))) { Move-Item $legacy $station }
+# Перенесённый файл сохраняет права старой закрытой папки: возвращаем ему права папки station.
+Get-ChildItem $station -File | ForEach-Object { icacls $_.FullName /reset | Out-Null }
 
 # Смена пользователя в Ctrl+Alt+Del — для всех.
 Set-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name HideFastUserSwitching -Value 1 -Type DWord

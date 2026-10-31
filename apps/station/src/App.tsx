@@ -31,8 +31,13 @@ export function App() {
       <Setup
         notice={notice}
         apiUrl={lastApiUrl}
-        onSave={(next) => {
-          void saveConfig(next);
+        onSave={async (next) => {
+          // Без сохранённых настроек после перезагрузки компьютер снова попросит код клуба: лучше сказать сразу.
+          try {
+            await saveConfig(next);
+          } catch (error) {
+            throw new Error(`Не удалось сохранить настройки на этом компьютере: ${error instanceof Error ? error.message : String(error)}`);
+          }
           setNotice(undefined);
           setConfig(next);
         }}

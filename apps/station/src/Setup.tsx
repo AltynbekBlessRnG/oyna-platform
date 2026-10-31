@@ -7,7 +7,7 @@ import { Logo } from "./ui";
  * Первый запуск: админ вводит код клуба из кабинета, выбирает место этого компьютера и задаёт PIN.
  * Один код на весь зал — не нужно переписывать длинный ключ на каждый ПК.
  */
-export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (config: StationConfig) => void; notice?: string; apiUrl?: string }) {
+export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (config: StationConfig) => Promise<void>; notice?: string; apiUrl?: string }) {
   const [apiUrl, setApiUrl] = useState(initialApiUrl ?? DEFAULT_API_URL);
   const [code, setCode] = useState("");
   const [enrollment, setEnrollment] = useState<StationEnrollment | null>(null);
@@ -51,7 +51,7 @@ export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (conf
   const enroll = (event: FormEvent) =>
     run(event, async () => {
       const credentials = await call<StationCredentials>("", { code, seatId });
-      onSave({ apiUrl: apiUrl.trim(), stationId: credentials.station.id, token: credentials.token, adminPinHash: await hashPin(pin) });
+      await onSave({ apiUrl: apiUrl.trim(), stationId: credentials.station.id, token: credentials.token, adminPinHash: await hashPin(pin) });
     });
 
   if (!enrollment) {

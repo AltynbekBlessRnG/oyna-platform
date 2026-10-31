@@ -1,6 +1,6 @@
 [package]
 name = "zen-station"
-version = "0.1.4"
+version = "0.1.5"
 description = "Zen на компьютере в зале клуба"
 edition = "2021"
 
