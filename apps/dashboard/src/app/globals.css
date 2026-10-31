@@ -69,6 +69,25 @@ h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
   gap: 0.75rem var(--seat-gap);
 }
 
+/* Лист редактора схемы: клетка и каждая пятая клетка потолще — как миллиметровка, по которой меряют зал. */
+.layout-sheet {
+  background-color: #161b21;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.075) 1px, transparent 1px),
+    linear-gradient(rgb(255 255 255 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.035) 1px, transparent 1px);
+  background-size: calc(var(--cell) * 5) calc(var(--cell) * 5), calc(var(--cell) * 5) calc(var(--cell) * 5), var(--cell) var(--cell), var(--cell) var(--cell);
+}
+
+/* Пол по схеме на кассе: та же сетка, но тише, чтобы плитки мест читались первыми. */
+.layout-floor {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: calc(100% / var(--cols)) calc(100% / var(--rows));
+}
+
 /* Штриховка мест: бронь и пропавший ПК отличаются от занятого не только цветом. */
 .seat-hatch {
   background-image: repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 14%, transparent) 0 1.5px, transparent 1.5px 8px);

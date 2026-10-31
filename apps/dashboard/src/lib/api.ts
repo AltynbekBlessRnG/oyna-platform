@@ -1,4 +1,4 @@
-import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubOrder, ClubClientsResponse, ClubPackage, ClubSeatMap, ClubShift, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
+import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubOrder, ClubClientsResponse, ClubPackage, ClubSeatMap, ClubShift, ClubStation, HallLayout, ManagedClub, PlaySession } from "@oyna/contracts";
 import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
@@ -114,28 +114,43 @@ export interface HallSnapshot {
   packages: ClubPackage[];
   /** Открытые заказы бара (новые и принятые), старые сверху: их несут по очереди. */
   orders: ClubOrder[];
+  /** Схема зала, нарисованная клубом; `null` — схемы нет, карта рисует места по зонам. */
+  layout: HallLayout | null;
+}
+
+/** Схема зала. Её отсутствие или сбой не мешают кассе: тогда карта просто идёт по зонам. */
+export async function loadHallLayout(clubId: string): Promise<HallLayout | null> {
+  return adminFetch<HallLayout | null>(`/admin/clubs/${clubId}/layout`).then((layout) => layout ?? null, () => null);
+}
+
+/** Карта мест по зонам: публичная, ту же видит приложение игрока. */
+export async function loadSeatMap(clubId: string): Promise<ClubSeatMap> {
+  const response = await fetch(`${apiUrl}/clubs/${clubId}/seatmap`, { cache: "no-store" });
+  if (!response.ok) throw new ApiError(`Карта зала недоступна (${response.status})`, response.status);
+  return (await response.json()) as ClubSeatMap;
 }
 
 /** Зал для кассы: карта мест, компьютеры с клиентом Zen и идущие сессии. */
 export async function loadHall(clubId: string): Promise<HallSnapshot> {
-  const [seatMapResponse, stations, sessions, shift, packages, orders] = await Promise.all([
-    fetch(`${apiUrl}/clubs/${clubId}/seatmap`, { cache: "no-store" }),
+  const [seatMap, stations, sessions, shift, packages, orders, layout] = await Promise.all([
+    loadSeatMap(clubId),
     adminFetch<ClubStation[]>(`/admin/clubs/${clubId}/stations`),
     adminFetch<PlaySession[]>(`/admin/clubs/${clubId}/sessions`),
     adminFetch<ClubShift | null>(`/admin/clubs/${clubId}/shifts/current`),
     adminFetch<ClubPackage[]>(`/admin/clubs/${clubId}/packages`),
     // Очередь бара не должна ронять весь зал: без неё касса всё равно сажает и пополняет.
-    adminFetch<ClubOrder[]>(`/admin/clubs/${clubId}/orders`).catch(() => [] as ClubOrder[])
+    adminFetch<ClubOrder[]>(`/admin/clubs/${clubId}/orders`).catch(() => [] as ClubOrder[]),
+    loadHallLayout(clubId)
   ]);
-  if (!seatMapResponse.ok) throw new ApiError(`Карта зала недоступна (${seatMapResponse.status})`, seatMapResponse.status);
   // Нет открытой смены — API отвечает пустым телом.
   return {
-    seatMap: (await seatMapResponse.json()) as ClubSeatMap,
+    seatMap,
     stations,
     sessions,
     shift: shift ?? null,
     packages: packages.filter((pack) => pack.active),
-    orders: [...(orders ?? [])].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    orders: [...(orders ?? [])].sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    layout
   };
 }
 

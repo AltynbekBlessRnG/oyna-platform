@@ -130,7 +130,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
         </div>
 
         <div className="xl:col-start-1 xl:row-span-3 xl:row-start-1 xl:self-stretch">
-          <HallMap zones={hall.seatMap.zones} sessionBySeat={sessionBySeat} stationBySeat={stationBySeat} now={now} selectedId={selectedId} onSelect={select} />
+          <HallMap zones={hall.seatMap.zones} sessionBySeat={sessionBySeat} stationBySeat={stationBySeat} now={now} selectedId={selectedId} onSelect={select} layout={hall.layout} />
         </div>
 
         <div id="playing" className="scroll-mt-4 xl:col-start-2">

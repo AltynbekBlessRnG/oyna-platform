@@ -10,10 +10,12 @@ import type {
   PaymentMethod,
   ClubSummary,
   ClientNote,
+  HallLayout,
   ClubZone,
   ManagedClub,
   PlaySession,
   RequestCodeResponse,
+  SaveHallLayoutRequest,
   StationCommand,
   StationCommandResult,
   StationCredentials,
@@ -170,6 +172,16 @@ async function hallAction<T>(work: () => Promise<T>, fallback: string): Promise<
   } catch (error) {
     return { ok: false, message: describe(error, fallback) };
   }
+}
+
+/** Сохраняет схему зала целиком; ошибки проверки API отдаёт по-русски, их показываем как есть. */
+export async function saveHallLayout(clubId: string, layout: SaveHallLayoutRequest): Promise<HallResult<HallLayout>> {
+  const result = await hallAction(
+    () => adminFetch<HallLayout>(`/admin/clubs/${clubId}/layout`, { method: "PUT", body: JSON.stringify(layout) }),
+    "Не удалось сохранить схему"
+  );
+  if (result.ok) revalidatePath("/hall/layout");
+  return result;
 }
 
 export async function startPlaySession(clubId: string, seatId: string, phone: string, minutes?: number, packageId?: string): Promise<HallResult<PlaySession>> {
