@@ -520,6 +520,9 @@ export interface StationLoginCode {
   expiresAt: string;
 }
 
+/** Ответ на заказ из бара с экрана компьютера. */
+export type StationOrderResult = { ok: true; order: ClubOrder } | { ok: false; message: string };
+
 /** Всё, что клиенту на компьютере нужно знать, чтобы заблокировать или открыть экран. */
 export interface StationState {
   station: ClubStation;

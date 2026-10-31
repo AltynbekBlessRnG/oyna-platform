@@ -114,6 +114,17 @@ describe.each([
     expect(await packages.replace(clubId, [])).toEqual([]);
   });
 
+  it("takes a bar order from the station only during a session, on behalf of the player at it", async () => {
+    const credentials = await sessions.registerStation(clubId, seatId);
+    const [item] = (await hall.findMenu(clubId)).filter((entry) => entry.available);
+    await expect(sessions.orderFromStation(credentials.station.id, { lines: [{ itemId: item.id, quantity: 1 }] })).rejects.toThrow(/во время сессии/);
+    const player = await playerWithBalance("+77010000305", pricePerHour);
+    await sessions.start(clubId, seatId, player);
+    const order = await sessions.orderFromStation(credentials.station.id, { lines: [{ itemId: item.id, quantity: 2 }] });
+    expect(order).toMatchObject({ seatLabel: "01", total: item.price * 2 });
+    expect(await hall.findMyOrders(clubId, player.id)).toHaveLength(1);
+  });
+
   it("tells the station the player's balance during a session", async () => {
     const player = await playerWithBalance("+77010000304", pricePerHour * 2);
     const credentials = await sessions.registerStation(clubId, seatId);

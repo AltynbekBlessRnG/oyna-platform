@@ -1,15 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
-import type { AuthUser, ClubAccount, ClubOrder, ClubSummary, CreateOrderRequest, MenuItem } from "@oyna/contracts";
+import type { AuthUser, ClubAccount, ClubOrder, ClubPackage, ClubSummary, CreateOrderRequest, MenuItem } from "@oyna/contracts";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ClubHallService } from "./club-hall.service";
+import { ClubPackagesService } from "./club-packages.service";
 import { ClubsService } from "./clubs.service";
 
 @Controller("clubs")
 export class ClubsController {
   constructor(
     private readonly clubsService: ClubsService,
-    private readonly hallService: ClubHallService
+    private readonly hallService: ClubHallService,
+    private readonly packages: ClubPackagesService
   ) {}
 
   @Get()
@@ -25,6 +27,12 @@ export class ClubsController {
   @Get(":id/menu")
   findMenu(@Param("id") id: string): Promise<MenuItem[]> {
     return this.hallService.findMenu(id);
+  }
+
+  /** Прайс пакетов для экрана компьютера и приложения: только включённые. */
+  @Get(":id/packages")
+  async findPackages(@Param("id") id: string): Promise<ClubPackage[]> {
+    return (await this.packages.list(id)).filter((pack) => pack.active);
   }
 
   @Post(":id/orders")

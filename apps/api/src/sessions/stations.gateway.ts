@@ -1,6 +1,6 @@
-import { Logger, type OnModuleDestroy, UnauthorizedException } from "@nestjs/common";
-import { ConnectedSocket, type OnGatewayConnection, type OnGatewayDisconnect, type OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
-import type { StationCommand, StationLoginCode, StationState } from "@oyna/contracts";
+import { HttpException, Logger, type OnModuleDestroy, UnauthorizedException } from "@nestjs/common";
+import { ConnectedSocket, MessageBody, type OnGatewayConnection, type OnGatewayDisconnect, type OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
+import type { CreateOrderRequest, StationCommand, StationLoginCode, StationOrderResult, StationState } from "@oyna/contracts";
 import type { Server, Socket } from "socket.io";
 import { SessionsService } from "./sessions.service";
 
@@ -83,6 +83,17 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     const stationId = this.stationOf(client);
     await this.sessions.endFromStation(stationId);
     return this.sessions.getStationState(stationId);
+  }
+
+  /** Отказ (нет сессии, позиция кончилась) возвращаем текстом: компьютер покажет его игроку. */
+  @SubscribeMessage("order")
+  async order(@ConnectedSocket() client: StationSocket, @MessageBody() request: Pick<CreateOrderRequest, "lines" | "comment">): Promise<StationOrderResult> {
+    try {
+      return { ok: true, order: await this.sessions.orderFromStation(this.stationOf(client), request) };
+    } catch (error) {
+      if (error instanceof HttpException) return { ok: false, message: error.message };
+      throw error;
+    }
   }
 
   @SubscribeMessage("heartbeat")

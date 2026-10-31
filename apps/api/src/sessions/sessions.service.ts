@@ -14,7 +14,9 @@ import type {
   AuthUser,
   ClubSeatMap,
   ClubStation,
+  ClubOrder,
   ClubZone,
+  CreateOrderRequest,
   PlaySession,
   PaymentMethod,
   PlaySessionEndReason,
@@ -370,6 +372,15 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       ...(account ? { playerBalance: account.balance } : {}),
       serverTime: new Date().toISOString()
     };
+  }
+
+  /** Заказ из бара с экрана компьютера: от имени того, кто сейчас за ним сидит. Оплата — при выдаче, как и из приложения. */
+  async orderFromStation(stationId: string, request: Pick<CreateOrderRequest, "lines" | "comment">): Promise<ClubOrder> {
+    const record = await this.findStationRecord(stationId);
+    const session = record ? await this.findActiveBySeat(record.seatId) : undefined;
+    if (!record || !session) throw new ConflictException("Заказать можно только во время сессии");
+    const player: AuthUser = { id: session.userId, name: session.playerName, phone: "", role: "player" };
+    return this.hall.createOrder(record.clubId, player, { seatLabel: session.seatLabel, lines: request?.lines, ...(request?.comment ? { comment: request.comment } : {}) });
   }
 
   /** Код для экрана блокировки: игрок вводит или сканирует его в приложении и садится за компьютер. */
