@@ -123,6 +123,11 @@ describe.each([
     const order = await sessions.orderFromStation(credentials.station.id, { lines: [{ itemId: item.id, quantity: 2 }] });
     expect(order).toMatchObject({ seatLabel: "01", total: item.price * 2 });
     expect(await hall.findMyOrders(clubId, player.id)).toHaveLength(1);
+    expect((await hall.findOpenOrders(clubId)).map((open) => open.id)).toEqual([order.id]);
+    await hall.setOrderStatus(clubId, order.id, "accepted");
+    await hall.setOrderStatus(clubId, order.id, "delivered");
+    await expect(hall.setOrderStatus(clubId, order.id, "cancelled")).rejects.toThrow(/уже обработан/);
+    expect(await hall.findOpenOrders(clubId)).toEqual([]);
   });
 
   it("tells the station the player's balance during a session", async () => {

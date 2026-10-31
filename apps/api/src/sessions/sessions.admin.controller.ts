@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
-import type { AuthUser, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCommand, StationCommandResult, StationCredentials, StationEnrollmentCode, TopUpRequest, TopUpResult } from "@oyna/contracts";
+import { ClubHallService } from "../clubs/club-hall.service";
+import type { AuthUser, ClubOrder, ClubOrderStatus, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCommand, StationCommandResult, StationCredentials, StationEnrollmentCode, TopUpRequest, TopUpResult } from "@oyna/contracts";
 import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionsService } from "./sessions.service";
@@ -8,7 +9,10 @@ import { SessionsService } from "./sessions.service";
 @Controller("admin/clubs/:clubId")
 @UseGuards(ClubAdminGuard)
 export class SessionsAdminController {
-  constructor(private readonly sessions: SessionsService) {}
+  constructor(
+    private readonly sessions: SessionsService,
+    private readonly hall: ClubHallService
+  ) {}
 
   @Get("stations")
   stations(@Param("clubId") clubId: string): Promise<ClubStation[]> {
@@ -60,6 +64,16 @@ export class SessionsAdminController {
   @Post("sessions/:sessionId/end")
   endSession(@Param("clubId") clubId: string, @Param("sessionId") sessionId: string): Promise<PlaySession> {
     return this.sessions.endByClub(clubId, sessionId);
+  }
+
+  @Get("orders")
+  openOrders(@Param("clubId") clubId: string): Promise<ClubOrder[]> {
+    return this.hall.findOpenOrders(clubId);
+  }
+
+  @Post("orders/:orderId/status")
+  setOrderStatus(@Param("clubId") clubId: string, @Param("orderId") orderId: string, @Body() request: { status: ClubOrderStatus }): Promise<ClubOrder> {
+    return this.hall.setOrderStatus(clubId, orderId, request?.status);
   }
 
   @Post("top-ups")

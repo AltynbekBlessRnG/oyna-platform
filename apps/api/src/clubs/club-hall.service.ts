@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import type { AuthUser, ClubAccount, ClubOrder, ClubOrderLine, CreateOrderRequest, MenuItem, PaymentMethod } from "@oyna/contracts";
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import type { AuthUser, ClubAccount, ClubOrder, ClubOrderLine, ClubOrderStatus, CreateOrderRequest, MenuItem, PaymentMethod } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient, QueryResultRow } from "pg";
 import { DatabaseService } from "../database/database.service";
@@ -125,6 +125,44 @@ export class ClubHallService {
       [clubId, userId]
     );
     return result.rows.map((row) => this.mapOrder(row));
+  }
+
+  /** Очередь бара для кассы: новые и принятые заказы, старые сверху. */
+  async findOpenOrders(clubId: string): Promise<ClubOrder[]> {
+    if (!this.database.configured) {
+      return [...this.memoryOrders.values()]
+        .filter((order) => order.clubId === clubId && (order.status === "new" || order.status === "accepted"))
+        .map(({ userId: _owner, ...order }) => order)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    }
+    const result = await this.database.query<OrderRow>(
+      "SELECT id, club_id, seat_label, lines, total, status, comment, created_at FROM club_orders WHERE club_id = $1 AND status IN ('new', 'accepted') ORDER BY created_at LIMIT 100",
+      [clubId]
+    );
+    return result.rows.map((row) => this.mapOrder(row));
+  }
+
+  /** Новый → принят → выдан; отменить можно, пока не выдан. */
+  async setOrderStatus(clubId: string, orderId: string, status: ClubOrderStatus): Promise<ClubOrder> {
+    const allowed: Record<ClubOrderStatus, ClubOrderStatus[]> = { new: [], accepted: ["new"], delivered: ["new", "accepted"], cancelled: ["new", "accepted"] };
+    if (!allowed[status]?.length) throw new BadRequestException("Заказ можно принять, выдать или отменить");
+    if (!this.database.configured) {
+      const order = this.memoryOrders.get(orderId);
+      if (!order || order.clubId !== clubId) throw new NotFoundException("Заказ не найден");
+      if (!allowed[status].includes(order.status)) throw new ConflictException("Заказ уже обработан");
+      const updated = { ...order, status };
+      this.memoryOrders.set(orderId, updated);
+      const { userId: _owner, ...rest } = updated;
+      return rest;
+    }
+    const result = await this.database.query<OrderRow>(
+      `UPDATE club_orders SET status = $3, updated_at = NOW() WHERE club_id = $1 AND id = $2 AND status = ANY($4::text[])
+       RETURNING id, club_id, seat_label, lines, total, status, comment, created_at`,
+      [clubId, orderId, status, allowed[status]]
+    );
+    if (result.rows[0]) return this.mapOrder(result.rows[0]);
+    const exists = await this.database.query("SELECT 1 FROM club_orders WHERE club_id = $1 AND id = $2", [clubId, orderId]);
+    throw exists.rows.length ? new ConflictException("Заказ уже обработан") : new NotFoundException("Заказ не найден");
   }
 
   /** Клубный аккаунт заводится при первом обращении: у игрока свой ник и бонусы в каждом клубе. */
