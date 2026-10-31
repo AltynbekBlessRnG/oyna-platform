@@ -280,4 +280,23 @@ CREATE INDEX IF NOT EXISTS club_client_notes_client_idx ON club_client_notes (cl
 ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS player_phone_tail TEXT;
 CREATE INDEX IF NOT EXISTS play_sessions_club_user_idx ON play_sessions (club_id, user_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS club_orders_club_user_idx ON club_orders (club_id, user_id);
+-- Пакеты времени по фиксированной цене: «3+2», «Ночь». Сессия по пакету оплачивается при посадке.
+CREATE TABLE IF NOT EXISTS club_packages (
+  id TEXT PRIMARY KEY,
+  club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  price INTEGER NOT NULL CHECK (price >= 0),
+  kind TEXT NOT NULL CHECK (kind IN ('duration', 'until')),
+  duration_minutes INTEGER CHECK (duration_minutes > 0),
+  ends_at TEXT,
+  available_from TEXT,
+  available_to TEXT,
+  zone_ids TEXT[] NOT NULL DEFAULT '{}',
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS club_packages_club_idx ON club_packages (club_id, sort_order);
+ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS package_id TEXT;
+ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS package_name TEXT;
+ALTER TABLE play_sessions ADD COLUMN IF NOT EXISTS package_price INTEGER;
 `;

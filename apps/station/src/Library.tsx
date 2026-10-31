@@ -8,11 +8,6 @@ import { GameCover, Icon, Rail, type View } from "./ui";
 const WARN_BEFORE_MS = 5 * 60_000;
 const ALL = "Все";
 
-// Новые поля сервера, пока их нет в контракте: баланс игрока и предоплаченный пакет.
-// Старый сервер их не присылает — тогда строку с деньгами просто не показываем.
-type StationStateWithBalance = StationState & { playerBalance?: number };
-type SessionWithPackage = PlaySession & { packageName?: string };
-
 /**
  * Сколько денег останется после уже сыгранного. Сервер списывает в конце сессии, каждая начатая
  * минута целиком и не дольше оплаченного времени, а `playerBalance` приходит ещё без этого списания.
@@ -109,7 +104,7 @@ export function Library({
   );
 }
 
-function SessionPanel({ state, session, link, now, endSession }: { state: StationStateWithBalance; session: SessionWithPackage; link: Link; now: number; endSession: () => Promise<void> }) {
+function SessionPanel({ state, session, link, now, endSession }: { state: StationState; session: PlaySession; link: Link; now: number; endSession: () => Promise<void> }) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string>();
   const name = playerLabel(session.playerName, session.playerPhoneTail);

@@ -3,6 +3,7 @@ import type { AuthUser } from "@oyna/contracts";
 import { PgliteDatabase } from "../database/pglite.testing";
 import { AuthService } from "../auth/auth.service";
 import { BookingsService } from "../bookings/bookings.service";
+import { ClubPackagesService } from "../clubs/club-packages.service";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { CLUB_CATALOG } from "../clubs/clubs.data";
 import { ClubsService } from "../clubs/clubs.service";
@@ -48,7 +49,7 @@ describe("CrmService on PostgreSQL", () => {
     auth = new AuthService(database);
     const bookings = new BookingsService(clubs, database, new NotificationsService(database));
     const shifts = new ShiftsService(database, clubs, hall);
-    sessions = new SessionsService(database, clubs, hall, auth, bookings, shifts);
+    sessions = new SessionsService(database, clubs, hall, auth, bookings, shifts, new ClubPackagesService(database, clubs));
     crm = new CrmService(database, clubs, hall, shifts);
     await shifts.open(clubId, 0, admin);
     const [zone] = await clubs.findZones(clubId);

@@ -176,6 +176,29 @@ export interface UpsertZoneRequest {
   seatCount: number;
 }
 
+/**
+ * Пакет времени по фиксированной цене: «3 часа по цене 2» или «Ночь до 08:00».
+ * Время клуба — Алматы (UTC+5), часы в формате «HH:MM».
+ */
+export interface ClubPackage {
+  id: string;
+  clubId: string;
+  name: string;
+  price: number;
+  /** `duration` — столько-то минут с посадки; `until` — до часа `endsAt`, когда бы ни сели. */
+  kind: "duration" | "until";
+  durationMinutes?: number;
+  endsAt?: string;
+  /** В какие часы пакет можно купить; без них — круглосуточно. Окно может переходить через полночь. */
+  availableFrom?: string;
+  availableTo?: string;
+  /** Пусто — во всех зонах. */
+  zoneIds: string[];
+  active: boolean;
+}
+
+export type UpsertPackageRequest = Omit<ClubPackage, "clubId" | "id"> & { id?: string };
+
 export interface ClubAdminView {
   club: ClubSummary;
   zones: ClubZone[];
@@ -379,6 +402,10 @@ export interface PlaySession {
   endReason?: PlaySessionEndReason;
   /** Списано с баланса по факту, только у завершённой сессии. */
   charged?: number;
+  /** Сессия по пакету: оплачена целиком при посадке, пополнение её не продлевает. */
+  packageId?: string;
+  packageName?: string;
+  packagePrice?: number;
 }
 
 /** Запуск сессии администратором с кассы. */
@@ -387,6 +414,8 @@ export interface StartSessionRequest {
   phone: string;
   /** Ограничить время; без него сессия идёт, пока хватает баланса. */
   minutes?: number;
+  /** Посадить по пакету: цена списывается с баланса сразу, время задаёт пакет. Вместе с `minutes` не передаётся. */
+  packageId?: string;
 }
 
 /** Игрок сканирует код с экрана компьютера и садится за него. */
@@ -498,6 +527,8 @@ export interface StationState {
   clubName: string;
   zone: { name: string; pricePerHour: number } | null;
   session: PlaySession | null;
+  /** Баланс игрока в клубе, пока идёт сессия. Идущая сессия из него ещё не списана: её спишут при завершении. */
+  playerBalance?: number;
   /** Время сервера: компьютер считает остаток сессии по нему, а не по своим часам. */
   serverTime: string;
 }

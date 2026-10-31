@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, NotFoundException, Unauthorized
 import type { AuthUser, StationState } from "@oyna/contracts";
 import { AuthService } from "../auth/auth.service";
 import { BookingsService } from "../bookings/bookings.service";
+import { ClubPackagesService } from "../clubs/club-packages.service";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
@@ -27,7 +28,7 @@ describe("SessionsService", () => {
     const auth = new AuthService(database);
     bookings = new BookingsService(clubs, database, new NotificationsService(database));
     const shifts = new ShiftsService(database, clubs, hall);
-    service = new SessionsService(database, clubs, hall, auth, bookings, shifts);
+    service = new SessionsService(database, clubs, hall, auth, bookings, shifts, new ClubPackagesService(database, clubs));
     await shifts.open(clubId, 0, admin);
     const [zone] = await clubs.findZones(clubId);
     zoneId = zone.id;

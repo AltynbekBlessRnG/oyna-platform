@@ -54,7 +54,7 @@ export class SessionsAdminController {
 
   @Post("sessions")
   startSession(@Param("clubId") clubId: string, @Body() request: StartSessionRequest): Promise<PlaySession> {
-    return this.sessions.startForPlayer(clubId, request?.seatId, request?.phone ?? "", request?.minutes);
+    return this.sessions.startForPlayer(clubId, request?.seatId, request?.phone ?? "", request?.minutes, request?.packageId);
   }
 
   @Post("sessions/:sessionId/end")

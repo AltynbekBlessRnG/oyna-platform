@@ -33,6 +33,7 @@ import { AuthService } from "../auth/auth.service";
 import { createSeats } from "../bookings/bookings.data";
 import { BookingsService, type SeatReservation } from "../bookings/bookings.service";
 import { ClubHallService } from "../clubs/club-hall.service";
+import { ClubPackagesService, packageAvailableAt, packageMinutesAt } from "../clubs/club-packages.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
 import { ShiftsService } from "../shifts/shifts.service";
@@ -91,6 +92,9 @@ interface SessionRow {
   end_reason: PlaySessionEndReason | null;
   charged: number | null;
   limit_minutes: number | null;
+  package_id: string | null;
+  package_name: string | null;
+  package_price: number | null;
 }
 
 interface ResolvedSeat {
@@ -105,7 +109,7 @@ export type StationListener = (stationId: string, state: StationState | null) =>
 export type StationCommandSender = (stationId: string, command: StationCommand) => Promise<boolean>;
 
 const SESSION_COLUMNS =
-  "id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, ended_at, end_reason, charged, limit_minutes";
+  "id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, ended_at, end_reason, charged, limit_minutes, package_id, package_name, package_price";
 
 /**
  * Компьютеры с клиентом Zen и игровые сессии за ними.
@@ -132,7 +136,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     private readonly hall: ClubHallService,
     private readonly auth: AuthService,
     private readonly bookings: BookingsService,
-    private readonly shifts: ShiftsService
+    private readonly shifts: ShiftsService,
+    private readonly packages: ClubPackagesService
   ) {
     bookings.useSessionOccupancy(async (clubId, from, to) =>
       (await this.listActive(clubId)).filter((session) => Date.parse(session.startedAt) < to && Date.parse(session.endsAt) > from).map((session) => session.seatId)
@@ -355,11 +360,14 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     if (!record) throw new NotFoundException("Компьютер не найден");
     const [seats, club] = await Promise.all([this.seatIndex(record.clubId), this.clubs.findOne(record.clubId)]);
     const seat = seats.get(record.seatId);
+    const session = (await this.findActiveBySeat(record.seatId)) ?? null;
+    const account = session ? await this.hall.getAccount(record.clubId, { id: session.userId, name: session.playerName }) : undefined;
     return {
       station: this.toStation(record, seat),
       clubName: club.name,
       zone: seat ? { name: seat.zone.name, pricePerHour: seat.zone.pricePerHour } : null,
-      session: (await this.findActiveBySeat(record.seatId)) ?? null,
+      session,
+      ...(account ? { playerBalance: account.balance } : {}),
       serverTime: new Date().toISOString()
     };
   }
@@ -390,21 +398,36 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Запуск с кассы: администратор садит игрока за компьютер по номеру телефона. */
-  async startForPlayer(clubId: string, seatId: string, phone: string, minutes?: number): Promise<PlaySession> {
+  async startForPlayer(clubId: string, seatId: string, phone: string, minutes?: number, packageId?: string): Promise<PlaySession> {
     const player = await this.auth.ensureUser(phone, "Игрок Zen");
-    return this.start(clubId, seatId, player, minutes);
+    return this.start(clubId, seatId, player, minutes, Date.now(), packageId);
   }
 
-  async start(clubId: string, seatId: string, player: Player, minutes?: number, now = Date.now()): Promise<PlaySession> {
+  /** Без пакета сессия идёт, пока хватает баланса; с пакетом его цена списывается сразу, а время задаёт пакет. */
+  async start(clubId: string, seatId: string, player: Player, minutes?: number, now = Date.now(), packageId?: string): Promise<PlaySession> {
     const seat = await this.resolveSeat(clubId, seatId);
     if (minutes !== undefined && (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_SESSION_MINUTES)) {
       throw new BadRequestException(`Время сессии от 1 до ${MAX_SESSION_MINUTES} минут`);
     }
+    if (packageId && minutes !== undefined) throw new BadRequestException("Выберите либо пакет, либо время");
+    const pack = packageId ? await this.packages.find(clubId, packageId) : undefined;
+    if (pack) {
+      if (!pack.active) throw new BadRequestException(`Пакет «${pack.name}» сейчас выключен`);
+      if (pack.zoneIds.length > 0 && !pack.zoneIds.includes(seat.zone.id)) throw new BadRequestException(`Пакет «${pack.name}» не действует в зоне ${seat.zone.name}`);
+      if (!packageAvailableAt(pack, now)) throw new BadRequestException(`Пакет «${pack.name}» продаётся с ${pack.availableFrom} до ${pack.availableTo}`);
+    }
+    const packMinutes = pack ? packageMinutesAt(pack, now) : undefined;
     const reservations = await this.foreignReservations(clubId, seat.seatId, player.id, now);
     if (reservations.some((reservation) => reservation.start <= now)) throw new ConflictException("Место сейчас забронировано другим игроком");
     const bookingLimit = this.minutesUntilBooking(reservations, now);
     if (bookingLimit !== undefined && bookingLimit < 1) throw new ConflictException("Через минуту на этом месте начинается чужая бронь");
+    // Пакет не обрезаем бронью: игрок заплатил за всё время, поэтому лучше отказать сразу.
+    if (pack && packMinutes !== undefined && bookingLimit !== undefined && bookingLimit < packMinutes) {
+      throw new ConflictException(`Пакет «${pack.name}» не помещается: через ${bookingLimit} мин на этом месте чужая бронь`);
+    }
     const effectiveLimit = this.minLimit(minutes, bookingLimit);
+    const sessionEndsAt = (balance: number): string =>
+      pack && packMinutes !== undefined ? new Date(now + packMinutes * 60_000).toISOString() : this.endsAt(now, seat.zone.pricePerHour, balance, effectiveLimit);
     const base = {
       id: randomUUID(),
       clubId,
@@ -418,8 +441,10 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       pricePerHour: seat.zone.pricePerHour,
       startedAt: new Date(now).toISOString(),
       status: "active" as const,
-      ...(minutes ? { limitMinutes: minutes } : {})
+      ...(minutes ? { limitMinutes: minutes } : {}),
+      ...(pack ? { packageId: pack.id, packageName: pack.name, packagePrice: pack.price } : {})
     };
+    const packageCharge = { kind: "session" as const, refId: base.id };
 
     let session: StoredSession;
     if (!this.database.configured) {
@@ -427,7 +452,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       if (active.some((item) => item.seatId === seat.seatId)) throw new ConflictException("Компьютер уже занят");
       if (active.some((item) => item.clubId === clubId && item.userId === player.id)) throw new ConflictException("У игрока уже идёт сессия в этом клубе");
       const { balance } = await this.hall.getAccount(clubId, player);
-      session = { ...base, endsAt: this.endsAt(now, base.pricePerHour, balance, effectiveLimit) };
+      session = { ...base, endsAt: sessionEndsAt(balance) };
+      if (pack && pack.price > 0) await this.hall.changeBalance(clubId, player, -pack.price, packageCharge);
       this.memorySessions.set(session.id, session);
     } else {
       session = await this.database.transaction(async (client) => {
@@ -440,18 +466,20 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
         if (busy.rows.some((row) => row.seat_id === seat.seatId)) throw new ConflictException("Компьютер уже занят");
         if (busy.rows.length > 0) throw new ConflictException("У игрока уже идёт сессия в этом клубе");
         const balance = await this.lockBalance(client, clubId, player);
-        const created: StoredSession = { ...base, endsAt: this.endsAt(now, base.pricePerHour, balance, effectiveLimit) };
+        if (pack && balance < pack.price) throw new BadRequestException(`На балансе ${balance} ₸, а пакет «${pack.name}» стоит ${pack.price} ₸`);
+        const created: StoredSession = { ...base, endsAt: sessionEndsAt(balance) };
         try {
           await client.query(
-            `INSERT INTO play_sessions (id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, limit_minutes)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', $13)`,
-            [created.id, clubId, created.seatId, created.seatLabel, created.zoneId, created.zoneName, player.id, player.name, created.playerPhoneTail ?? null, created.pricePerHour, created.startedAt, created.endsAt, minutes ?? null]
+            `INSERT INTO play_sessions (id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, limit_minutes, package_id, package_name, package_price)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', $13, $14, $15, $16)`,
+            [created.id, clubId, created.seatId, created.seatLabel, created.zoneId, created.zoneName, player.id, player.name, created.playerPhoneTail ?? null, created.pricePerHour, created.startedAt, created.endsAt, minutes ?? null, pack?.id ?? null, pack?.name ?? null, pack?.price ?? null]
           );
         } catch (error) {
           if (!this.isUniqueViolation(error)) throw error;
           const constraint = (error as { constraint?: string }).constraint;
           throw new ConflictException(constraint === "play_sessions_active_user_idx" ? "У игрока уже идёт сессия в этом клубе" : "Компьютер уже занят");
         }
+        if (pack && pack.price > 0) await this.hall.changeBalance(clubId, player, -pack.price, packageCharge, client);
         return created;
       });
     }
@@ -489,9 +517,12 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       if (!session) throw new NotFoundException("Сессия не найдена");
       if (session.status !== "active") return this.toPublic(session);
       const player = { id: session.userId, name: session.playerName };
-      const { balance } = await this.hall.getAccount(session.clubId, player);
-      const charged = Math.min(this.cost(session, now), balance);
-      if (charged > 0) await this.hall.changeBalance(session.clubId, player, -charged, { kind: "session", refId: session.id });
+      const charged = await this.settle(session, now, async (amount) => {
+        const { balance } = await this.hall.getAccount(session.clubId, player);
+        const due = Math.min(amount, balance);
+        if (due > 0) await this.hall.changeBalance(session.clubId, player, -due, { kind: "session", refId: session.id });
+        return due;
+      });
       ended = { ...session, status: "ended", endedAt: new Date(Math.min(now, Date.parse(session.endsAt))).toISOString(), endReason: reason, charged };
       this.memorySessions.set(sessionId, ended);
     } else {
@@ -502,9 +533,12 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
         const session = this.mapSession(row);
         if (session.status !== "active") return { session, changed: false };
         const player = { id: session.userId, name: session.playerName };
-        const balance = await this.lockBalance(client, session.clubId, player);
-        const charged = Math.min(this.cost(session, now), balance);
-        if (charged > 0) await this.hall.changeBalance(session.clubId, player, -charged, { kind: "session", refId: session.id }, client);
+        const charged = await this.settle(session, now, async (amount) => {
+          const balance = await this.lockBalance(client, session.clubId, player);
+          const due = Math.min(amount, balance);
+          if (due > 0) await this.hall.changeBalance(session.clubId, player, -due, { kind: "session", refId: session.id }, client);
+          return due;
+        });
         const endedAt = new Date(Math.min(now, Date.parse(session.endsAt))).toISOString();
         await client.query("UPDATE play_sessions SET status = 'ended', ended_at = $2, end_reason = $3, charged = $4 WHERE id = $1", [sessionId, endedAt, reason, charged]);
         return { session: { ...session, status: "ended" as const, endedAt, endReason: reason, charged }, changed: true };
@@ -561,7 +595,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
         )
       : await this.hall.changeBalance(clubId, player, amount, { ...entry, shiftId: await this.shifts.requireOpen(clubId) });
     const session = await this.findStoredActive((item) => item.clubId === clubId && item.userId === player.id, "club_id = $1 AND user_id = $2", [clubId, player.id]);
-    if (session) {
+    // Пакет уже оплачен и кончается в свой час: пополнение остаётся на балансе.
+    if (session && !session.packageId) {
       const startedAt = Date.parse(session.startedAt);
       const reservations = await this.foreignReservations(clubId, session.seatId, player.id, Date.now());
       const limit = this.minLimit(session.limitMinutes, this.minutesUntilBooking(reservations, startedAt));
@@ -620,6 +655,11 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
   private minLimit(...limits: (number | undefined)[]): number | undefined {
     const defined = limits.filter((limit): limit is number => limit !== undefined);
     return defined.length ? Math.min(...defined) : undefined;
+  }
+
+  /** Сколько стоила сессия: пакет оплачен при посадке и не пересчитывается, остальное списывает `charge`. */
+  private async settle(session: StoredSession, now: number, charge: (amount: number) => Promise<number>): Promise<number> {
+    return session.packagePrice !== undefined ? session.packagePrice : charge(this.cost(session, now));
   }
 
   /** Начатая минута считается целиком, но не дольше оплаченного времени. */
@@ -756,7 +796,8 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       ...(row.ended_at ? { endedAt: new Date(row.ended_at).toISOString() } : {}),
       ...(row.end_reason ? { endReason: row.end_reason } : {}),
       ...(row.charged !== null ? { charged: row.charged } : {}),
-      ...(row.limit_minutes !== null ? { limitMinutes: row.limit_minutes } : {})
+      ...(row.limit_minutes !== null ? { limitMinutes: row.limit_minutes } : {}),
+      ...(row.package_id ? { packageId: row.package_id, packageName: row.package_name ?? "", packagePrice: row.package_price ?? 0 } : {})
     };
   }
 

@@ -2,6 +2,7 @@ import { ConflictException, NotFoundException } from "@nestjs/common";
 import type { AuthUser } from "@oyna/contracts";
 import { AuthService } from "../auth/auth.service";
 import { BookingsService } from "../bookings/bookings.service";
+import { ClubPackagesService } from "../clubs/club-packages.service";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { CLUB_CATALOG } from "../clubs/clubs.data";
 import { ClubsService } from "../clubs/clubs.service";
@@ -22,7 +23,7 @@ async function build(database: DatabaseService) {
   const hall = new ClubHallService(database, clubs);
   const auth = new AuthService(database);
   const shifts = new ShiftsService(database, clubs, hall);
-  const sessions = new SessionsService(database, clubs, hall, auth, new BookingsService(clubs, database, new NotificationsService(database)), shifts);
+  const sessions = new SessionsService(database, clubs, hall, auth, new BookingsService(clubs, database, new NotificationsService(database)), shifts, new ClubPackagesService(database, clubs));
   const crm = new CrmService(database, clubs, hall, shifts);
   return { shifts, sessions, crm };
 }

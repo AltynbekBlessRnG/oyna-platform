@@ -4,15 +4,18 @@ import type {
   AuthUser,
   ClubAdminView,
   ClubMember,
+  ClubPackage,
   ClubSummary,
   ClubZone,
   ManagedClub,
   UpdateClubRequest,
+  UpsertPackageRequest,
   UpsertZoneRequest
 } from "@oyna/contracts";
 import { AdminIdentityGuard, ClubAdminGuard, PlatformAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ClubAccessService } from "./club-access.service";
+import { ClubPackagesService } from "./club-packages.service";
 import { CLUB_CATALOG, type ClubCatalogEntry } from "./clubs.data";
 import { ClubsService } from "./clubs.service";
 
@@ -20,7 +23,8 @@ import { ClubsService } from "./clubs.service";
 export class ClubsAdminController {
   constructor(
     private readonly clubs: ClubsService,
-    private readonly access: ClubAccessService
+    private readonly access: ClubAccessService,
+    private readonly packages: ClubPackagesService
   ) {}
 
   /** Клубы, доступные текущему сотруднику: кабинет выбирает активный клуб из этого списка. */
@@ -54,6 +58,18 @@ export class ClubsAdminController {
   @UseGuards(ClubAdminGuard)
   replaceZones(@Param("clubId") clubId: string, @Body() request: { zones: UpsertZoneRequest[] }): Promise<ClubZone[]> {
     return this.clubs.replaceZones(clubId, request.zones);
+  }
+
+  @Get("clubs/:clubId/packages")
+  @UseGuards(ClubAdminGuard)
+  listPackages(@Param("clubId") clubId: string): Promise<ClubPackage[]> {
+    return this.packages.list(clubId);
+  }
+
+  @Put("clubs/:clubId/packages")
+  @UseGuards(ClubAdminGuard)
+  replacePackages(@Param("clubId") clubId: string, @Body() request: { packages: UpsertPackageRequest[] }): Promise<ClubPackage[]> {
+    return this.packages.replace(clubId, request?.packages);
   }
 
   @Get("clubs/:clubId/members")
