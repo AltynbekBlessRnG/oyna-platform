@@ -4,6 +4,7 @@ import type {
   AuthSession,
   BookingReceipt,
   ChallengeStatusResponse,
+  ClubPackage,
   ClubShift,
   PaymentMethod,
   ClubSummary,
@@ -19,6 +20,7 @@ import type {
   TopUpResult,
   UpdateBookingStatusRequest,
   UpdateClubRequest,
+  UpsertPackageRequest,
   UpsertZoneRequest
 } from "@oyna/contracts";
 import { revalidatePath } from "next/cache";
@@ -142,6 +144,17 @@ export async function saveClubZones(clubId: string, zones: UpsertZoneRequest[]):
     return { ok: true, message: "Зоны, цены и места обновлены" };
   } catch (error) {
     return { ok: false, message: describe(error, "Не удалось сохранить зоны") };
+  }
+}
+
+export async function saveClubPackages(clubId: string, packages: UpsertPackageRequest[]): Promise<ActionResult & { data: ClubPackage[] }> {
+  try {
+    const data = await adminFetch<ClubPackage[]>(`/admin/clubs/${clubId}/packages`, { method: "PUT", body: JSON.stringify({ packages }) });
+    revalidatePath("/settings");
+    revalidatePath("/hall");
+    return { ok: true, message: "Пакеты сохранены", data };
+  } catch (error) {
+    return { ok: false, message: describe(error, "Не удалось сохранить пакеты"), data: [] };
   }
 }
 
