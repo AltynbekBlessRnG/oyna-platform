@@ -1,4 +1,4 @@
-import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubClientsResponse, ClubPackage, ClubSeatMap, ClubShift, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
+import type { BookingReceipt, ClientSegment, ClientSort, ClubAdminView, ClubAnalytics, ClubClientDetail, ClubOrder, ClubClientsResponse, ClubPackage, ClubSeatMap, ClubShift, ClubStation, ManagedClub, PlaySession } from "@oyna/contracts";
 import { redirect } from "next/navigation";
 import { getActiveClubId, getSessionToken } from "@/lib/session";
 
@@ -112,20 +112,31 @@ export interface HallSnapshot {
   shift: ClubShift | null;
   /** Пакеты клуба для посадки; выключенные сюда не попадают. */
   packages: ClubPackage[];
+  /** Открытые заказы бара (новые и принятые), старые сверху: их несут по очереди. */
+  orders: ClubOrder[];
 }
 
 /** Зал для кассы: карта мест, компьютеры с клиентом Zen и идущие сессии. */
 export async function loadHall(clubId: string): Promise<HallSnapshot> {
-  const [seatMapResponse, stations, sessions, shift, packages] = await Promise.all([
+  const [seatMapResponse, stations, sessions, shift, packages, orders] = await Promise.all([
     fetch(`${apiUrl}/clubs/${clubId}/seatmap`, { cache: "no-store" }),
     adminFetch<ClubStation[]>(`/admin/clubs/${clubId}/stations`),
     adminFetch<PlaySession[]>(`/admin/clubs/${clubId}/sessions`),
     adminFetch<ClubShift | null>(`/admin/clubs/${clubId}/shifts/current`),
-    adminFetch<ClubPackage[]>(`/admin/clubs/${clubId}/packages`)
+    adminFetch<ClubPackage[]>(`/admin/clubs/${clubId}/packages`),
+    // Очередь бара не должна ронять весь зал: без неё касса всё равно сажает и пополняет.
+    adminFetch<ClubOrder[]>(`/admin/clubs/${clubId}/orders`).catch(() => [] as ClubOrder[])
   ]);
   if (!seatMapResponse.ok) throw new ApiError(`Карта зала недоступна (${seatMapResponse.status})`, seatMapResponse.status);
   // Нет открытой смены — API отвечает пустым телом.
-  return { seatMap: (await seatMapResponse.json()) as ClubSeatMap, stations, sessions, shift: shift ?? null, packages: packages.filter((pack) => pack.active) };
+  return {
+    seatMap: (await seatMapResponse.json()) as ClubSeatMap,
+    stations,
+    sessions,
+    shift: shift ?? null,
+    packages: packages.filter((pack) => pack.active),
+    orders: [...(orders ?? [])].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  };
 }
 
 /** История смен кассы, новые сверху. */

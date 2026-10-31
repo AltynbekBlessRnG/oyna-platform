@@ -16,6 +16,9 @@
   --ring: #ffc83d;
   --danger: #ff6b81;
   --success: #6fdc9b;
+  /* Зал: оранжевый — время на исходе, холодный голубой — бронь. Золото остаётся за свободным местом и действием. */
+  --warning: #ff9a4d;
+  --reserved: #8fb0ff;
   --radius: 0.75rem;
 }
 
@@ -33,6 +36,8 @@
   --color-ring: var(--ring);
   --color-danger: var(--danger);
   --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-reserved: var(--reserved);
   /* Onest — текст интерфейса, Unbounded — то, что считают и ищут глазами: цифры, места, время, заголовки. */
   --font-sans: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-unbounded), var(--font-onest), ui-sans-serif, sans-serif;
@@ -42,6 +47,39 @@
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
 h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Пол зала: графит с холодным отливом и тонкая сетка — на ней потом встанет планировка из редактора. */
+.hall-floor {
+  --seat: 3.5rem;
+  --seat-gap: 0.5rem;
+  background-color: #14181d;
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.028) 1px, transparent 1px);
+  background-size: 1.25rem 1.25rem;
+}
+@media (min-width: 640px) { .hall-floor { --seat: 3.75rem; } }
+@media (min-width: 1536px) { .hall-floor { --seat: 4rem; --seat-gap: 0.625rem; } }
+
+/* Места — клетки одной сетки: по порядку зоны или по сохранённым координатам (grid-column/row). */
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--seat));
+  grid-auto-rows: auto;
+  gap: 0.75rem var(--seat-gap);
+}
+
+/* Штриховка мест: бронь и пропавший ПК отличаются от занятого не только цветом. */
+.seat-hatch {
+  background-image: repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 14%, transparent) 0 1.5px, transparent 1.5px 8px);
+}
+
+/* Новый заказ бара пришёл с компьютера игрока: мягкая пульсация, пока его не приняли. */
+@keyframes order-call {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+.order-call { animation: order-call 1.8s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

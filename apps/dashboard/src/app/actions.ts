@@ -4,6 +4,7 @@ import type {
   AuthSession,
   BookingReceipt,
   ChallengeStatusResponse,
+  ClubOrder,
   ClubPackage,
   ClubShift,
   PaymentMethod,
@@ -203,6 +204,14 @@ export async function closeShift(clubId: string, countedCash: number, note: stri
   );
   revalidatePath("/shifts");
   return result;
+}
+
+/** Заказ бара: принять в работу, отметить выданным или отменить. 409 — его уже обработал кто-то другой. */
+export async function setOrderStatus(clubId: string, orderId: string, status: "accepted" | "delivered" | "cancelled"): Promise<HallResult<ClubOrder>> {
+  return hallAction(
+    () => adminFetch<ClubOrder>(`/admin/clubs/${clubId}/orders/${orderId}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+    "Не удалось обновить заказ"
+  );
 }
 
 export async function registerStation(clubId: string, seatId: string): Promise<HallResult<StationCredentials>> {

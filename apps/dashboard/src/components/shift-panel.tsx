@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 import { clock, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-const inputClass = "h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary";
+const inputClass = "h-9 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary";
 
-/** Смена кассы над картой зала: без открытой смены касса деньги не принимает. */
+/**
+ * Смена кассы одной строкой над сводкой зала: суммы по способам оплаты — в сводке, здесь — что должно
+ * лежать в кассе и закрытие. Без открытой смены касса деньги не принимает.
+ */
 export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift | null }) {
   const [cash, setCash] = useState("");
   const [note, setNote] = useState("");
@@ -46,19 +49,17 @@ export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift
 
   if (!shift) {
     return (
-      <section aria-label="Смена кассы" className="mb-6 grid gap-3 rounded-2xl border border-border bg-card p-4 md:flex md:items-end md:justify-between">
-        <div className="flex items-start gap-3">
-          <LockKeyhole className="mt-0.5 size-5 text-muted-foreground" />
-          <div>
-            <p className="font-medium">Смена закрыта</p>
-            <p className="text-sm text-muted-foreground">Пока смена не открыта, касса не принимает деньги. <Link className="underline" href="/shifts">История смен</Link></p>
-            {message ? <p role="status" className={cn("mt-1 text-sm", message.ok ? "text-success" : "text-danger")}>{message.text}</p> : null}
-          </div>
+      <section aria-label="Смена кассы" className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-dashed border-border bg-card px-4 py-3">
+        <LockKeyhole className="size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium">Смена закрыта: касса не принимает деньги</p>
+          {message ? <p role="status" className={cn("text-sm", message.ok ? "text-success" : "text-danger")}>{message.text}</p> : null}
         </div>
-        <div className="flex gap-2">
-          <input className={cn(inputClass, "md:w-56")} inputMode="numeric" aria-label="Наличные в кассе сейчас" placeholder="Наличные в кассе, ₸" value={cash} onChange={(event) => setCash(event.target.value.replace(/\D/g, ""))} />
-          <Button onClick={open} disabled={isPending}>Открыть смену</Button>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <input className={cn(inputClass, "sm:w-52")} inputMode="numeric" aria-label="Наличные в кассе сейчас" placeholder="Наличные в кассе, ₸" value={cash} onChange={(event) => setCash(event.target.value.replace(/\D/g, ""))} />
+          <Button size="sm" className="h-9" onClick={open} disabled={isPending}>Открыть смену</Button>
         </div>
+        <Link className="text-xs text-muted-foreground underline" href="/shifts">История смен</Link>
       </section>
     );
   }
@@ -66,25 +67,33 @@ export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift
   const counted = cash === "" ? null : Number(cash);
   const difference = counted === null ? null : counted - shift.expectedCash;
   return (
-    <section aria-label="Смена кассы" className="mb-6 grid gap-4 rounded-2xl border border-primary/50 bg-card p-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <LockKeyholeOpen className="mt-0.5 size-5 text-primary" />
-          <div>
-            <p className="font-medium">Смена открыта · {shift.openedBy.name} · с {clock(shift.openedAt)}</p>
-            <p className="text-sm text-muted-foreground">
-              Наличные {money(shift.totals.cash)} · Kaspi {money(shift.totals.kaspi)} · Карта {money(shift.totals.card)} · пополнений {shift.totals.topUpCount}
-              {shift.totals.adjustmentCount > 0 ? ` · корректировок ${shift.totals.adjustmentCount} на ${money(shift.totals.adjustments)}` : ""}
-            </p>
-          </div>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">В кассе должно быть</p>
-          <p className="font-display text-2xl font-semibold">{money(shift.expectedCash)}</p>
-        </div>
+    <section aria-label="Смена кассы" className="grid gap-3 rounded-2xl border border-primary/35 bg-card px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <span className="flex min-w-0 items-center gap-2.5">
+          <LockKeyholeOpen className="size-4 shrink-0 text-primary" />
+          <span className="text-sm">
+            <span className="font-medium">Смена открыта</span>
+            <span className="text-muted-foreground"> с {clock(shift.openedAt)}, {shift.openedBy.name}</span>
+          </span>
+        </span>
+        <span className="text-xs text-muted-foreground">
+          пополнений {shift.totals.topUpCount}
+          {shift.totals.barOrders > 0 ? `, бар ${shift.totals.barOrders} на ${money(shift.totals.barTotal)}` : ""}
+          {shift.totals.adjustmentCount > 0 ? `, корректировок ${shift.totals.adjustmentCount} на ${money(shift.totals.adjustments)}` : ""}
+        </span>
+        <span className="ml-auto flex items-center gap-4">
+          <span className="text-right">
+            <span className="block text-[11px] leading-tight text-muted-foreground">В кассе должно быть</span>
+            <span className="font-display text-lg font-semibold tabular-nums">{money(shift.expectedCash)}</span>
+          </span>
+          {closing ? null : (
+            <Button size="sm" variant="secondary" className="h-9" onClick={() => setClosing(true)}>Закрыть смену</Button>
+          )}
+          <Link className="hidden text-xs text-muted-foreground underline sm:inline" href="/shifts">История</Link>
+        </span>
       </div>
       {closing ? (
-        <div className="grid gap-3 md:grid-cols-[1fr_2fr_auto] md:items-start">
+        <div className="grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_2fr_auto] md:items-start">
           <div className="grid gap-1">
             <input className={inputClass} inputMode="numeric" autoFocus aria-label="Пересчитанные наличные" placeholder="Пересчитали наличных, ₸" value={cash} onChange={(event) => setCash(event.target.value.replace(/\D/g, ""))} />
             {difference !== null ? (
@@ -99,12 +108,7 @@ export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift
             <Button variant="ghost" onClick={() => setClosing(false)}>Отмена</Button>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="secondary" onClick={() => setClosing(true)}>Закрыть смену</Button>
-          <Link className="text-sm text-muted-foreground underline" href="/shifts">История смен</Link>
-        </div>
-      )}
+      ) : null}
       {message ? <p role="status" className={cn("text-sm", message.ok ? "text-success" : "text-danger")}>{message.text}</p> : null}
     </section>
   );

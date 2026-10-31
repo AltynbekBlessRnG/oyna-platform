@@ -3,15 +3,16 @@
 import type { ClubPackage, ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCommandResult, StationCredentials } from "@oyna/contracts";
 import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { type ReactNode, useCallback, useEffect, useState, useTransition } from "react";
 import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance } from "@/app/actions";
-import { Badge } from "@/components/ui/badge";
+import { BarOrders } from "@/components/bar-orders";
+import { endingSoon, HallMap, pcLost, shortLeft } from "@/components/hall-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { PAYMENT_LABELS, PaymentMethodPicker } from "@/components/payment-method";
 import type { HallSnapshot } from "@/lib/api";
-import { clock, duration, minutesUntil, money, playerLabel } from "@/lib/format";
+import { clock, duration, minutesUntil, money, number, playerLabel, plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface HallBoardProps {
@@ -27,9 +28,9 @@ interface SelectedSeat {
 
 const inputClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary";
 const REFRESH_MS = 15_000;
-const ENDING_SOON_MIN = 15;
 /** Кассир берёт с гостя деньги, а не минуты: быстрые суммы для посадки. */
 const SEAT_AMOUNTS = [300, 500, 1000, 2000];
+const PAGE_TITLE = "Зал и касса — Zen";
 
 /** Час клуба по Алматы (UTC+5): пакеты продаются в свои часы, как их проверяет сервер. */
 function clubMinuteOfDay(now: number): number {
@@ -60,16 +61,8 @@ function minutesFor(amount: number, pricePerHour: number): number | undefined {
 }
 
 /**
- * ПК «пропал», только если идёт игра и его клиент уже выходил на связь. Компьютер, который подключили
- * к месту минуту назад и ещё не запустили, тревогой не считается.
- */
-function pcLost(session: PlaySession | undefined, station: ClubStation | undefined): boolean {
-  return Boolean(session && station && !station.online && station.lastSeenAt);
-}
-
-/**
- * Касса: карта зала с живыми сессиями, посадка игрока, пополнение и подключение компьютеров.
- * Язык мест тот же, что в приложении игрока: золотой контур — свободно, заливка — занято, пунктир — бронь.
+ * Касса: сводка зала, карта мест с живыми сессиями, очередь бара, посадка игрока и пополнение.
+ * Карта мест — в hall-map.tsx; здесь сводка, правая колонка и окно места.
  */
 export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
   const router = useRouter();
@@ -93,11 +86,23 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
     };
   }, [router]);
 
+  const freshOrders = hall.orders.filter((order) => order.status === "new").length;
+  // Вкладка кассы часто в фоне: число новых заказов видно прямо в заголовке.
+  // Next ставит заголовок из metadata уже после гидрации и при каждом refresh: следим за <head> и возвращаем свой.
+  useEffect(() => {
+    const title = freshOrders ? `(${freshOrders}) ${PAGE_TITLE}` : PAGE_TITLE;
+    const apply = () => {
+      if (document.title !== title) document.title = title;
+    };
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(document.head, { subtree: true, childList: true, characterData: true });
+    return () => observer.disconnect();
+  }, [freshOrders]);
+
   const stationBySeat = new Map<string, ClubStation>(hall.stations.map((station) => [station.seatId, station]));
   const sessionBySeat = new Map<string, PlaySession>(hall.sessions.map((session) => [session.seatId, session]));
   const selected = hall.seatMap.zones.flatMap(({ zone, seats }) => seats.map((seat) => ({ seat, zone }))).find((entry) => entry.seat.id === selectedId);
-  const lostCount = hall.sessions.filter((session) => pcLost(session, stationBySeat.get(session.seatId))).length;
-  const online = hall.stations.filter((station) => station.online).length;
 
   function select(seatId: string): void {
     setSelectedId(seatId);
@@ -115,53 +120,25 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
-      <Card>
-        <CardHeader className="flex-row flex-wrap items-center justify-between gap-3">
-          <CardTitle>Карта зала</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <Badge tone={hall.sessions.length ? "warning" : "neutral"}>играют: {hall.sessions.length}</Badge>
-            <Badge tone={lostCount ? "danger" : "neutral"}>
-              {lostCount ? `не отвечают во время игры: ${lostCount}` : `ПК на связи: ${online} из ${hall.stations.length}`}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-6">
-          {hall.seatMap.zones.map(({ zone, seats }) => (
-            <section key={zone.id} aria-label={zone.name}>
-              <div className="mb-3 flex items-baseline justify-between gap-3">
-                <h2 className="font-display text-sm font-semibold">{zone.name}</h2>
-                <span className="text-xs text-muted-foreground">{money(zone.pricePerHour)} в час</span>
-              </div>
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(6.25rem,1fr))] gap-2">
-                {seats.map((seat) => (
-                  <SeatTile
-                    key={seat.id}
-                    seat={seat}
-                    session={sessionBySeat.get(seat.id)}
-                    station={stationBySeat.get(seat.id)}
-                    now={now}
-                    selected={selectedId === seat.id}
-                    onSelect={() => select(seat.id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-muted-foreground" aria-label="Обозначения">
-            <li className="flex items-center gap-2"><span className="size-3 rounded-[3px] border border-primary" />свободно</li>
-            <li className="flex items-center gap-2"><span className="size-3 rounded-[3px] bg-secondary ring-1 ring-foreground/20" />занято</li>
-            <li className="flex items-center gap-2"><span className="size-3 rounded-[3px] border border-dashed border-muted-foreground" />бронь</li>
-            <li className="flex items-center gap-2"><span className="size-3 rounded-[3px] bg-danger/25 ring-1 ring-danger" />ПК не отвечает во время игры</li>
-            <li className="flex items-center gap-2"><span className="size-2 rounded-full bg-success" />клиент Zen на связи</li>
-          </ul>
-        </CardContent>
-      </Card>
+    <div className="grid gap-4">
+      <HallSummary hall={hall} stationBySeat={stationBySeat} now={now} />
 
-      <div className="space-y-6">
-        {message && !selected ? <Notice message={message} /> : null}
-        <ActiveSessions sessions={hall.sessions} stationBySeat={stationBySeat} now={now} onSelect={select} showZone={hall.seatMap.zones.length > 1} />
-        <TopUpCard clubId={clubId} run={run} isPending={isPending} onToppedUp={setLastPhone} shiftOpen={Boolean(hall.shift)} />
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_23rem] xl:grid-rows-[auto_auto_1fr] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+        <div id="bar-orders" className="grid scroll-mt-4 gap-3 xl:col-start-2 xl:row-start-1">
+          {message && !selected ? <Notice message={message} /> : null}
+          <BarOrders clubId={clubId} orders={hall.orders} now={now} isPending={isPending} run={run} />
+        </div>
+
+        <div className="xl:col-start-1 xl:row-span-3 xl:row-start-1 xl:self-stretch">
+          <HallMap zones={hall.seatMap.zones} sessionBySeat={sessionBySeat} stationBySeat={stationBySeat} now={now} selectedId={selectedId} onSelect={select} />
+        </div>
+
+        <div id="playing" className="scroll-mt-4 xl:col-start-2">
+          <ActiveSessions sessions={hall.sessions} stationBySeat={stationBySeat} now={now} onSelect={select} showZone={hall.seatMap.zones.length > 1} />
+        </div>
+        <div className="xl:col-start-2">
+          <TopUpCard clubId={clubId} run={run} isPending={isPending} onToppedUp={setLastPhone} shiftOpen={Boolean(hall.shift)} />
+        </div>
       </div>
 
       {selected ? (
@@ -187,56 +164,113 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
   );
 }
 
-function SeatTile({ seat, session, station, now, selected, onSelect }: {
-  seat: SeatMapSeat;
-  session?: PlaySession;
-  station?: ClubStation;
+/**
+ * Сводка над залом: пять чисел, на которые касса смотрит весь день. Ячейка, где нужно действие,
+ * загорается своим цветом: оранжевым — время на исходе, жёлтым — новый заказ, розовым — ПК пропал.
+ */
+function HallSummary({ hall, stationBySeat, now }: {
+  hall: HallSnapshot;
+  stationBySeat: Map<string, ClubStation>;
   now: number | null;
-  selected: boolean;
-  onSelect: () => void;
 }) {
-  const lost = pcLost(session, station);
-  const soon = Boolean(session && now && minutesUntil(session.endsAt, now) <= ENDING_SOON_MIN);
+  const online = hall.stations.filter((station) => station.online).length;
+  const lost = hall.sessions.filter((session) => pcLost(session, stationBySeat.get(session.seatId))).length;
+  const players = new Set(hall.sessions.map((session) => session.userId)).size;
+  const onPackage = hall.sessions.filter((session) => session.packageName).length;
+  const soon = hall.sessions.filter((session) => endingSoon(session, now)).sort((a, b) => a.endsAt.localeCompare(b.endsAt));
+  const freshOrders = hall.orders.filter((order) => order.status === "new").length;
+  const totals = hall.shift?.totals;
+  const taken = totals ? totals.cash + totals.kaspi + totals.card : 0;
+
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        "relative min-h-[4.75rem] rounded-xl p-2.5 text-left transition-colors",
-        lost
-          ? "bg-danger/20 ring-1 ring-danger"
-          : session || seat.status === "occupied"
-            ? "bg-secondary ring-1 ring-foreground/15 hover:ring-foreground/40"
-            : seat.status === "reserved"
-              ? "border border-dashed border-muted-foreground/70 hover:border-foreground"
-              : "border border-primary/70 hover:border-primary hover:bg-primary/5",
-        selected && "outline-2 outline-offset-2 outline-primary"
-      )}
-    >
-      <span className="flex items-center justify-between">
-        <strong className={cn("font-display text-base", !session && seat.status === "free" ? "text-primary" : "text-foreground")}>{seat.label}</strong>
-        {station ? (
-          <span className={cn("size-2 rounded-full", station.online ? "bg-success" : lost ? "bg-danger" : "bg-muted-foreground/50")} title={station.online ? "ПК на связи" : "ПК не на связи"} />
-        ) : null}
-      </span>
-      {session ? (
-        <>
-          <span className="mt-1 block truncate text-xs font-medium">{playerLabel(session.playerName, session.playerPhoneTail)}</span>
-          <span className={cn("block text-xs", lost ? "text-danger" : soon ? "text-primary" : "text-muted-foreground")}>
-            {lost ? "ПК не отвечает" : now ? `ещё ${duration(minutesUntil(session.endsAt, now))}` : `до ${clock(session.endsAt)}`}
-          </span>
-        </>
-      ) : (
-        <span className="mt-1 block text-xs text-muted-foreground">
-          {seat.status === "reserved" && seat.reservedFrom ? `бронь с ${clock(seat.reservedFrom)}` : seat.status === "occupied" ? "занято по брони" : "свободно"}
-        </span>
-      )}
-    </button>
+    <section aria-label="Сводка зала" className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-3 xl:grid-cols-5">
+      <Stat
+        label="ПК на связи"
+        tone={lost ? "danger" : undefined}
+        value={hall.stations.length ? <>{online}<span className={lost ? "opacity-60" : "text-muted-foreground"}>/{hall.stations.length}</span></> : "—"}
+        sub={lost ? `${lost} не ${plural(lost, "отвечает", "отвечают", "отвечают")} во время игры` : hall.stations.length ? "клиент Zen запущен" : "компьютеры не подключены"}
+      />
+      <Stat
+        label="Принято за смену"
+        value={totals ? money(taken) : "—"}
+        sub={
+          totals ? (
+            <span className="flex flex-wrap gap-x-2.5">
+              <span>нал {number(totals.cash)}</span>
+              <span>Kaspi {number(totals.kaspi)}</span>
+              <span>карта {number(totals.card)}</span>
+            </span>
+          ) : (
+            "смена закрыта"
+          )
+        }
+      />
+      <Stat
+        label="Играют"
+        value={players}
+        sub={hall.sessions.length ? (onPackage ? `по пакету: ${onPackage}` : "все по балансу") : "в зале никого"}
+      />
+      <Stat
+        label="Заканчивают за 15 мин"
+        href="#playing"
+        tone={soon.length ? "warning" : undefined}
+        value={soon.length}
+        sub={soon.length && now !== null ? `первым место ${soon[0].seatLabel}, через ${minutesUntil(soon[0].endsAt, now)} мин` : "никто не торопится"}
+      />
+      <Stat
+        label="Заказы бара"
+        href="#bar-orders"
+        className="col-span-2 xl:col-span-1"
+        tone={freshOrders ? "call" : undefined}
+        value={hall.orders.length}
+        sub={freshOrders ? `${freshOrders} ${plural(freshOrders, "новый ждёт", "новых ждут", "новых ждут")} принятия` : hall.orders.length ? "все приняты" : "очередь пуста"}
+      />
+    </section>
   );
 }
 
-/** Пока место не выбрано, правая колонка показывает, кто играет и кто скоро освободится. */
+function Stat({ label, value, aside, sub, note, tone, href, className: extra }: {
+  label: string;
+  value: ReactNode;
+  aside?: string;
+  sub?: ReactNode;
+  note?: ReactNode;
+  tone?: "warning" | "danger" | "call";
+  href?: string;
+  className?: string;
+}) {
+  const body = (
+    <>
+      <span className={cn("block text-[11px] font-medium uppercase tracking-[0.06em]", tone === "call" ? "text-primary-foreground/75" : "text-muted-foreground")}>{label}</span>
+      <span className="mt-1 flex items-baseline gap-2">
+        <span
+          className={cn(
+            "font-display text-[1.65rem] font-semibold leading-none tabular-nums",
+            tone === "warning" && "text-warning",
+            tone === "danger" && "text-danger"
+          )}
+        >
+          {value}
+        </span>
+        {aside ? <span className="text-sm font-medium tabular-nums text-muted-foreground">{aside}</span> : null}
+      </span>
+      {note}
+      {sub ? <span className={cn("mt-1.5 block text-xs", tone === "call" ? "text-primary-foreground/80" : tone === "danger" ? "text-danger" : "text-muted-foreground")}>{sub}</span> : null}
+    </>
+  );
+  const className = cn(
+    "block min-w-0 px-4 py-3",
+    extra,
+    tone === "call" ? "bg-primary text-primary-foreground" : tone === "warning" ? "bg-[color-mix(in_srgb,var(--warning)_7%,var(--card))]" : tone === "danger" ? "bg-[color-mix(in_srgb,var(--danger)_8%,var(--card))]" : "bg-card"
+  );
+  return href ? (
+    <a href={href} className={cn(className, "transition-colors hover:brightness-110")}>{body}</a>
+  ) : (
+    <div className={className}>{body}</div>
+  );
+}
+
+/** Кто играет: сначала те, у кого время на исходе, — к ним кассир подойдёт первым. */
 function ActiveSessions({ sessions, stationBySeat, now, onSelect, showZone }: {
   sessions: PlaySession[];
   showZone: boolean;
@@ -245,37 +279,59 @@ function ActiveSessions({ sessions, stationBySeat, now, onSelect, showZone }: {
   onSelect: (seatId: string) => void;
 }) {
   const sorted = [...sessions].sort((a, b) => a.endsAt.localeCompare(b.endsAt));
+  const soon = sorted.filter((session) => endingSoon(session, now));
+  const rest = sorted.filter((session) => !endingSoon(session, now));
+
+  const row = (session: PlaySession) => {
+    const lost = pcLost(session, stationBySeat.get(session.seatId));
+    const isSoon = endingSoon(session, now);
+    const left = now !== null ? minutesUntil(session.endsAt, now) : null;
+    return (
+      <li key={session.id}>
+        <button type="button" onClick={() => onSelect(session.seatId)} className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-secondary">
+          <span className={cn("grid h-8 min-w-9 place-items-center rounded-md px-1 font-display text-xs font-semibold", isSoon ? "bg-warning/15 text-warning" : "bg-secondary")}>{session.seatLabel}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm">{playerLabel(session.playerName, session.playerPhoneTail)}</span>
+            <span className="block truncate text-xs text-muted-foreground">
+              {[showZone ? session.zoneName : "", session.packageName ? `пакет «${session.packageName}»` : "", `до ${clock(session.endsAt)}`].filter(Boolean).join(", ")}
+            </span>
+          </span>
+          <span className={cn("text-right font-display text-sm font-semibold tabular-nums", lost ? "text-danger" : isSoon ? "text-warning" : "text-foreground")}>
+            {lost ? "ПК пропал" : left !== null ? shortLeft(left) : clock(session.endsAt)}
+          </span>
+        </button>
+      </li>
+    );
+  };
+
   return (
-    <Card>
-      <CardHeader><CardTitle>Сейчас играют</CardTitle></CardHeader>
-      <CardContent>
-        {sorted.length === 0 ? (
-          <p className="text-sm text-muted-foreground">В зале никого. Нажмите на свободное место, чтобы посадить игрока.</p>
-        ) : (
-          <ul className="-mx-2">
-            {sorted.map((session) => {
-              const lost = pcLost(session, stationBySeat.get(session.seatId));
-              return (
-                <li key={session.id}>
-                  <button type="button" onClick={() => onSelect(session.seatId)} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-secondary">
-                    <span className="w-9 font-display text-sm font-semibold">{session.seatLabel}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm">{playerLabel(session.playerName, session.playerPhoneTail)}</span>
-                      {showZone ? <span className="block truncate text-xs text-muted-foreground">{session.zoneName}</span> : null}
-                    </span>
-                    <span className={cn("text-xs", lost ? "text-danger" : "text-muted-foreground")}>
-                      {lost ? "ПК не отвечает" : now ? `ещё ${duration(minutesUntil(session.endsAt, now))}` : `до ${clock(session.endsAt)}`}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+    <section aria-label="Сейчас играют" className="rounded-2xl border border-border bg-card">
+      <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-4">
+        <h2 className="text-sm font-semibold">Сейчас играют</h2>
+        {sorted.length ? <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">{sorted.length}</span> : null}
+      </header>
+      {sorted.length === 0 ? (
+        <p className="px-4 pb-4 text-sm text-muted-foreground">В зале никого. Нажмите на свободное место, чтобы посадить игрока.</p>
+      ) : (
+        <div className="grid gap-1 px-2 pb-2 xl:max-h-[24rem] xl:overflow-y-auto">
+          {soon.length ? (
+            <>
+              <p className="px-2 pt-1 text-xs font-medium text-warning">Скоро заканчивают</p>
+              <ul>{soon.map(row)}</ul>
+            </>
+          ) : null}
+          {rest.length ? (
+            <>
+              {soon.length ? <p className="px-2 pt-2 text-xs font-medium text-muted-foreground">Играют дальше</p> : null}
+              <ul>{rest.map(row)}</ul>
+            </>
+          ) : null}
+        </div>
+      )}
+    </section>
   );
 }
+
 
 /**
  * Действия с местом — окно по центру экрана на любом устройстве: раньше панель на широком экране
