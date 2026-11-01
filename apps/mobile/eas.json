@@ -41,6 +41,12 @@
         "ascApiKeyId": "$EXPO_ASC_KEY_ID",
         "ascApiKeyIssuerId": "$EXPO_ASC_ISSUER_ID"
       }
+    },
+    "appleid": {
+      "ios": {
+        "ascAppId": "6809260977",
+        "appleTeamId": "7Q2R8NCHSQ"
+      }
     }
   }
 }
