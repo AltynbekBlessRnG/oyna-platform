@@ -185,12 +185,19 @@ export async function saveHallLayout(clubId: string, layout: SaveHallLayoutReque
   return result;
 }
 
-export async function startPlaySession(clubId: string, seatId: string, phone: string, minutes?: number, packageId?: string): Promise<HallResult<PlaySession>> {
+export async function startPlaySession(
+  clubId: string,
+  seatId: string,
+  phone: string,
+  minutes?: number,
+  packageId?: string,
+  payment?: { amount: number; method: PaymentMethod }
+): Promise<HallResult<PlaySession>> {
   return hallAction(
     () =>
       adminFetch<PlaySession>(`/admin/clubs/${clubId}/sessions`, {
         method: "POST",
-        body: JSON.stringify({ seatId, phone, ...(minutes ? { minutes } : {}), ...(packageId ? { packageId } : {}) })
+        body: JSON.stringify({ seatId, ...(phone.trim() ? { phone } : {}), ...(minutes ? { minutes } : {}), ...(packageId ? { packageId } : {}), ...(payment ? { payment } : {}) })
       }),
     "Не удалось запустить сессию"
   );

@@ -28,6 +28,9 @@ interface Challenge {
   verifiedAt?: number;
 }
 
+/** Телефон-заглушка гостей без номера: по нему их не показываем в клиентах и не пишем хвост номера. */
+export const GUEST_PHONE_PREFIX = "guest:";
+
 @Injectable()
 export class AuthService {
   private readonly challenges = new Map<string, Challenge>();
@@ -271,6 +274,14 @@ export class AuthService {
     const normalized = digits.startsWith("8") && digits.length === 11 ? `7${digits.slice(1)}` : digits;
     if (!/^7\d{10}$/.test(normalized)) throw new BadRequestException("Use a Kazakhstan phone number");
     return `+${normalized}`;
+  }
+
+  /**
+   * Разовый гость: заплатил на кассе и сел без телефона. Отдельная запись на каждую посадку —
+   * ни баланс, ни история между гостями не смешиваются. Телефон-заглушка начинается с `guest:`.
+   */
+  async createGuest(): Promise<AuthUser> {
+    return this.upsertUser(`${GUEST_PHONE_PREFIX}${randomUUID()}`, "Гость");
   }
 
   private async upsertUser(phone: string, name: string): Promise<AuthUser> {

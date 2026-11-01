@@ -57,8 +57,8 @@ export class SessionsAdminController {
   }
 
   @Post("sessions")
-  startSession(@Param("clubId") clubId: string, @Body() request: StartSessionRequest): Promise<PlaySession> {
-    return this.sessions.startForPlayer(clubId, request?.seatId, request?.phone ?? "", request?.minutes, request?.packageId);
+  startSession(@Param("clubId") clubId: string, @CurrentUser() admin: AuthUser, @Body() request: StartSessionRequest): Promise<PlaySession> {
+    return this.sessions.startForPlayer(clubId, request?.seatId, request?.phone, request?.minutes, request?.packageId, request?.payment, admin);
   }
 
   @Post("sessions/:sessionId/end")

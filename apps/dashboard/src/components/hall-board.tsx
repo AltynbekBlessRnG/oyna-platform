@@ -358,6 +358,10 @@ function SeatPanel(props: {
 }) {
   const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, shiftOpen, packages, isPending, run, onCredentials, onClose } = props;
   const [phone, setPhone] = useState(initialPhone);
+  // По умолчанию гость: пришёл, заплатил, сел. Телефон — для постоянных, у кого копится баланс.
+  const [mode, setMode] = useState<"guest" | "player">(initialPhone ? "player" : "guest");
+  const [payNow, setPayNow] = useState(true);
+  const [method, setMethod] = useState<PaymentMethod>("cash");
   const [amount, setAmount] = useState("");
   const [packageId, setPackageId] = useState<string | null>(null);
   const chosenPackage = packages.find((pack) => pack.id === packageId);
@@ -365,14 +369,29 @@ function SeatPanel(props: {
   const [confirmUnbind, setConfirmUnbind] = useState(false);
   const { seat, zone } = entry;
 
+  const guest = mode === "guest";
+  const taking = guest || payNow;
+  const price = chosenPackage ? chosenPackage.price : Number(amount) || 0;
+  const phoneReady = phone.replace(/\D/g, "").length >= 10;
+  // Почему кнопка не нажимается — пишем словами, а не оставляем её молча серой.
+  const blocker = !guest && !phoneReady
+    ? "Введите телефон игрока или выберите его из подсказки"
+    : taking && !shiftOpen
+      ? "Откройте смену вверху страницы, чтобы принимать деньги"
+      : taking && price <= 0
+        ? chosenPackage ? "" : "Выберите пакет или впишите сумму"
+        : "";
+
   function start(): void {
     const minutes = chosenPackage ? undefined : minutesFor(Number(amount), zone.pricePerHour);
-    run(() => startPlaySession(clubId, seat.id, phone, minutes, chosenPackage?.id), (started) => {
+    const payment = taking && price > 0 ? { amount: price, method } : undefined;
+    run(() => startPlaySession(clubId, seat.id, guest ? "" : phone, minutes, chosenPackage?.id, payment), (started) => {
       setPhone("");
       setAmount("");
       setPackageId(null);
-      const paid = started.packageName ? `, пакет «${started.packageName}» оплачен (${money(started.packagePrice ?? 0)})` : "";
-      return `${playerLabel(started.playerName, started.playerPhoneTail)} сидит за местом ${started.seatLabel} до ${clock(started.endsAt)}${paid}`;
+      const paid = payment ? `, принято ${money(payment.amount)} (${PAYMENT_LABELS[payment.method].toLowerCase()})` : "";
+      const pack = started.packageName ? `, пакет «${started.packageName}»` : "";
+      return `${playerLabel(started.playerName, started.playerPhoneTail)} сидит за местом ${started.seatLabel} до ${clock(started.endsAt)}${pack}${paid}`;
     });
   }
 
@@ -425,15 +444,33 @@ function SeatPanel(props: {
             {seat.status === "reserved" && seat.reservedFrom ? (
               <p className="rounded-xl bg-secondary px-3 py-2">Бронь с {clock(seat.reservedFrom)}. Посадить сейчас можно только того, кто бронировал.</p>
             ) : null}
-            <label className="grid gap-1.5">
-              <span className="text-muted-foreground">Игрок</span>
-              <PlayerPhoneInput clubId={clubId} className={inputClass} label="Телефон игрока" value={phone} onChange={setPhone} />
-            </label>
+            <div className="grid gap-1.5">
+              <span className="text-muted-foreground">Кто садится</span>
+              <div className="grid grid-cols-2 rounded-xl bg-secondary p-1" role="radiogroup" aria-label="Кто садится">
+                {([["guest", "Гость, без телефона"], ["player", "Постоянный игрок"]] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === value}
+                    onClick={() => setMode(value)}
+                    className={cn("h-9 rounded-lg text-sm", mode === value ? "bg-background font-medium shadow-sm" : "text-muted-foreground")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {guest ? (
+                <p className="text-xs text-muted-foreground">Платит сейчас и садится. Баланс и история не сохраняются.</p>
+              ) : (
+                <PlayerPhoneInput clubId={clubId} className={inputClass} label="Телефон игрока" value={phone} onChange={setPhone} />
+              )}
+            </div>
             {packages.length > 0 ? (
               <div className="grid gap-1.5">
                 <span className="text-muted-foreground">Пакет</span>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant={chosenPackage ? "secondary" : "default"} aria-pressed={!chosenPackage} onClick={() => setPackageId(null)}>По балансу</Button>
+                  <Button size="sm" variant={chosenPackage ? "secondary" : "default"} aria-pressed={!chosenPackage} onClick={() => setPackageId(null)}>{guest ? "На сумму" : "По балансу"}</Button>
                   {packages.map((pack) => {
                     const open = now === null || packageOpen(pack, now);
                     return (
@@ -455,12 +492,12 @@ function SeatPanel(props: {
             ) : null}
             {chosenPackage ? (
               <p className="rounded-xl bg-secondary px-3 py-2">
-                {packageTerms(chosenPackage)}, с баланса сразу спишется {money(chosenPackage.price)}. Пополнение время пакета не продлевает.
+                {packageTerms(chosenPackage)}, стоит {money(chosenPackage.price)}. Пополнение время пакета не продлевает.
               </p>
             ) : zone.pricePerHour > 0 ? (
               <div className="grid gap-1.5">
                 <label className="grid gap-1.5">
-                  <span className="text-muted-foreground">На сколько тенге (пусто — пока хватает баланса)</span>
+                  <span className="text-muted-foreground">{taking ? "Сколько платит, ₸" : "На сколько тенге (пусто — пока хватает баланса)"}</span>
                   <input className={inputClass} inputMode="numeric" placeholder="Сумма, ₸" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} />
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -469,13 +506,28 @@ function SeatPanel(props: {
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {amount && Number(amount) > 0 ? `≈ ${duration(minutesFor(Number(amount), zone.pricePerHour) ?? 0)} по ${money(zone.pricePerHour)} в час` : "Без суммы играет, пока хватает баланса"}
+                  {amount && Number(amount) > 0 ? `≈ ${duration(minutesFor(Number(amount), zone.pricePerHour) ?? 0)} по ${money(zone.pricePerHour)} в час` : taking ? "Впишите сумму или выберите пакет" : "Без суммы играет, пока хватает баланса"}
                 </p>
               </div>
             ) : (
               <p className="text-muted-foreground">Зона бесплатная: время не ограничено.</p>
             )}
-            <Button disabled={isPending || phone.replace(/\D/g, "").length < 10} onClick={start}><Play className="size-4" />Посадить за компьютер</Button>
+            <div className="grid gap-2 rounded-xl border border-border bg-background/40 p-3">
+              {guest ? (
+                <span className="font-medium">Оплата</span>
+              ) : (
+                <label className="flex items-center gap-2 font-medium">
+                  <input type="checkbox" checked={payNow} onChange={(event) => setPayNow(event.target.checked)} />
+                  Принять оплату сейчас
+                </label>
+              )}
+              {taking ? <PaymentMethodPicker value={method} onChange={setMethod} /> : <p className="text-xs text-muted-foreground">Спишется с баланса игрока.</p>}
+            </div>
+            <Button disabled={isPending || Boolean(blocker)} onClick={start}>
+              <Play className="size-4" />
+              {taking && price > 0 ? `Принять ${money(price)} и посадить` : "Посадить за компьютер"}
+            </Button>
+            {blocker ? <p className="text-center text-xs text-muted-foreground">{blocker}</p> : null}
           </div>
         )}
 

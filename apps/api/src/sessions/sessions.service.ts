@@ -31,7 +31,7 @@ import type {
 } from "@oyna/contracts";
 import { createHash, randomBytes, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import type { PoolClient } from "pg";
-import { AuthService } from "../auth/auth.service";
+import { AuthService, GUEST_PHONE_PREFIX } from "../auth/auth.service";
 import { createSeats } from "../bookings/bookings.data";
 import { BookingsService, type SeatReservation } from "../bookings/bookings.service";
 import { ClubHallService } from "../clubs/club-hall.service";
@@ -409,9 +409,41 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Запуск с кассы: администратор садит игрока за компьютер по номеру телефона. */
-  async startForPlayer(clubId: string, seatId: string, phone: string, minutes?: number, packageId?: string): Promise<PlaySession> {
-    const player = await this.auth.ensureUser(phone, "Игрок Vence");
-    return this.start(clubId, seatId, player, minutes, Date.now(), packageId);
+  /**
+   * Посадка с кассы. С телефоном — постоянный игрок с балансом; без телефона — гость, который
+   * обязательно платит сразу. Оплата `payment` сначала пополняет баланс, потом начинается сессия;
+   * если сесть не вышло (место заняли, пакет не продаётся), деньги гостя сразу сторнируются,
+   * а у игрока с телефоном остаются на балансе.
+   */
+  async startForPlayer(
+    clubId: string,
+    seatId: string,
+    phone: string | undefined,
+    minutes?: number,
+    packageId?: string,
+    payment?: { amount: number; method?: PaymentMethod },
+    admin?: AuthUser
+  ): Promise<PlaySession> {
+    const guest = !phone?.trim();
+    if (payment) {
+      if (!Number.isInteger(payment.amount) || payment.amount < 1 || payment.amount > MAX_TOP_UP) throw new BadRequestException(`Оплата от 1 до ${MAX_TOP_UP} ₸`);
+      if (payment.method !== undefined && !PAYMENT_METHODS.includes(payment.method)) throw new BadRequestException("Способ оплаты: наличные, Kaspi или карта");
+      if (!admin) throw new BadRequestException("Оплату принимает сотрудник кассы");
+    }
+    if (guest && !payment) throw new BadRequestException("Гость без телефона садится только с оплатой");
+    if (!payment) return this.start(clubId, seatId, await this.auth.ensureUser(phone!, "Игрок Vence"), minutes, Date.now(), packageId);
+
+    await this.resolveSeat(clubId, seatId);
+    await this.shifts.requireOpen(clubId);
+    const player = guest ? await this.auth.createGuest() : await this.auth.ensureUser(phone!, "Игрок Vence");
+    const method = payment.method ?? "cash";
+    await this.credit(clubId, player, payment.amount, admin!, method);
+    try {
+      return await this.start(clubId, seatId, player, minutes, Date.now(), packageId);
+    } catch (error) {
+      if (guest) await this.credit(clubId, player, -payment.amount, admin!, method);
+      throw error;
+    }
   }
 
   /** Без пакета сессия идёт, пока хватает баланса; с пакетом его цена списывается сразу, а время задаёт пакет. */
@@ -448,7 +480,7 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
       zoneName: seat.zone.name,
       userId: player.id,
       playerName: player.name,
-      ...(player.phone ? { playerPhoneTail: player.phone.replace(/\D/g, "").slice(-4) } : {}),
+      ...(player.phone && !player.phone.startsWith(GUEST_PHONE_PREFIX) ? { playerPhoneTail: player.phone.replace(/\D/g, "").slice(-4) } : {}),
       pricePerHour: seat.zone.pricePerHour,
       startedAt: new Date(now).toISOString(),
       status: "active" as const,

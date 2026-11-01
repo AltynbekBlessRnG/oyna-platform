@@ -99,7 +99,7 @@ SELECT f.user_id, u.name, u.phone, a.nickname,
        COALESCE(t.topped_up, 0) AS topped_up,
        COALESCE(b.bookings_count, 0) AS bookings_count, COALESCE(b.cancelled_bookings, 0) AS cancelled_bookings
 FROM first_seen f
-JOIN users u ON u.id = f.user_id AND u.deleted_at IS NULL AND u.role <> 'platform_admin'
+JOIN users u ON u.id = f.user_id AND u.deleted_at IS NULL AND u.role <> 'platform_admin' AND u.phone NOT LIKE 'guest:%'
 LEFT JOIN club_accounts a ON a.club_id = $1 AND a.user_id = f.user_id
 LEFT JOIN visit_stats v ON v.user_id = f.user_id
 LEFT JOIN session_stats s ON s.user_id = f.user_id

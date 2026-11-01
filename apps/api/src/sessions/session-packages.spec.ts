@@ -41,6 +41,7 @@ describe.each([
   let sessions: SessionsService;
   let packages: ClubPackagesService;
   let hall: ClubHallService;
+  let shifts: ShiftsService;
   let seatId: string;
   let zoneId: string;
   let pricePerHour: number;
@@ -50,7 +51,7 @@ describe.each([
     const clubs = new ClubsService(database);
     if (database.configured) await clubs.upsertCatalog(CLUB_CATALOG);
     hall = new ClubHallService(database, clubs);
-    const shifts = new ShiftsService(database, clubs, hall);
+    shifts = new ShiftsService(database, clubs, hall);
     packages = new ClubPackagesService(database, clubs);
     sessions = new SessionsService(database, clubs, hall, new AuthService(database), new BookingsService(clubs, database, new NotificationsService(database)), shifts, packages);
     await shifts.open(clubId, 0, admin);
@@ -139,6 +140,26 @@ describe.each([
     expect(Date.parse(current.endsAt)).toBeGreaterThan(Date.parse(session.endsAt));
     await sessions.end(session.id, "admin");
     await expect(sessions.topUpSession(clubId, session.id, 500, admin)).rejects.toThrow(/закончилась/);
+  });
+
+  it("seats a paying guest without a phone and takes the money into the shift", async () => {
+    const [twoPlusOne] = await packages.replace(clubId, [{ name: "2+1", price: pricePerHour * 2, kind: "duration", durationMinutes: 180, zoneIds: [], active: true }]);
+    await expect(sessions.startForPlayer(clubId, seatId, undefined, undefined, twoPlusOne.id, undefined, admin)).rejects.toThrow(/только с оплатой/);
+
+    const session = await sessions.startForPlayer(clubId, seatId, "", undefined, twoPlusOne.id, { amount: pricePerHour * 2, method: "kaspi" }, admin);
+    expect(session).toMatchObject({ playerName: "Гость", packageName: "2+1" });
+    expect(session.playerPhoneTail).toBeUndefined();
+    expect((await shifts.current(clubId))?.totals).toMatchObject({ kaspi: pricePerHour * 2, topUpCount: 1 });
+
+    // Место занято: деньги второго гостя сразу сторнируются, касса не растёт.
+    await expect(sessions.startForPlayer(clubId, seatId, undefined, 30, undefined, { amount: 500 }, admin)).rejects.toThrow(/занят/);
+    expect((await shifts.current(clubId))?.totals).toMatchObject({ cash: 0, kaspi: pricePerHour * 2 });
+  });
+
+  it("takes payment from a regular player and seats him in one step", async () => {
+    const session = await sessions.startForPlayer(clubId, seatId, "+77010000307", undefined, undefined, { amount: pricePerHour }, admin);
+    expect(session.playerPhoneTail).toBe("0307");
+    expect(Date.parse(session.endsAt) - Date.parse(session.startedAt)).toBeGreaterThanOrEqual(59 * 60_000);
   });
 
   it("tells the station the player's balance during a session", async () => {
