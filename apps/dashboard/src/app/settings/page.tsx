@@ -1,18 +1,26 @@
-import type { ClubAdminView, ClubPackage } from "@oyna/contracts";
+import type { ClubAdminView, ClubMember, ClubPackage } from "@oyna/contracts";
 import { AppShell } from "@/components/app-shell";
 import { ClubSettingsForm } from "@/components/club-settings-form";
 import { PackagesEditor } from "@/components/packages-editor";
+import { StaffManager } from "@/components/staff-manager";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { adminFetch, loadActiveClub, requireSession } from "@/lib/api";
+import { adminFetch, loadActiveClub, requireSession, requireOwner } from "@/lib/api";
 
 export default async function SettingsPage() {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  requireOwner(club);
   let view: ClubAdminView | undefined;
   let packages: ClubPackage[] = [];
+  let members: ClubMember[] = [];
   let error = "";
   try {
-    [view, packages] = await Promise.all([adminFetch<ClubAdminView>(`/admin/clubs/${club.id}`), adminFetch<ClubPackage[]>(`/admin/clubs/${club.id}/packages`)]);
+    [view, packages, members] = await Promise.all([
+      adminFetch<ClubAdminView>(`/admin/clubs/${club.id}`),
+      adminFetch<ClubPackage[]>(`/admin/clubs/${club.id}/packages`),
+      // Без базы данных (локальная демонстрация) сотрудников нет — страница всё равно открывается.
+      adminFetch<ClubMember[]>(`/admin/clubs/${club.id}/members`).catch(() => [])
+    ]);
   } catch (loadError) {
     error = loadError instanceof Error ? loadError.message : "Не удалось загрузить клуб";
   }
@@ -26,6 +34,7 @@ export default async function SettingsPage() {
         <div className="grid gap-6">
           <ClubSettingsForm clubId={club.id} club={view.club} zones={view.zones} />
           <PackagesEditor clubId={club.id} zones={view.zones} packages={packages} />
+          <StaffManager clubId={club.id} members={members} />
         </div>
       ) : (
         <Card className="max-w-xl">

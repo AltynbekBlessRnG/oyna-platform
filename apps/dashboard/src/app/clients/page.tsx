@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { loadActiveClub, loadClients, requireSession } from "@/lib/api";
+import { loadActiveClub, loadClients, requireSession, requireOwner } from "@/lib/api";
 import { isSegment, isSort, SEGMENT_ORDER, SEGMENTS, SORTS } from "@/lib/crm";
 import { ago, clientName, duration, money, phone, plural } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,7 @@ function href(params: { q?: string; segment?: ClientSegment | "risk"; sort?: Cli
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<ClientsSearch> }) {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  requireOwner(club);
   const params = await searchParams;
   const q = params.q?.trim() || undefined;
   const segment = isSegment(params.segment) ? params.segment : undefined;

@@ -10,6 +10,8 @@ import { apiUrl, type HallSnapshot, loadActiveClub, loadHall, requireSession } f
 export default async function HallPage() {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  // Кассир сажает и пополняет, но не подключает компьютеры и не перерисовывает зал.
+  const owner = club.role !== "cashier";
   let hall: HallSnapshot | undefined;
   let error = "";
   try {
@@ -36,7 +38,7 @@ export default async function HallPage() {
         </div>
         <div className="order-3 flex w-full flex-wrap items-center gap-2 md:order-2 md:ml-auto md:w-auto md:gap-3">
           <HallPower clubId={club.id} />
-          <StationEnrollment clubId={club.id} setupUrl="/download/vence-setup" />
+          {owner ? <StationEnrollment clubId={club.id} setupUrl="/download/vence-setup" /> : null}
         </div>
         {occupancy ? (
           <div className="order-2 ml-auto grid justify-items-end md:order-3 md:ml-0 md:border-l md:border-border md:pl-4" role="group" aria-label={`Загрузка: ${occupancy.busy} из ${occupancy.total}`}>
@@ -50,8 +52,8 @@ export default async function HallPage() {
       </header>
       {hall ? (
         <div className="grid gap-4">
-          <ShiftPanel clubId={club.id} shift={hall.shift} />
-          <HallBoard clubId={club.id} hall={hall} apiUrl={apiUrl.replace(/\/api\/?$/, "")} />
+          <ShiftPanel clubId={club.id} shift={hall.shift} owner={owner} />
+          <HallBoard clubId={club.id} hall={hall} apiUrl={apiUrl.replace(/\/api\/?$/, "")} owner={owner} />
         </div>
       ) : (
         <Card className="max-w-xl">

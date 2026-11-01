@@ -42,6 +42,24 @@ export class ClubAdminGuard implements CanActivate {
   }
 }
 
+/** Касса клуба: владелец и кассир. Маршрут обязан содержать параметр `:clubId`. */
+@Injectable()
+export class ClubStaffGuard implements CanActivate {
+  constructor(
+    private readonly auth: AuthService,
+    private readonly access: ClubAccessService
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const request = context.switchToHttp().getRequest<GuardedRequest>();
+    request.user = identify(request, this.auth);
+    const clubId = request.params?.clubId;
+    if (!clubId) throw new ForbiddenException("Club is not specified");
+    await this.access.assertStaff(request.user, clubId);
+    return true;
+  }
+}
+
 /** Опознаёт сотрудника кабинета без привязки к конкретному клубу. */
 @Injectable()
 export class AdminIdentityGuard implements CanActivate {

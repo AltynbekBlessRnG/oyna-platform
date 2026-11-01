@@ -4,7 +4,8 @@ import type {
   AuthSession,
   BookingReceipt,
   ChallengeStatusResponse,
-  ClubClientsResponse,
+  ClubMember,
+  PlayerSuggestion,
   ClubOrder,
   ClubPackage,
   ClubShift,
@@ -219,22 +220,33 @@ export async function topUpSeatSession(clubId: string, sessionId: string, amount
   );
 }
 
-export interface PlayerSuggestion {
-  name: string;
-  phone: string;
-  balance: number;
-}
-
 /** Подсказки постоянных игроков по имени, нику или цифрам номера — чтобы кассир не помнил телефоны. */
 export async function searchPlayers(clubId: string, query: string): Promise<PlayerSuggestion[]> {
   const search = query.trim();
   if (search.length < 2) return [];
   try {
-    const result = await adminFetch<ClubClientsResponse>(`/admin/clubs/${clubId}/clients?search=${encodeURIComponent(search)}&sort=lastVisit`);
-    return result.clients.slice(0, 6).map((client) => ({ name: client.nickname || client.name, phone: client.phone, balance: client.balance }));
+    return await adminFetch<PlayerSuggestion[]>(`/admin/clubs/${clubId}/players?search=${encodeURIComponent(search)}`);
   } catch {
     return [];
   }
+}
+
+export async function addClubMember(clubId: string, phone: string, name: string, role: "admin" | "cashier"): Promise<HallResult<ClubMember>> {
+  const result = await hallAction(
+    () => adminFetch<ClubMember>(`/admin/clubs/${clubId}/members`, { method: "POST", body: JSON.stringify({ phone, name, role }) }),
+    "Не удалось добавить сотрудника"
+  );
+  revalidatePath("/settings");
+  return result;
+}
+
+export async function removeClubMember(clubId: string, userId: string): Promise<HallResult<null>> {
+  const result = await hallAction(async () => {
+    await adminFetch(`/admin/clubs/${clubId}/members/${userId}`, { method: "DELETE" });
+    return null;
+  }, "Не удалось убрать сотрудника");
+  revalidatePath("/settings");
+  return result;
 }
 
 export async function openShift(clubId: string, openingCash: number): Promise<HallResult<ClubShift>> {

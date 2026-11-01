@@ -11,7 +11,7 @@ import { AuthService } from "./auth/auth.service";
 import { SmsService } from "./auth/sms/sms.service";
 import { TelegramService } from "./auth/telegram/telegram.service";
 import { AuthGuard } from "./auth/auth.guard";
-import { AdminIdentityGuard, ClubAdminGuard, PlatformAdminGuard } from "./auth/club-admin.guard";
+import { AdminIdentityGuard, ClubAdminGuard, ClubStaffGuard, PlatformAdminGuard } from "./auth/club-admin.guard";
 import { ClubsAdminController } from "./clubs/clubs.admin.controller";
 import { ClubAccessService } from "./clubs/club-access.service";
 import { ClubHallService } from "./clubs/club-hall.service";
@@ -36,11 +36,12 @@ import { SessionsController } from "./sessions/sessions.controller";
 import { SessionsService } from "./sessions/sessions.service";
 import { StationsGateway } from "./sessions/stations.gateway";
 import { CrmController } from "./crm/crm.controller";
+import { PlayersController } from "./crm/players.controller";
 import { CrmService } from "./crm/crm.service";
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ["../../.env", ".env"] })],
-  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, StationReleasesController, ShiftsController, CrmController],
-  providers: [DatabaseService, ClubsService, ClubPackagesService, HallLayoutService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
+  controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, StationReleasesController, ShiftsController, CrmController, PlayersController],
+  providers: [DatabaseService, ClubsService, ClubPackagesService, HallLayoutService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, ClubStaffGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
 })
 export class AppModule {}

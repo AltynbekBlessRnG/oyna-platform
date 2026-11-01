@@ -1,15 +1,16 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import type { AuthUser, ClubShift, CloseShiftRequest, OpenShiftRequest } from "@oyna/contracts";
-import { ClubAdminGuard } from "../auth/club-admin.guard";
+import { ClubAdminGuard, ClubStaffGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ShiftsService } from "./shifts.service";
 
 @Controller("admin/clubs/:clubId/shifts")
-@UseGuards(ClubAdminGuard)
+@UseGuards(ClubStaffGuard)
 export class ShiftsController {
   constructor(private readonly shifts: ShiftsService) {}
 
   @Get()
+  @UseGuards(ClubAdminGuard)
   list(@Param("clubId") clubId: string): Promise<ClubShift[]> {
     return this.shifts.list(clubId);
   }

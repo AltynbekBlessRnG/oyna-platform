@@ -44,6 +44,8 @@ function seatState(seat: SeatMapSeat, session: PlaySession | undefined, station:
 }
 
 interface HallMapProps {
+  /** Кнопка «Редактировать схему» — только владельцу. */
+  editable?: boolean;
   zones: SeatMapZone[];
   sessionBySeat: Map<string, PlaySession>;
   stationBySeat: Map<string, ClubStation>;
@@ -61,17 +63,19 @@ type TileProps = Omit<HallMapProps, "zones" | "layout">;
  * Занятое место залито золотом, на исходе — оранжевым, свободное — тёмное; под монитором — сколько осталось.
  * Если клуб нарисовал схему, пол повторяет зал: места на своих местах, вокруг — диваны, бар и вход.
  */
-export function HallMap({ zones, layout, ...tile }: HallMapProps) {
+export function HallMap({ zones, layout, editable = true, ...tile }: HallMapProps) {
   const drawn = Boolean(layout && layout.items.some((item) => item.kind === "seat"));
   return (
     <section aria-label="Карта зала" className="hall-floor h-full rounded-2xl border border-[#262d36]">
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-t-2xl border-b border-[#262d36] bg-[#12161b]/80 px-4 py-2.5">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Карта зала</h2>
         <Legend />
-        <Link href="/hall/layout" className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-white/[0.04] hover:text-foreground">
-          <PencilRuler className="size-3.5" aria-hidden />
-          {layout ? "Редактировать схему" : "Схема зала"}
-        </Link>
+        {editable ? (
+          <Link href="/hall/layout" className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-white/[0.04] hover:text-foreground">
+            <PencilRuler className="size-3.5" aria-hidden />
+            {layout ? "Редактировать схему" : "Схема зала"}
+          </Link>
+        ) : null}
       </div>
       {layout && drawn ? (
         <LayoutFloor layout={layout} zones={zones} {...tile} />
@@ -80,7 +84,7 @@ export function HallMap({ zones, layout, ...tile }: HallMapProps) {
           {zones.map(({ zone, seats }) => (
             <ZoneBlock key={zone.id} zone={zone} seats={seats} {...tile} />
           ))}
-          <Link
+          {editable ? <Link
             href="/hall/layout"
             className="flex items-center gap-3 justify-self-start rounded-xl border border-dashed border-[#36404b] px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/60 hover:text-foreground"
           >
@@ -89,7 +93,7 @@ export function HallMap({ zones, layout, ...tile }: HallMapProps) {
               <span className="block font-semibold text-foreground">Нарисовать схему зала</span>
               <span className="block text-xs">Места встанут на карте так же, как стоят в клубе</span>
             </span>
-          </Link>
+          </Link> : null}
         </div>
       )}
     </section>

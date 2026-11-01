@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import type { AddClubMemberRequest, AuthUser, ClubMember, ClubMemberRole, ManagedClub } from "@oyna/contracts";
 import { AuthService } from "../auth/auth.service";
 import { DatabaseService } from "../database/database.service";
@@ -26,15 +26,26 @@ export class ClubAccessService {
     private readonly auth: AuthService
   ) {}
 
+  /** Роль сотрудника в клубе: владелец платформы везде «admin», без записи — `undefined`. */
+  async staffRole(user: AuthUser, clubId: string): Promise<"admin" | "cashier" | undefined> {
+    if (user.role === "platform_admin") return "admin";
+    if (!this.database.configured) return user.role === "club_admin" ? "admin" : undefined;
+    const result = await this.database.query<{ role: ClubMemberRole }>("SELECT role FROM club_memberships WHERE club_id = $1 AND user_id = $2", [clubId, user.id]);
+    const role = result.rows[0]?.role;
+    return role === "admin" || role === "cashier" ? role : undefined;
+  }
+
   async canManage(user: AuthUser, clubId: string): Promise<boolean> {
-    if (user.role === "platform_admin") return true;
-    if (!this.database.configured) return user.role === "club_admin";
-    const result = await this.database.query("SELECT 1 FROM club_memberships WHERE club_id = $1 AND user_id = $2 AND role = 'admin'", [clubId, user.id]);
-    return result.rowCount === 1;
+    return (await this.staffRole(user, clubId)) === "admin";
   }
 
   async assertCanManage(user: AuthUser, clubId: string): Promise<void> {
-    if (!(await this.canManage(user, clubId))) throw new ForbiddenException("Club admin access required");
+    if (!(await this.canManage(user, clubId))) throw new ForbiddenException("Это доступно только владельцу клуба");
+  }
+
+  /** Касса: и владелец, и кассир. */
+  async assertStaff(user: AuthUser, clubId: string): Promise<void> {
+    if (!(await this.staffRole(user, clubId))) throw new ForbiddenException("Нет доступа к этому клубу");
   }
 
   async listManagedClubs(user: AuthUser): Promise<ManagedClub[]> {
@@ -44,7 +55,7 @@ export class ClubAccessService {
       return all.map((club) => ({ id: club.id, name: club.name, city: club.city, role: "admin" as const }));
     }
     const result = await this.database.query<{ club_id: string; role: ClubMemberRole }>(
-      "SELECT club_id, role FROM club_memberships WHERE user_id = $1 AND role = 'admin'",
+      "SELECT club_id, role FROM club_memberships WHERE user_id = $1 AND role IN ('admin', 'cashier')",
       [user.id]
     );
     return result.rows
@@ -71,8 +82,14 @@ export class ClubAccessService {
   async addMember(clubId: string, request: AddClubMemberRequest): Promise<ClubMember> {
     this.requireDatabase();
     await this.clubs.findOne(clubId);
-    const role: ClubMemberRole = request.role === "moderator" ? "moderator" : "admin";
-    const user = await this.auth.ensureUser(request.phone, request.name);
+    if (!request?.phone || request.phone.replace(/\D/g, "").length < 10) throw new BadRequestException("Укажите телефон сотрудника");
+    const role: ClubMemberRole = request.role === "moderator" ? "moderator" : request.role === "cashier" ? "cashier" : "admin";
+    const name = request.name?.trim();
+    if (name && name.length > 60) throw new BadRequestException("Имя не длиннее 60 символов");
+    const existing = await this.database.query<{ id: string }>("SELECT id FROM users WHERE phone = $1", [this.normalize(request.phone)]);
+    // Последнего владельца нельзя понизить до кассира: клуб остался бы без управления.
+    if (role !== "admin" && existing.rows[0]) await this.assertNotLastAdmin(clubId, existing.rows[0].id);
+    const user = await this.auth.ensureUser(request.phone, name);
     if (user.role === "player") await this.auth.grantRole(user.id, "club_admin");
     const result = await this.database.query<MemberRow>(
       `INSERT INTO club_memberships (club_id, user_id, role) VALUES ($1, $2, $3)
@@ -85,10 +102,21 @@ export class ClubAccessService {
 
   async removeMember(clubId: string, userId: string): Promise<void> {
     this.requireDatabase();
+    await this.assertNotLastAdmin(clubId, userId);
     const result = await this.database.query("DELETE FROM club_memberships WHERE club_id = $1 AND user_id = $2", [clubId, userId]);
     if (!result.rowCount) throw new NotFoundException("Membership not found");
     const remaining = await this.database.query("SELECT 1 FROM club_memberships WHERE user_id = $1 LIMIT 1", [userId]);
     if (!remaining.rowCount) await this.auth.grantRole(userId, "player");
+  }
+
+  private async assertNotLastAdmin(clubId: string, userId: string): Promise<void> {
+    const admins = await this.database.query<{ user_id: string }>("SELECT user_id FROM club_memberships WHERE club_id = $1 AND role = 'admin'", [clubId]);
+    if (admins.rows.length === 1 && admins.rows[0].user_id === userId) throw new ConflictException("Это единственный владелец клуба: сначала добавьте другого владельца");
+  }
+
+  private normalize(phone: string): string {
+    const digits = phone.replace(/\D/g, "");
+    return `+${digits.startsWith("8") && digits.length === 11 ? `7${digits.slice(1)}` : digits}`;
   }
 
   private requireDatabase(): void {

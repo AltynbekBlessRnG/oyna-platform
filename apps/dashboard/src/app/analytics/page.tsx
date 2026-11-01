@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { OccupancyBar, OccupancyHeatmap, RevenueColumns } from "@/components/charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadActiveClub, loadAnalytics, requireSession } from "@/lib/api";
+import { loadActiveClub, loadAnalytics, requireSession, requireOwner } from "@/lib/api";
 import { clientName, day, duration, money, number, percent, phone } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,7 @@ const PERIODS = [
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  requireOwner(club);
   const requested = Number((await searchParams).days);
   const days = PERIODS.some((period) => period.days === requested) ? requested : 30;
   const { analytics, error } = await loadAnalytics(club.id, days);

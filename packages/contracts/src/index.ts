@@ -232,7 +232,16 @@ export interface ClubAdminView {
   zones: ClubZone[];
 }
 
-export type ClubMemberRole = "admin" | "moderator";
+/** admin — владелец или управляющий, видит всё; cashier — касса: зал, смены, бар и брони, без аналитики и настроек. */
+export type ClubMemberRole = "admin" | "cashier" | "moderator";
+
+/** Подсказка кассе: постоянный игрок по имени, нику или цифрам номера. */
+export interface PlayerSuggestion {
+  userId: string;
+  name: string;
+  phone: string;
+  balance: number;
+}
 
 export interface ClubMember {
   clubId: string;

@@ -12,8 +12,7 @@ import type {
   ClubClientDetail,
   ClubClientsResponse,
   ClubOrderLine,
-  ClubOrderStatus
-} from "@oyna/contracts";
+  ClubOrderStatus, PlayerSuggestion } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
@@ -142,6 +141,22 @@ export class CrmService {
       return text.includes(query) || (digits.length >= 3 && client.phone.replace(/\D/g, "").includes(digits));
     });
     return { clients: this.sort(filtered, options.sort ?? "lastVisit"), total: all.length, segments, atRisk: all.filter((client) => client.atRisk).length };
+  }
+
+  /** Быстрый поиск для кассы: до 6 игроков клуба, сначала недавние. Гостей без телефона не показываем. */
+  async searchPlayers(clubId: string, search: string): Promise<PlayerSuggestion[]> {
+    const query = search.trim().toLowerCase();
+    if (query.length < 2 || !this.database.configured) return [];
+    const digits = query.replace(/\D/g, "");
+    const result = await this.database.query<{ user_id: string; name: string; phone: string; balance: number }>(
+      `SELECT a.user_id, COALESCE(NULLIF(a.nickname, ''), u.name) AS name, u.phone, a.balance
+       FROM club_accounts a JOIN users u ON u.id = a.user_id
+       WHERE a.club_id = $1 AND u.deleted_at IS NULL AND u.phone NOT LIKE 'guest:%'
+         AND (LOWER(u.name) LIKE $2 OR LOWER(a.nickname) LIKE $2 OR ($3 <> '' AND length($3) >= 3 AND regexp_replace(u.phone, '\\D', '', 'g') LIKE '%' || $3 || '%'))
+       ORDER BY a.created_at DESC LIMIT 6`,
+      [clubId, `%${query}%`, digits]
+    );
+    return result.rows.map((row) => ({ userId: row.user_id, name: row.name, phone: row.phone, balance: row.balance }));
   }
 
   async getClient(clubId: string, userId: string, now = Date.now()): Promise<ClubClientDetail> {

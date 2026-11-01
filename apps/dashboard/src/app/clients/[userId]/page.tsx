@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { ClientBalance, ClientNotes, ClientTags } from "@/components/client-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadActiveClub, loadClient, requireSession } from "@/lib/api";
+import { loadActiveClub, loadClient, requireSession, requireOwner } from "@/lib/api";
 import { SEGMENTS } from "@/lib/crm";
 import { ago, clientName, day, dayTime, duration, money, phone } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ const ORDER_STATUS = { new: "новый", accepted: "принят", delivered: "
 export default async function ClientPage({ params }: { params: Promise<{ userId: string }> }) {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  requireOwner(club);
   const { userId } = await params;
   const { data, error, status } = await loadClient(club.id, userId);
   if (status === 404) notFound();

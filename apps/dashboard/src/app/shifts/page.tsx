@@ -1,13 +1,14 @@
 import type { ClubShift } from "@oyna/contracts";
 import { AppShell } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadActiveClub, loadShifts, requireSession } from "@/lib/api";
+import { loadActiveClub, loadShifts, requireSession, requireOwner } from "@/lib/api";
 import { clock, dayTime, money } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export default async function ShiftsPage() {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  requireOwner(club);
   let shifts: ClubShift[] = [];
   let error = "";
   try {

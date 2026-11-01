@@ -2,11 +2,12 @@ import type { ClubSeatMap, HallLayout } from "@oyna/contracts";
 import { AppShell } from "@/components/app-shell";
 import { HallLayoutEditor } from "@/components/hall-layout-editor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { loadActiveClub, loadHallLayout, loadSeatMap, requireSession } from "@/lib/api";
+import { loadActiveClub, loadHallLayout, loadSeatMap, requireSession, requireOwner } from "@/lib/api";
 
 export default async function HallLayoutPage() {
   await requireSession();
   const { club, clubs } = await loadActiveClub();
+  requireOwner(club);
   let seatMap: ClubSeatMap | undefined;
   let layout: HallLayout | null = null;
   let error = "";

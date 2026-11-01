@@ -1,13 +1,13 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { ClubHallService } from "../clubs/club-hall.service";
 import type { AuthUser, ClubOrder, ClubOrderStatus, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCommand, StationCommandResult, StationCredentials, StationEnrollmentCode, PaymentMethod, TopUpRequest, TopUpResult } from "@oyna/contracts";
-import { ClubAdminGuard } from "../auth/club-admin.guard";
+import { ClubAdminGuard, ClubStaffGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionsService } from "./sessions.service";
 
 /** Касса клуба: компьютеры с клиентом Vence, сессии игроков и пополнение баланса. */
 @Controller("admin/clubs/:clubId")
-@UseGuards(ClubAdminGuard)
+@UseGuards(ClubStaffGuard)
 export class SessionsAdminController {
   constructor(
     private readonly sessions: SessionsService,
@@ -20,12 +20,14 @@ export class SessionsAdminController {
   }
 
   @Post("stations")
+  @UseGuards(ClubAdminGuard)
   registerStation(@Param("clubId") clubId: string, @Body() request: RegisterStationRequest): Promise<StationCredentials> {
     return this.sessions.registerStation(clubId, request?.seatId, request?.name);
   }
 
   /** Код клуба для подключения компьютеров: вводится на каждом ПК вместо id и ключа. */
   @Post("stations/enrollment-code")
+  @UseGuards(ClubAdminGuard)
   enrollmentCode(@Param("clubId") clubId: string): Promise<StationEnrollmentCode> {
     return this.sessions.issueEnrollmentCode(clubId);
   }
@@ -42,11 +44,13 @@ export class SessionsAdminController {
   }
 
   @Post("stations/:stationId/token")
+  @UseGuards(ClubAdminGuard)
   rotateToken(@Param("clubId") clubId: string, @Param("stationId") stationId: string): Promise<StationCredentials> {
     return this.sessions.rotateStationToken(clubId, stationId);
   }
 
   @Delete("stations/:stationId")
+  @UseGuards(ClubAdminGuard)
   removeStation(@Param("clubId") clubId: string, @Param("stationId") stationId: string): Promise<void> {
     return this.sessions.removeStation(clubId, stationId);
   }

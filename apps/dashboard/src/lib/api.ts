@@ -61,6 +61,11 @@ export async function requireSession(): Promise<void> {
   redirect("/login");
 }
 
+/** Разделы владельца: кассира отправляем в «Зал и касса» — аналитика и настройки ему не положены. */
+export function requireOwner(club: ManagedClub): void {
+  if (club.role === "cashier") redirect("/hall");
+}
+
 /** Активный клуб кабинета: из cookie, иначе первый доступный, иначе демонстрационный. */
 export async function loadActiveClub(): Promise<{ club: ManagedClub; clubs: ManagedClub[]; offline: boolean }> {
   const selected = await getActiveClubId();

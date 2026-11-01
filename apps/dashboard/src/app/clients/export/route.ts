@@ -10,6 +10,7 @@ function cell(value: string | number): string {
 export async function GET(request: Request): Promise<Response> {
   await requireSession();
   const { club } = await loadActiveClub();
+  if (club.role === "cashier") return new Response("Выгрузка клиентов доступна только владельцу клуба", { status: 403 });
   const url = new URL(request.url);
   const segment = url.searchParams.get("segment") ?? undefined;
   const sort = url.searchParams.get("sort") ?? undefined;

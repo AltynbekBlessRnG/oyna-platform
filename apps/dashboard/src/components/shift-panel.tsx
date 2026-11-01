@@ -15,7 +15,7 @@ const inputClass = "h-9 w-full rounded-xl border border-border bg-background px-
  * Смена кассы одной строкой над сводкой зала: суммы по способам оплаты — в сводке, здесь — что должно
  * лежать в кассе и закрытие. Без открытой смены касса деньги не принимает.
  */
-export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift | null }) {
+export function ShiftPanel({ clubId, shift, owner = true }: { clubId: string; shift: ClubShift | null; owner?: boolean }) {
   const [cash, setCash] = useState("");
   const [note, setNote] = useState("");
   const [closing, setClosing] = useState(false);
@@ -59,7 +59,7 @@ export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift
           <input className={cn(inputClass, "sm:w-52")} inputMode="numeric" aria-label="Наличные в кассе сейчас" placeholder="Наличные в кассе, ₸" value={cash} onChange={(event) => setCash(event.target.value.replace(/\D/g, ""))} />
           <Button size="sm" className="h-9" onClick={open} disabled={isPending}>Открыть смену</Button>
         </div>
-        <Link className="text-xs text-muted-foreground underline" href="/shifts">История смен</Link>
+        {owner ? <Link className="text-xs text-muted-foreground underline" href="/shifts">История смен</Link> : null}
       </section>
     );
   }
@@ -89,7 +89,7 @@ export function ShiftPanel({ clubId, shift }: { clubId: string; shift: ClubShift
           {closing ? null : (
             <Button size="sm" variant="secondary" className="h-9" onClick={() => setClosing(true)}>Закрыть смену</Button>
           )}
-          <Link className="hidden text-xs text-muted-foreground underline sm:inline" href="/shifts">История</Link>
+          {owner ? <Link className="hidden text-xs text-muted-foreground underline sm:inline" href="/shifts">История</Link> : null}
         </span>
       </div>
       {closing ? (

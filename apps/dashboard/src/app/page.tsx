@@ -6,7 +6,7 @@ import { HallPulse } from "@/components/hall-pulse";
 import { TournamentSection } from "@/components/tournament-section";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type HallSnapshot, loadActiveClub, loadAnalytics, loadClubBookings, loadHall, requireSession } from "@/lib/api";
+import { type HallSnapshot, loadActiveClub, loadAnalytics, loadClubBookings, loadHall, requireSession, requireOwner } from "@/lib/api";
 import { clock, day, money, number } from "@/lib/format";
 
 const BOOKING_STATUS: Record<BookingReceipt["status"], { label: string; tone: "success" | "warning" | "neutral" }> = {
@@ -19,6 +19,7 @@ const BOOKING_STATUS: Record<BookingReceipt["status"], { label: string; tone: "s
 export default async function OverviewPage() {
   await requireSession();
   const { club, clubs, offline } = await loadActiveClub();
+  requireOwner(club);
   const [{ bookings }, hall, { analytics, error: analyticsError }] = await Promise.all([
     loadClubBookings(club.id),
     loadHall(club.id).catch(() => undefined),

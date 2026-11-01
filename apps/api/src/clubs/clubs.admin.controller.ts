@@ -14,7 +14,7 @@ import type {
   UpsertPackageRequest,
   UpsertZoneRequest
 } from "@oyna/contracts";
-import { AdminIdentityGuard, ClubAdminGuard, PlatformAdminGuard } from "../auth/club-admin.guard";
+import { AdminIdentityGuard, ClubAdminGuard, ClubStaffGuard, PlatformAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ClubAccessService } from "./club-access.service";
 import { ClubPackagesService } from "./club-packages.service";
@@ -46,7 +46,7 @@ export class ClubsAdminController {
   }
 
   @Get("clubs/:clubId")
-  @UseGuards(ClubAdminGuard)
+  @UseGuards(ClubStaffGuard)
   async view(@Param("clubId") clubId: string): Promise<ClubAdminView> {
     const [club, zones] = await Promise.all([this.clubs.findOne(clubId), this.clubs.findZones(clubId)]);
     return { club, zones };
@@ -65,7 +65,7 @@ export class ClubsAdminController {
   }
 
   @Get("clubs/:clubId/packages")
-  @UseGuards(ClubAdminGuard)
+  @UseGuards(ClubStaffGuard)
   listPackages(@Param("clubId") clubId: string): Promise<ClubPackage[]> {
     return this.packages.list(clubId);
   }
@@ -77,7 +77,7 @@ export class ClubsAdminController {
   }
 
   @Get("clubs/:clubId/layout")
-  @UseGuards(ClubAdminGuard)
+  @UseGuards(ClubStaffGuard)
   layout(@Param("clubId") clubId: string): Promise<HallLayout | null> {
     return this.layouts.find(clubId);
   }
@@ -95,13 +95,13 @@ export class ClubsAdminController {
   }
 
   @Post("clubs/:clubId/members")
-  @UseGuards(PlatformAdminGuard)
+  @UseGuards(ClubAdminGuard)
   addMember(@Param("clubId") clubId: string, @Body() request: AddClubMemberRequest): Promise<ClubMember> {
     return this.access.addMember(clubId, request);
   }
 
   @Delete("clubs/:clubId/members/:userId")
-  @UseGuards(PlatformAdminGuard)
+  @UseGuards(ClubAdminGuard)
   removeMember(@Param("clubId") clubId: string, @Param("userId") userId: string): Promise<void> {
     return this.access.removeMember(clubId, userId);
   }

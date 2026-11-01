@@ -27,6 +27,8 @@ interface AppShellProps {
 
 /** Каркас кабинета: меню слева на широком экране, панель снизу на телефоне — касса часто работает с планшета. */
 export function AppShell({ active, club, clubs, children }: AppShellProps) {
+  // Кассиру — только касса: аналитика, клиенты и настройки остаются у владельца.
+  const navigation = club.role === "cashier" ? NAVIGATION.filter((item) => item.key === "hall") : NAVIGATION;
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border p-5 lg:flex">
@@ -36,7 +38,7 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
         </Link>
         <ClubSwitcher club={club} clubs={clubs} />
         <nav className="mt-6 space-y-1" aria-label="Разделы кабинета">
-          {NAVIGATION.map(({ key, label, icon: Icon, href }) => (
+          {navigation.map(({ key, label, icon: Icon, href }) => (
             <Link
               key={key}
               href={href}
@@ -72,8 +74,9 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
         <main className="min-w-0 flex-1 p-4 pb-28 md:p-8 lg:pb-8">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Разделы кабинета">
-        {NAVIGATION.map(({ key, short, icon: Icon, href }) => (
+      <nav style={{ gridTemplateColumns: `repeat(${navigation.length}, minmax(0, 1fr))` }}
+        className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Разделы кабинета">
+        {navigation.map(({ key, short, icon: Icon, href }) => (
           <Link
             key={key}
             href={href}

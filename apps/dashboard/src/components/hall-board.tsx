@@ -20,6 +20,8 @@ interface HallBoardProps {
   clubId: string;
   hall: HallSnapshot;
   apiUrl: string;
+  /** Владелец: подключает компьютеры и рисует схему. Кассиру эти кнопки не показываем. */
+  owner?: boolean;
 }
 
 interface SelectedSeat {
@@ -65,7 +67,7 @@ function minutesFor(amount: number, pricePerHour: number): number | undefined {
  * Касса: сводка зала, карта мест с живыми сессиями, очередь бара, посадка игрока и пополнение.
  * Карта мест — в hall-map.tsx; здесь сводка, правая колонка и окно места.
  */
-export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
+export function HallBoard({ clubId, hall, apiUrl, owner = true }: HallBoardProps) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
@@ -131,7 +133,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
         </div>
 
         <div className="xl:col-start-1 xl:row-span-3 xl:row-start-1 xl:self-stretch">
-          <HallMap zones={hall.seatMap.zones} sessionBySeat={sessionBySeat} stationBySeat={stationBySeat} now={now} selectedId={selectedId} onSelect={select} layout={hall.layout} />
+          <HallMap zones={hall.seatMap.zones} sessionBySeat={sessionBySeat} stationBySeat={stationBySeat} now={now} selectedId={selectedId} onSelect={select} layout={hall.layout} editable={owner} />
         </div>
 
         <div id="playing" className="scroll-mt-4 xl:col-start-2">
@@ -155,6 +157,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
           credentials={credentials}
           initialPhone={lastPhone}
           shiftOpen={Boolean(hall.shift)}
+          owner={owner}
           packages={hall.packages.filter((pack) => pack.zoneIds.length === 0 || pack.zoneIds.includes(selected.zone.id))}
           isPending={isPending}
           run={run}
@@ -350,13 +353,14 @@ function SeatPanel(props: {
   credentials: StationCredentials | null;
   initialPhone: string;
   shiftOpen: boolean;
+  owner: boolean;
   packages: ClubPackage[];
   isPending: boolean;
   run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
   onCredentials: (credentials: StationCredentials | null) => void;
   onClose: () => void;
 }) {
-  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, shiftOpen, packages, isPending, run, onCredentials, onClose } = props;
+  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, shiftOpen, owner, packages, isPending, run, onCredentials, onClose } = props;
   const [phone, setPhone] = useState(initialPhone);
   // По умолчанию гость: пришёл, заплатил, сел. Телефон — для постоянных, у кого копится баланс.
   const [mode, setMode] = useState<"guest" | "player">(initialPhone ? "player" : "guest");
@@ -546,15 +550,17 @@ function SeatPanel(props: {
                 )}
               </p>
               {station.online ? <StationControls clubId={clubId} station={station} session={session} isPending={isPending} run={run} /> : null}
-              <div className="flex flex-wrap gap-2">
+              {owner ? <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" disabled={isPending} onClick={() => issueKey(() => rotateStationKey(clubId, station.id), "Новый ключ выпущен, старый больше не работает")}>
                   <KeyRound className="size-4" />Новый ключ
                 </Button>
                 <Button size="sm" variant="secondary" disabled={isPending} onClick={() => unbind(station)}>
                   <Unplug className="size-4" />{confirmUnbind ? "Нажмите ещё раз, чтобы отвязать" : "Отвязать"}
                 </Button>
-              </div>
+              </div> : null}
             </>
+          ) : !owner ? (
+            <p className="text-muted-foreground">Vence на этом компьютере не установлен. Подключает компьютеры владелец клуба.</p>
           ) : (
             <Button size="sm" variant="secondary" disabled={isPending} onClick={() => issueKey(() => registerStation(clubId, seat.id), "Компьютер подключён к месту")}>
               <Plug className="size-4" />Подключить компьютер

@@ -76,6 +76,9 @@ CREATE TABLE IF NOT EXISTS club_zones (
 );
 
 CREATE INDEX IF NOT EXISTS club_memberships_user_idx ON club_memberships (user_id);
+-- Роль кассира: работает с залом и сменами, но не видит аналитику и настройки.
+ALTER TABLE club_memberships DROP CONSTRAINT IF EXISTS club_memberships_role_check;
+ALTER TABLE club_memberships ADD CONSTRAINT club_memberships_role_check CHECK (role IN ('admin','cashier','moderator'));
 
 CREATE TABLE IF NOT EXISTS bookings (
   id TEXT PRIMARY KEY,

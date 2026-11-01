@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type PlayerSuggestion, searchPlayers } from "@/app/actions";
+import type { PlayerSuggestion } from "@oyna/contracts";
+import { searchPlayers } from "@/app/actions";
 
 const money = (value: number): string => `${value.toLocaleString("ru-KZ")} ₸`;
 
