@@ -62,15 +62,18 @@ const DEMO_GAMES: InstalledGame[] = [
   { id: "deadlock", name: "Deadlock", launcher: "steam", genre: "MOBA", logo: "DEADLOCK", bg: "#4a3b2a", ink: "#e8d9b5" }
 ];
 
+// В браузере ?games=2 показывает экран с двумя играми — так проверяют вид клуба с маленькой библиотекой.
+const demoGameCount = Number(new URLSearchParams(globalThis.location?.search ?? "").get("games")) || DEMO_GAMES.length;
+
 const demoPlatform: Platform = {
-  listGames: async () => DEMO_GAMES,
-  launch: async (game) => console.info(`[zen] запуск ${game.name} через ${LAUNCHER_NAMES[game.launcher]}`),
-  cleanUp: async () => console.info("[zen] сессия закончилась: игры закрыты, аккаунты игрока разлогинены"),
+  listGames: async () => DEMO_GAMES.slice(0, demoGameCount),
+  launch: async (game) => console.info(`[vence] запуск ${game.name} через ${LAUNCHER_NAMES[game.launcher]}`),
+  cleanUp: async () => console.info("[vence] сессия закончилась: игры закрыты, аккаунты игрока разлогинены"),
   setLocked: async () => undefined,
-  restart: async () => console.info("[zen] перезагрузка компьютера"),
-  shutdown: async () => console.info("[zen] выключение компьютера"),
+  restart: async () => console.info("[vence] перезагрузка компьютера"),
+  shutdown: async () => console.info("[vence] выключение компьютера"),
   bringToFront: async () => undefined,
-  adminExit: async () => console.info("[zen] выход в Windows")
+  adminExit: async () => console.info("[vence] выход в Windows")
 };
 
 /** Оболочка Windows (`src-tauri`): настоящие игры с диска. */

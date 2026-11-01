@@ -110,6 +110,8 @@ export function Lock({
 
 // Сколько обложек в ленте минимум: с тремя играми на компьютере лента всё равно не рвётся.
 const SHOWCASE_MIN = 10;
+// Меньше стольких игр — не крутим ленты: одни и те же 2–3 обложки по кругу выглядят пусто и навязчиво.
+const SHOWCASE_STATIC_BELOW = 6;
 
 /** Витрина игр: ленты обложек медленно плывут, соседние — навстречу друг другу. */
 function Showcase({ games }: { games: InstalledGame[] }) {
@@ -131,6 +133,15 @@ function Showcase({ games }: { games: InstalledGame[] }) {
         </h2>
         <span className="muted">Войдите, чтобы играть</span>
       </header>
+      {games.length < SHOWCASE_STATIC_BELOW ? (
+        <div className="showcase-static" aria-hidden="true">
+          {games.map((game) => (
+            <div className="showcase-item" key={game.id}>
+              <GameCover game={game} />
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="showcase-rows" aria-hidden="true">
         {rows.map((row, index) => (
           <div className={index % 2 ? "showcase-row reverse" : "showcase-row"} key={index}>
@@ -145,6 +156,7 @@ function Showcase({ games }: { games: InstalledGame[] }) {
           </div>
         ))}
       </div>
+      )}
     </section>
   );
 }
