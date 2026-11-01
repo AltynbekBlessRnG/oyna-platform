@@ -31,7 +31,7 @@ fn clean_up() -> Result<(), String> {
     Ok(())
 }
 
-/// Свободный компьютер: Zen поверх всего и системные клавиши закрыты.
+/// Свободный компьютер: Vence поверх всего и системные клавиши закрыты.
 /// Во время сессии окно отпускаем, чтобы игра могла выйти на передний план.
 #[tauri::command]
 fn set_locked(window: tauri::WebviewWindow, locked: bool) {
@@ -44,7 +44,7 @@ fn set_locked(window: tauri::WebviewWindow, locked: bool) {
 
 /// Сессия кончилась: перезагружаемся, и «заморозка» клуба (Shadow Defender, Deep Freeze и т. п.)
 /// возвращает компьютер в чистое состояние для следующего игрока. Только под гостем:
-/// компьютер админа, на котором Zen открыли для проверки, перезагружать нельзя.
+/// компьютер админа, на котором Vence открыли для проверки, перезагружать нельзя.
 #[tauri::command]
 fn restart_computer() -> Result<(), String> {
     kiosk::restart_if_guest()
@@ -109,12 +109,12 @@ pub fn run() {
     kiosk::install_keyboard_hook();
     tauri::Builder::default()
         .on_window_event(|_window, event| {
-            // Alt+F4 и прочие попытки закрыть окно: выйти из Zen можно только через PIN админа.
+            // Alt+F4 и прочие попытки закрыть окно: выйти из Vence можно только через PIN админа.
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
             }
         })
         .invoke_handler(tauri::generate_handler![list_games, launch_game, clean_up, set_locked, restart_computer, shutdown_computer, bring_to_front, admin_exit, load_config, save_config, clear_config])
         .run(tauri::generate_context!())
-        .expect("не удалось запустить Zen");
+        .expect("не удалось запустить Vence");
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Эмулятор клиента Zen на компьютере в зале: подключается к API как настоящий ПК,
+// Эмулятор клиента Vence на компьютере в зале: подключается к API как настоящий ПК,
 // показывает экран блокировки с кодом входа и отсчёт идущей сессии.
 //
 //   pnpm --filter @oyna/api station -- --station <id> --token <ключ> [--api http://localhost:4000]
@@ -39,7 +39,7 @@ async function showLockScreen() {
   clearTimeout(codeTimer);
   const { code, expiresAt } = await socket.emitWithAck("login-code");
   console.log(`\n🔒 ${state.station.name} заблокирован. Код входа: ${code} (до ${time(expiresAt)})`);
-  console.log("   Введите его в приложении Zen: POST /api/sessions/claim {\"code\":\"" + code + "\"}");
+  console.log("   Введите его в приложении Vence: POST /api/sessions/claim {\"code\":\"" + code + "\"}");
   // Обновляем код чуть раньше, чем он истечёт.
   codeTimer = setTimeout(() => void showLockScreen(), Math.max(5_000, Date.parse(expiresAt) - Date.now() - 10_000));
 }
@@ -49,8 +49,8 @@ function render() {
   const session = state.session;
   if (!session) return void showLockScreen().catch((error) => console.error("Не удалось получить код:", error.message));
   clearTimeout(codeTimer);
-  // Гостя без имени касса заводит как «Игрок Zen»; на экране ПК его узнают по хвосту номера, как в кабинете.
-  const player = session.playerName === "Игрок Zen" && session.playerPhoneTail ? `Гость ··${session.playerPhoneTail}` : session.playerName;
+  // Гостя без имени касса заводит как «Игрок Vence»; на экране ПК его узнают по хвосту номера, как в кабинете.
+  const player = session.playerName === "Игрок Vence" && session.playerPhoneTail ? `Гость ··${session.playerPhoneTail}` : session.playerName;
   const print = () => console.log(`🎮 ${state.station.name}: играет ${player}, зона «${session.zoneName}», осталось ${left(session.endsAt)} (до ${time(session.endsAt)})`);
   print();
   tickTimer = setInterval(print, 60_000);

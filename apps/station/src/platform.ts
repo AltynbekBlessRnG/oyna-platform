@@ -23,15 +23,15 @@ export interface Platform {
   launch(game: InstalledGame): Promise<void>;
   /** Сессия закончилась: закрыть игры, выйти из аккаунтов, стереть данные входа. */
   cleanUp(): Promise<void>;
-  /** Свободный компьютер держит Zen поверх всего и закрывает Win, Alt+Tab и Alt+F4. */
+  /** Свободный компьютер держит Vence поверх всего и закрывает Win, Alt+Tab и Alt+F4. */
   setLocked(locked: boolean): Promise<void>;
   /** После сессии: перезагрузка, «заморозка» клуба стирает следы игрока. */
   restart(): Promise<void>;
   /** Выключение по команде из кабинета, например при закрытии клуба. */
   shutdown(): Promise<void>;
-  /** Поднять Zen поверх игры, чтобы игрок увидел сообщение из кабинета. */
+  /** Поднять Vence поверх игры, чтобы игрок увидел сообщение из кабинета. */
   bringToFront(): Promise<void>;
-  /** Выйти из Zen в обычную Windows: только после PIN администратора. */
+  /** Выйти из Vence в обычную Windows: только после PIN администратора. */
   adminExit(): Promise<void>;
 }
 

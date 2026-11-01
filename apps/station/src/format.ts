@@ -46,7 +46,7 @@ export function minutesSeconds(ms: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-/** Гостя без имени касса заводит как «Игрок Zen»; на экране его узнают по хвосту номера, как в кабинете. */
+/** Гостя без имени касса заводит как «Игрок Vence»; на экране его узнают по хвосту номера, как в кабинете. */
 export function playerLabel(name: string, phoneTail?: string): string {
-  return name === "Игрок Zen" && phoneTail ? `Гость ··${phoneTail}` : name;
+  return name === "Игрок Vence" && phoneTail ? `Гость ··${phoneTail}` : name;
 }

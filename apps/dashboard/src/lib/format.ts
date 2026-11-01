@@ -1,7 +1,7 @@
 const MONEY = new Intl.NumberFormat("ru-KZ");
 const TIME_ZONE = "Asia/Almaty";
 /** Имя, которое касса ставит гостю без имени: такого игрока различаем по номеру. */
-export const DEFAULT_PLAYER_NAME = "Игрок Zen";
+export const DEFAULT_PLAYER_NAME = "Игрок Vence";
 
 export function money(amount: number): string {
   return `${MONEY.format(amount)} ₸`;

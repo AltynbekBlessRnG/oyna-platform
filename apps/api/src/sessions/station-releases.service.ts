@@ -21,7 +21,7 @@ function compareVersions(a: string, b: string): number {
 }
 
 /**
- * Обновления Zen для компьютеров. Сервер подпись не проверяет и проверять не должен: ключ
+ * Обновления Vence для компьютеров. Сервер подпись не проверяет и проверять не должен: ключ
  * подписи есть только у разработчика, и даже взломанный сервер не выпустит обновление,
  * которое компьютеры примут.
  */
@@ -34,7 +34,7 @@ export class StationReleasesService {
   async publish(version: string, signature: string, binary: Buffer): Promise<StationRelease> {
     if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) throw new BadRequestException("Версия в виде 1.2.3");
     if (!/^[0-9a-f]{128}$/.test(signature ?? "")) throw new BadRequestException("Подпись — 64 байта в hex");
-    if (!Buffer.isBuffer(binary) || binary.length === 0) throw new BadRequestException("Пришлите Zen.exe телом запроса (application/octet-stream)");
+    if (!Buffer.isBuffer(binary) || binary.length === 0) throw new BadRequestException("Пришлите Vence.exe телом запроса (application/octet-stream)");
     if (binary.length > MAX_RELEASE_BYTES) throw new BadRequestException("Файл больше 50 МБ");
     const sha256 = createHash("sha256").update(binary).digest("hex");
     if (!this.database.configured) {
@@ -74,6 +74,6 @@ export class StationReleasesService {
   }
 
   private toPublic(version: string, sha256: string, signature: string, size: number): StationRelease {
-    return { version, sha256, signature, size, url: `/api/stations/release/${version}/Zen.exe` };
+    return { version, sha256, signature, size, url: `/api/stations/release/${version}/Vence.exe` };
   }
 }

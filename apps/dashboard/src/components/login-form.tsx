@@ -5,7 +5,7 @@ import { type FormEvent, useEffect, useState, useTransition } from "react";
 import { checkAdminTelegram, confirmAdminCode, requestAdminCode } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ZenMark } from "@/components/zen-mark";
+import { VenceMark } from "@/components/vence-mark";
 
 // Сервер держит вход 10 минут; дольше спрашивать бессмысленно.
 const TELEGRAM_POLL_MS = 2_500;
@@ -80,8 +80,8 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <ZenMark size={48} className="mb-2" />
-        <CardTitle className="text-xl">Кабинет клуба Zen</CardTitle>
+        <VenceMark size={48} className="mb-2" />
+        <CardTitle className="text-xl">Кабинет клуба Vence</CardTitle>
         <p className="text-sm text-muted-foreground">Вход по номеру телефона администратора клуба</p>
       </CardHeader>
       <CardContent>

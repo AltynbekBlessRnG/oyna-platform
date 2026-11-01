@@ -1,11 +1,11 @@
 [package]
-name = "zen-station"
-version = "0.1.5"
-description = "Zen на компьютере в зале клуба"
+name = "vence-station"
+version = "0.1.6"
+description = "Vence на компьютере в зале клуба"
 edition = "2021"
 
 [lib]
-name = "zen_station_lib"
+name = "vence_station_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

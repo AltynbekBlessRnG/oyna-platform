@@ -8,5 +8,5 @@
   <g transform="translate(512 512) scale(1.0) translate(-512 -512)">
     <circle cx="512" cy="512" r="300" fill="none" stroke="url(#accent)" stroke-width="78"
             stroke-linecap="round" stroke-dasharray="1620 265" transform="rotate(-58 512 512)"/>
-    <polygon points="397,387 627,387 627,443 547,581 627,581 627,637 397,637 397,581 477,443 397,443" fill="url(#accent)"/>
+    <polygon points="397,387 463,387 512,541 561,387 627,387 549,637 475,637" fill="url(#accent)"/>
   </g></svg>

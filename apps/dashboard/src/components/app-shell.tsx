@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOut } from "@/app/actions";
 import { ClubSwitcher } from "@/components/club-switcher";
-import { ZenMark } from "@/components/zen-mark";
+import { VenceMark } from "@/components/vence-mark";
 import { cn } from "@/lib/utils";
 
 export type ShellSection = "overview" | "hall" | "shifts" | "clients" | "analytics" | "settings";
@@ -30,9 +30,9 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
   return (
     <div className="flex min-h-screen">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-border p-5 lg:flex">
-        <Link href="/" className="mb-8 flex items-center gap-2.5 px-2" aria-label="Zen — на главную кабинета">
-          <ZenMark size={34} />
-          <span className="font-display text-lg font-semibold">Zen</span>
+        <Link href="/" className="mb-8 flex items-center gap-2.5 px-2" aria-label="Vence — на главную кабинета">
+          <VenceMark size={34} />
+          <span className="font-display text-lg font-semibold">Vence</span>
         </Link>
         <ClubSwitcher club={club} clubs={clubs} />
         <nav className="mt-6 space-y-1" aria-label="Разделы кабинета">
@@ -61,7 +61,7 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 border-b border-border px-4 py-3 lg:hidden">
-          <ZenMark size={28} />
+          <VenceMark size={28} />
           <div className="min-w-0 flex-1"><ClubSwitcher club={club} clubs={clubs} compact /></div>
           <form action={signOut}>
             <button type="submit" aria-label="Выйти" className="grid size-10 place-items-center rounded-xl text-muted-foreground hover:bg-secondary">

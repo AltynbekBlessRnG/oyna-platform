@@ -1,14 +1,17 @@
-//! `Zen-Setup.exe` — это тот же Zen.exe под другим именем: ставит себя в Program Files,
+//! `Vence-Setup.exe` — это тот же Vence.exe под другим именем: ставит себя в Program Files,
 //! превращает компьютер в киоск и заводит задачу обновления.
 //!
-//!   Zen-Setup.exe            — с вопросами в окнах;
-//!   Zen-Setup.exe --quiet    — без вопросов, для установки на весь зал сразу;
-//!   Zen.exe --uninstall      — вернуть обычную Windows.
+//!   Vence-Setup.exe          — с вопросами в окнах;
+//!   Vence-Setup.exe --quiet  — без вопросов, для установки на весь зал сразу;
+//!   Vence.exe --uninstall    — вернуть обычную Windows.
 
-pub const INSTALL_DIR: &str = r"C:\Program Files\Zen";
+pub const INSTALL_DIR: &str = r"C:\Program Files\Vence";
 const KIOSK_SETUP: &str = include_str!("../../windows/kiosk-setup.ps1");
 const KIOSK_REMOVE: &str = include_str!("../../windows/kiosk-remove.ps1");
-const UPDATE_TASKS: [(&str, &[&str]); 2] = [("Zen Update", &["/SC", "MINUTE", "/MO", "30"]), ("Zen Update At Start", &["/SC", "ONSTART"])];
+const UPDATE_TASKS: [(&str, &[&str]); 2] = [("Vence Update", &["/SC", "MINUTE", "/MO", "30"]), ("Vence Update At Start", &["/SC", "ONSTART"])];
+/// Задачи обновления из времён, когда программа называлась Zen: при установке Vence поверх их убираем,
+/// иначе старый Zen.exe продолжал бы обновлять сам себя.
+const LEGACY_TASKS: [&str; 2] = ["Zen Update", "Zen Update At Start"];
 
 pub fn install(quiet: bool) {
     if !elevated() {
@@ -16,16 +19,19 @@ pub fn install(quiet: bool) {
     }
     let result = (|| -> Result<String, String> {
         std::fs::create_dir_all(INSTALL_DIR).map_err(|error| format!("Не удалось создать {INSTALL_DIR}: {error}"))?;
-        let target = std::path::Path::new(INSTALL_DIR).join("Zen.exe");
+        let target = std::path::Path::new(INSTALL_DIR).join("Vence.exe");
         let source = std::env::current_exe().map_err(|error| error.to_string())?;
         if !same_file(&source, &target) {
-            // Поверх запущенного Zen не записать: старый файл отодвигаем, Windows разрешает переименовать занятый.
-            let old = target.with_file_name("Zen.old.exe");
+            // Поверх запущенного Vence не записать: старый файл отодвигаем, Windows разрешает переименовать занятый.
+            let old = target.with_file_name("Vence.old.exe");
             let _ = std::fs::remove_file(&old);
             let _ = std::fs::rename(&target, &old);
-            std::fs::copy(&source, &target).map_err(|error| format!("Не удалось скопировать Zen: {error}"))?;
+            std::fs::copy(&source, &target).map_err(|error| format!("Не удалось скопировать Vence: {error}"))?;
         }
-        let output = run_script(KIOSK_SETUP, &["-ZenExe", &target.to_string_lossy()])?;
+        let output = run_script(KIOSK_SETUP, &["-VenceExe", &target.to_string_lossy()])?;
+        for name in LEGACY_TASKS {
+            let _ = schtasks(&["/Delete", "/TN", name, "/F"]);
+        }
         let action = format!("\"{}\" --update", target.display());
         for (name, schedule) in UPDATE_TASKS {
             let mut args = vec!["/Create", "/TN", name, "/TR", &action];
@@ -35,7 +41,7 @@ pub fn install(quiet: bool) {
         }
         Ok(output)
     })();
-    finish(quiet, result, "Zen установлен", "После перезагрузки компьютер откроет Zen. Подключите его кодом клуба из кабинета.\n\nЕсли стоит «заморозка» диска — сейчас она должна быть выключена.");
+    finish(quiet, result, "Vence установлен", "После перезагрузки компьютер откроет Vence. Подключите его кодом клуба из кабинета.\n\nЕсли стоит «заморозка» диска — сейчас она должна быть выключена.");
 }
 
 pub fn uninstall(quiet: bool) {
@@ -43,12 +49,12 @@ pub fn uninstall(quiet: bool) {
         return relaunch_elevated(if quiet { "--uninstall --quiet" } else { "--uninstall" });
     }
     let result = (|| -> Result<String, String> {
-        for (name, _) in UPDATE_TASKS {
+        for name in UPDATE_TASKS.iter().map(|(name, _)| *name).chain(LEGACY_TASKS) {
             let _ = schtasks(&["/Delete", "/TN", name, "/F"]);
         }
         run_script(KIOSK_REMOVE, &[])
     })();
-    finish(quiet, result, "Zen отключён", "После перезагрузки будет обычный рабочий стол Windows.");
+    finish(quiet, result, "Vence отключён", "После перезагрузки будет обычный рабочий стол Windows.");
 }
 
 fn finish(quiet: bool, result: Result<String, String>, title: &str, next: &str) {
@@ -69,7 +75,7 @@ fn finish(quiet: bool, result: Result<String, String>, title: &str, next: &str) 
             let _ = std::process::Command::new("shutdown").args(["/r", "/t", "0"]).spawn();
         }
         Ok(_) => {}
-        Err(error) => alert("Zen не установлен", &error),
+        Err(error) => alert("Vence не установлен", &error),
     }
 }
 

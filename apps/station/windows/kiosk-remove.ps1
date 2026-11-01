@@ -6,10 +6,10 @@ Set-ItemProperty $winlogon -Name AutoAdminLogon -Value "0"
 Remove-ItemProperty $winlogon -Name DefaultPassword -ErrorAction SilentlyContinue
 Remove-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name HideFastUserSwitching -ErrorAction SilentlyContinue
 
-reg load HKU\ZenHive "C:\Users\Default\NTUSER.DAT" | Out-Null
+reg load HKU\VenceHive "C:\Users\Default\NTUSER.DAT" | Out-Null
 try {
-  Remove-Item "Registry::HKEY_USERS\ZenHive\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Recurse -ErrorAction SilentlyContinue
-  Remove-Item "Registry::HKEY_USERS\ZenHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Recurse -ErrorAction SilentlyContinue
-} finally { [gc]::Collect(); reg unload HKU\ZenHive | Out-Null }
+  Remove-Item "Registry::HKEY_USERS\VenceHive\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Recurse -ErrorAction SilentlyContinue
+  Remove-Item "Registry::HKEY_USERS\VenceHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Recurse -ErrorAction SilentlyContinue
+} finally { [gc]::Collect(); reg unload HKU\VenceHive | Out-Null }
 
-Write-Output "Готово. Пользователь zen-player остался; удалить: Remove-LocalUser zen-player"
+Write-Output "Готово. Гостевой пользователь (vence-player или zen-player) остался; удалить: Remove-LocalUser <имя>"

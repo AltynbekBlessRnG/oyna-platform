@@ -52,7 +52,7 @@ describe("ClubHallService", () => {
 
   it("opens a separate club account with its own nickname", async () => {
     const account = await service.getAccount("zen-game-club", player);
-    expect(account.clubName).toBe("Zen Game Club");
+    expect(account.clubName).toBe("Vence Game Club");
     const renamed = await service.renameAccount("zen-game-club", player, "  ZenMaster  ");
     expect(renamed.nickname).toBe("ZenMaster");
     await expect(service.renameAccount("zen-game-club", player, "z")).rejects.toThrow(BadRequestException);

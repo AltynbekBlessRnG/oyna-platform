@@ -29,7 +29,7 @@ export function ApprovalQueue({ clubId, initialBookings }: ApprovalQueueProps) {
         const updated = await updateBookingStatus(clubId, id, status);
         setBookings((current) => current.map((booking) => booking.id === id ? updated : booking));
       } catch (cause) {
-        setError(cause instanceof Error && cause.message ? cause.message : "Сервер Zen не ответил. Повторите через минуту.");
+        setError(cause instanceof Error && cause.message ? cause.message : "Сервер Vence не ответил. Повторите через минуту.");
       } finally {
         setPendingId(null);
       }

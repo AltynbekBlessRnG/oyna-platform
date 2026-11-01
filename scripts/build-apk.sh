@@ -17,4 +17,4 @@ npx --yes eas-cli@latest build \
   --profile preview \
   --non-interactive \
   "$WAIT" \
-  --message "Пилотный APK OYNA"
+  --message "Пилотный APK Vence"

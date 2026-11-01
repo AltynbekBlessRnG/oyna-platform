@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ZenMark } from "@/components/zen-mark";
+import { VenceMark } from "@/components/vence-mark";
 import { useAuth } from "@/auth/auth-context";
 import { getChallengeStatus, requestLoginCode, verifyLoginCode } from "@/lib/api";
 import { colors, fonts, radii } from "@/theme";
@@ -75,7 +75,7 @@ export default function LoginScreen() {
       bottomOffset={24}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.logo}><ZenMark size={62} /></View>
+      <View style={styles.logo}><VenceMark size={62} /></View>
       <Text style={styles.title}>{challengeId ? "Подтверди номер" : "Начнём играть"}</Text>
       <Text style={styles.subtitle}>{challengeId ? `Подтверждаем ${phone}.` : "Номер нужен для бронирований и уведомлений клуба."}</Text>
       {!challengeId ? (

@@ -23,7 +23,7 @@ export default async function HallLayoutPage() {
       ) : (
         <Card className="max-w-xl">
           <CardHeader><CardTitle>Схема недоступна</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{error}. Проверьте, что сервер Zen запущен.</CardContent>
+          <CardContent className="text-sm text-muted-foreground">{error}. Проверьте, что сервер Vence запущен.</CardContent>
         </Card>
       )}
     </AppShell>

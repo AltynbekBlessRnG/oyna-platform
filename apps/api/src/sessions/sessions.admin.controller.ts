@@ -5,7 +5,7 @@ import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionsService } from "./sessions.service";
 
-/** Касса клуба: компьютеры с клиентом Zen, сессии игроков и пополнение баланса. */
+/** Касса клуба: компьютеры с клиентом Vence, сессии игроков и пополнение баланса. */
 @Controller("admin/clubs/:clubId")
 @UseGuards(ClubAdminGuard)
 export class SessionsAdminController {

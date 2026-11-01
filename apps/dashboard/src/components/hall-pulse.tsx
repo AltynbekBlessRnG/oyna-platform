@@ -15,7 +15,7 @@ export function HallPulse({ hall, now }: { hall?: HallSnapshot; now: number }) {
   if (!hall) {
     return (
       <Card>
-        <CardContent className="p-5 text-sm text-muted-foreground">Зал недоступен: сервер Zen не отвечает.</CardContent>
+        <CardContent className="p-5 text-sm text-muted-foreground">Зал недоступен: сервер Vence не отвечает.</CardContent>
       </Card>
     );
   }

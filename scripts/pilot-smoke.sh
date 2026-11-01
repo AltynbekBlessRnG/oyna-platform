@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Сквозная проверка пилотного сценария OYNA: каталог → вход игрока → бронь →
+# Сквозная проверка пилотного сценария Vence: каталог → вход игрока → бронь →
 # решение клуба → уведомление игроку. Тестовая бронь отменяется в конце.
 #
 #   API_URL=http://localhost:4000/api CLUB_ADMIN_KEY=... ./scripts/pilot-smoke.sh
 #
 # Проверки правки клуба и зон меняют данные, поэтому включаются явно:
-#   OYNA_SMOKE_MUTATE=1 ./scripts/pilot-smoke.sh
+#   VENCE_SMOKE_MUTATE=1 ./scripts/pilot-smoke.sh
 set -u
 
 API=${API_URL:-http://localhost:4000/api}
@@ -65,7 +65,7 @@ check "бронь не находится в чужом клубе" "$(code -X P
 check "клуб подтвердил бронь" "$(curl -s -X PATCH -H "x-club-admin-key: $KEY" -H 'Content-Type: application/json' -d '{"status":"confirmed"}' "$API/admin/clubs/$CLUB/bookings/$BOOKING_ID/status" | json 'd["status"]')" "confirmed"
 check "игрок получил уведомление" "$(curl -s -H "Authorization: Bearer $TOKEN" "$API/notifications" | json 'd[0]["type"] if d else "нет"')" "booking_status"
 
-if [ "${OYNA_SMOKE_MUTATE:-0}" = "1" ]; then
+if [ "${VENCE_SMOKE_MUTATE:-0}" = "1" ]; then
   check "карточка клуба обновляется" "$(curl -s -X PATCH -H "x-club-admin-key: $KEY" -H 'Content-Type: application/json' -d '{"openingHours":"10:00 — 06:00"}' "$API/admin/clubs/$CLUB" | json 'd["openingHours"]')" "10:00 — 06:00"
   check "некорректный цвет отклоняется" "$(code -X PATCH -H "x-club-admin-key: $KEY" -H 'Content-Type: application/json' -d '{"accent":"green"}' "$API/admin/clubs/$CLUB")" "400"
   check "идентификатор зоны обязан быть слагом" "$(code -X PUT -H "x-club-admin-key: $KEY" -H 'Content-Type: application/json' -d '{"zones":[{"id":"Зона 1","name":"Temp","description":"","pricePerHour":100,"seatCount":1}]}' "$API/admin/clubs/$CLUB/zones")" "400"

@@ -7,7 +7,7 @@ const money = (value: number): string => `${value.toLocaleString("ru-KZ")} ₸`;
 
 /**
  * Поле «телефон игрока», в которое можно вписать и имя, и последние цифры номера:
- * Zen подскажет постоянных игроков, и кассиру не нужно помнить телефоны.
+ * Vence подскажет постоянных игроков, и кассиру не нужно помнить телефоны.
  */
 export function PlayerPhoneInput({ clubId, value, onChange, className, label }: {
   clubId: string;

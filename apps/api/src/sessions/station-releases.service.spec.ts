@@ -19,7 +19,7 @@ describe("StationReleasesService", () => {
     await releases.publish("0.2.0", signature, binary);
 
     const latest = await releases.latest();
-    expect(latest).toMatchObject({ version: "0.2.0", size: binary.length, url: "/api/stations/release/0.2.0/Zen.exe" });
+    expect(latest).toMatchObject({ version: "0.2.0", size: binary.length, url: "/api/stations/release/0.2.0/Vence.exe" });
     expect(latest?.sha256).toBe(createHash("sha256").update(binary).digest("hex"));
     expect((await releases.binary("0.2.0")).equals(binary)).toBe(true);
     await expect(releases.binary("9.9.9")).rejects.toThrow(NotFoundException);

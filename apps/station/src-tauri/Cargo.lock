@@ -3746,6 +3746,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "vence-station"
+version = "0.1.6"
+dependencies = [
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tauri",
+ "tauri-build",
+ "windows-sys 0.61.2",
+ "winreg 0.52.0",
+]
+
+[[package]]
 name = "version-compare"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4432,21 +4447,6 @@ dependencies = [
  "quote",
  "syn 3.0.9",
  "synstructure",
-]
-
-[[package]]
-name = "zen-station"
-version = "0.1.5"
-dependencies = [
- "base64 0.22.1",
- "ed25519-dalek",
- "serde",
- "serde_json",
- "sha2",
- "tauri",
- "tauri-build",
- "windows-sys 0.61.2",
- "winreg 0.52.0",
 ]
 
 [[package]]

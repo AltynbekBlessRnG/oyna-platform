@@ -1,19 +1,19 @@
-//! Чтобы мимо Zen нельзя было уйти в Windows: перехват системных клавиш и «сторож».
+//! Чтобы мимо Vence нельзя было уйти в Windows: перехват системных клавиш и «сторож».
 //!
 //! Ctrl+Alt+Del перехватить нельзя никому — его закрывают политики Windows,
 //! их ставит `windows/kiosk-setup.ps1`.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// Компьютер свободен: Zen на экране блокировки и уходить с него некуда.
+/// Компьютер свободен: Vence на экране блокировки и уходить с него некуда.
 pub static LOCKED: AtomicBool = AtomicBool::new(true);
 
-/// Код выхода, по которому сторож открывает обычную Windows вместо нового запуска Zen.
+/// Код выхода, по которому сторож открывает обычную Windows вместо нового запуска Vence.
 pub const ADMIN_EXIT_CODE: i32 = 42;
 
 /// Какие нажатия глотать. Win и Ctrl+Esc — всегда: меню «Пуск» игроку не нужно никогда.
 /// Alt+Tab, Alt+Esc и Alt+F4 — только на блокировке: во время сессии игрок переключается
-/// между игрой и панелью Zen, а Alt+F4 закрывает игру.
+/// между игрой и панелью Vence, а Alt+F4 закрывает игру.
 pub fn should_block(vk: u32, alt: bool, ctrl: bool, locked: bool) -> bool {
     const VK_TAB: u32 = 0x09;
     const VK_ESCAPE: u32 = 0x1B;
@@ -62,8 +62,9 @@ pub fn install_keyboard_hook() {
 #[cfg(not(windows))]
 pub fn install_keyboard_hook() {}
 
-/// Гостевой пользователь Windows из `windows/kiosk-setup.ps1`.
-pub const GUEST_USER: &str = "zen-player";
+/// Гостевые пользователи Windows из `windows/kiosk-setup.ps1`: zen-player остался на компьютерах,
+/// поставленных до переименования в Vence.
+pub const GUEST_USERS: [&str; 2] = ["vence-player", "zen-player"];
 
 pub fn restart_if_guest() -> Result<(), String> {
     power_if_guest("/r")
@@ -73,12 +74,12 @@ pub fn shutdown_if_guest() -> Result<(), String> {
     power_if_guest("/s")
 }
 
-/// Только под гостем: компьютер админа, где Zen открыли для проверки, не перезагружаем и не выключаем.
+/// Только под гостем: компьютер админа, где Vence открыли для проверки, не перезагружаем и не выключаем.
 #[cfg(windows)]
 fn power_if_guest(action: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    if !std::env::var("USERNAME").is_ok_and(|user| user.eq_ignore_ascii_case(GUEST_USER)) {
+    if !std::env::var("USERNAME").is_ok_and(|user| GUEST_USERS.iter().any(|guest| user.eq_ignore_ascii_case(guest))) {
         return Err("Перезагрузка и выключение только под гостевым пользователем".into());
     }
     std::process::Command::new("shutdown")
@@ -94,7 +95,7 @@ fn power_if_guest(_action: &str) -> Result<(), String> {
     Err("Перезагрузка и выключение работают только в Windows".into())
 }
 
-/// Режим сторожа: им Windows запускает Zen вместо рабочего стола. Если окно Zen
+/// Режим сторожа: им Windows запускает Vence вместо рабочего стола. Если окно Vence
 /// закроют или оно упадёт, сторож поднимает его снова; выход админа — открыть Windows.
 pub fn run_guard() {
     let Ok(exe) = std::env::current_exe() else { return };
@@ -105,7 +106,7 @@ pub fn run_guard() {
             let _ = std::process::Command::new("explorer.exe").spawn();
             return;
         }
-        // Если Zen падает сразу при запуске, не крутим процессор вхолостую.
+        // Если Vence падает сразу при запуске, не крутим процессор вхолостую.
         if started.elapsed() < std::time::Duration::from_secs(5) {
             std::thread::sleep(std::time::Duration::from_secs(3));
         }

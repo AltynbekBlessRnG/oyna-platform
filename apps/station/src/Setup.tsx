@@ -60,7 +60,7 @@ export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (conf
         <form className="setup-card" onSubmit={(event) => void lookUp(event)}>
           <Logo />
           <h1>Подключить компьютер к клубу</h1>
-          <p className="muted">В кабинете Zen откройте «Зал и касса» и нажмите «Подключить компьютеры». Введите код клуба.</p>
+          <p className="muted">В кабинете Vence откройте «Зал и касса» и нажмите «Подключить компьютеры». Введите код клуба.</p>
           {error && <p className="setup-notice">{error}</p>}
           <label>
             Код клуба
@@ -114,7 +114,7 @@ export function Setup({ onSave, notice, apiUrl: initialApiUrl }: { onSave: (conf
         <label>
           PIN администратора
           <input value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, ""))} required minLength={4} inputMode="numeric" type="password" />
-          <span className="small">Чтобы выйти из Zen в Windows для обслуживания: Ctrl+Alt+Shift+F12 и этот PIN.</span>
+          <span className="small">Чтобы выйти из Vence в Windows для обслуживания: Ctrl+Alt+Shift+F12 и этот PIN.</span>
         </label>
         <button className="primary" type="submit" disabled={busy || !seatId}>
           {busy ? "Подключаем…" : chosen ? `Подключить как место ${chosen.label}` : "Выберите место"}

@@ -92,7 +92,7 @@ export class AuthService {
 
   async verifyCode(challengeId: string, code: string, name?: string): Promise<AuthSession> {
     const phone = this.database.configured ? await this.consumeStoredChallenge(challengeId, code) : this.consumeMemoryChallenge(challengeId, code);
-    const user = await this.upsertUser(phone, name?.trim() || "Игрок Zen");
+    const user = await this.upsertUser(phone, name?.trim() || "Игрок Vence");
     return { accessToken: this.signToken(user), user };
   }
 
@@ -130,7 +130,7 @@ export class AuthService {
       ? await this.consumeStoredVerification(challengeId)
       : this.consumeMemoryVerification(challengeId);
     if (!phone) return { status: "pending" };
-    const user = await this.upsertUser(phone, name?.trim() || "Игрок Zen");
+    const user = await this.upsertUser(phone, name?.trim() || "Игрок Vence");
     return { status: "verified", session: { accessToken: this.signToken(user), user } };
   }
 
@@ -168,7 +168,7 @@ export class AuthService {
     if (start) {
       const phone = await this.bindChat(start[1], chatId);
       if (!phone) {
-        await this.telegram.sendText(chatId, "Сессия входа не найдена или уже закрыта. Вернись в Zen и запроси подтверждение заново.");
+        await this.telegram.sendText(chatId, "Сессия входа не найдена или уже закрыта. Вернись в Vence и запроси подтверждение заново.");
         return;
       }
       await this.telegram.requestPhoneContact(chatId, phone);
@@ -186,7 +186,7 @@ export class AuthService {
 
     const pending = await this.findPendingByChat(chatId);
     if (!pending) {
-      await this.telegram.sendText(chatId, "Активной сессии входа нет. Вернись в Zen и начни вход заново.");
+      await this.telegram.sendText(chatId, "Активной сессии входа нет. Вернись в Vence и начни вход заново.");
       return;
     }
     if (!phonesMatch(pending.phone, contact.phone_number ?? "")) {
@@ -195,7 +195,7 @@ export class AuthService {
     }
 
     await this.markVerified(pending.id);
-    await this.telegram.sendText(chatId, "Номер подтверждён. Возвращайся в Zen — вход завершится сам.");
+    await this.telegram.sendText(chatId, "Номер подтверждён. Возвращайся в Vence — вход завершится сам.");
   }
 
   private async bindChat(challengeId: string, chatId: string): Promise<string | undefined> {

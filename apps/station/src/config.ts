@@ -5,11 +5,11 @@ export interface StationConfig {
   apiUrl: string;
   stationId: string;
   token: string;
-  /** SHA-256 PIN администратора: по нему Zen выпускает в обычную Windows. */
+  /** SHA-256 PIN администратора: по нему Vence выпускает в обычную Windows. */
   adminPinHash?: string;
 }
 
-// В Windows настройки лежат в C:\ProgramData\Zen, общем для всех пользователей: гостевой профиль
+// В Windows настройки лежат в C:\ProgramData\Vence, общем для всех пользователей: гостевой профиль
 // может сбрасываться, а компьютер должен помнить свой клуб. В браузере — localStorage.
 const KEY = "zen.station";
 

@@ -15,26 +15,27 @@ export class StationReleasesController {
   }
 
   /**
-   * Установщик для кабинета: свежий Zen под именем Zen-Setup.exe. По имени файла программа
+   * Установщик для кабинета: свежий Vence под именем Vence-Setup.exe. По имени файла программа
    * понимает, что её запустили для установки, — админу клуба нужен только этот файл.
    */
   @Get("stations/setup")
   @Header("Content-Type", "application/octet-stream")
-  @Header("Content-Disposition", 'attachment; filename="Zen-Setup.exe"')
+  @Header("Content-Disposition", 'attachment; filename="Vence-Setup.exe"')
   async setup(): Promise<StreamableFile> {
     const release = await this.releases.latest();
     if (!release) throw new NotFoundException("Программа для компьютеров ещё не выпущена");
     return new StreamableFile(await this.releases.binary(release.version));
   }
 
-  @Get("stations/release/:version/Zen.exe")
+  // Zen.exe — старое имя программы: так файл могли запросить компьютеры до переименования.
+  @Get(["stations/release/:version/Vence.exe", "stations/release/:version/Zen.exe"])
   @Header("Content-Type", "application/octet-stream")
   async download(@Param("version") version: string): Promise<StreamableFile> {
     return new StreamableFile(await this.releases.binary(version));
   }
 
   /**
-   * Выпуск новой версии: `apps/station/scripts/release.mjs` присылает подписанный Zen.exe.
+   * Выпуск новой версии: `apps/station/scripts/release.mjs` присылает подписанный Vence.exe.
    * Тело читаем сами и только после проверки прав: общий парсер на 50 МБ дал бы любому
    * анониму забить память сервера.
    */

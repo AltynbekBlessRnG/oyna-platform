@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { hashPin } from "./config";
 import { platform } from "./platform";
 
-/** Ctrl+Alt+Shift+F12 и PIN: администратор выходит из Zen в обычную Windows для обслуживания. */
+/** Ctrl+Alt+Shift+F12 и PIN: администратор выходит из Vence в обычную Windows для обслуживания. */
 export function AdminExit({ pinHash }: { pinHash?: string }) {
   const [open, setOpen] = useState(false);
   const [pin, setPin] = useState("");
@@ -36,7 +36,7 @@ export function AdminExit({ pinHash }: { pinHash?: string }) {
     <div className="backdrop">
       <form role="dialog" aria-modal="true" aria-label="Выход для администратора" className="setup-card" onSubmit={(event) => void submit(event)}>
         <h1>Выход в Windows</h1>
-        <p className="muted">Только для администратора клуба. Zen запустится снова после перезагрузки.</p>
+        <p className="muted">Только для администратора клуба. Vence запустится снова после перезагрузки.</p>
         {error && <p className="setup-notice">{error}</p>}
         <label>
           PIN администратора

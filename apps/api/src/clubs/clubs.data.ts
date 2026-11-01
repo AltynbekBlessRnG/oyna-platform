@@ -34,7 +34,7 @@ export const CLUB_CATALOG: ClubCatalogEntry[] = [
   {
     club: {
       id: "zen-game-club",
-      name: "Zen Game Club",
+      name: "Vence Game Club",
       address: "ул. Байтурсынова, 12",
       city: "Алматы",
       distanceKm: 0.8,
@@ -59,7 +59,7 @@ export const CLUB_CATALOG: ClubCatalogEntry[] = [
       { id: "zen-latte", category: "drinks", name: "Латте", description: "300 мл", price: 1100, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Caffe_Latte_at_Pulse_Cafe.jpg?width=900"},
       { id: "zen-energy", category: "drinks", name: "Энергетик", description: "Red Bull 0.35 л", price: 900, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Energy_Drink_Battery_Cans.jpg?width=900"},
       { id: "zen-lemonade", category: "drinks", name: "Домашний лимонад", description: "0.4 л, лимон-мята", price: 1200, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Mint_lemonade_in_summer.jpg?width=900"},
-      { id: "zen-burger", category: "food", name: "Чизбургер", description: "Говядина, чеддер, соус Zen", price: 2600, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Cheeseburger.jpg?width=900"},
+      { id: "zen-burger", category: "food", name: "Чизбургер", description: "Говядина, чеддер, соус Vence", price: 2600, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Cheeseburger.jpg?width=900"},
       { id: "zen-caesar", category: "food", name: "Цезарь с курицей", description: "Классический, 250 г", price: 2400, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Caesar_salad_with_chicken%2C_homemade_-_Massachusetts.jpg?width=900"},
       { id: "zen-pizza", category: "food", name: "Пицца пепперони", description: "25 см", price: 3200, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Pepperoni_Pizza_-_Greggs_2024-03-16.jpg?width=900"},
       { id: "zen-nuggets", category: "snacks", name: "Наггетсы", description: "8 штук, соус на выбор", price: 1800, imageUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Chicken_nuggets_on_a_plate.jpg?width=900"},
@@ -70,7 +70,7 @@ export const CLUB_CATALOG: ClubCatalogEntry[] = [
       {
         id: "zen-cs2-cup",
         gameId: "cs2",
-        name: "Zen Cup: Counter-Strike 2",
+        name: "Vence Cup: Counter-Strike 2",
         description: "Командный турнир 5×5 на машинах VIP-зоны. Формат — двойное выбывание, карты по правилам Active Duty.",
         rules: "MR12, овертайм MR3. Капитан подтверждает состав за 30 минут до старта. Опоздание больше 10 минут — техническое поражение.",
         kind: "team",

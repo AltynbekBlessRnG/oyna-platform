@@ -46,7 +46,7 @@ export async function GET(request: Request): Promise<Response> {
   return new Response(`﻿${csv}`, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="zen-clients-${club.id}-${date}.csv"`,
+      "Content-Disposition": `attachment; filename="vence-clients-${club.id}-${date}.csv"`,
       "Cache-Control": "no-store"
     }
   });

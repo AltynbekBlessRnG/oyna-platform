@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Экран Zen вызывает команды оболочки: список игр, запуск, уборка после сессии.",
+  "description": "Экран Vence вызывает команды оболочки: список игр, запуск, уборка после сессии.",
   "windows": ["main"],
   "permissions": ["core:default"]
 }

@@ -38,7 +38,7 @@ export default async function ClientPage({ params }: { params: Promise<{ userId:
               {data.client.atRisk ? <Badge tone="danger">пропал: давно не приходит</Badge> : null}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              {data.client.name !== data.client.nickname && data.client.name !== "Игрок Zen" ? `${data.client.name}, ` : ""}
+              {data.client.name !== data.client.nickname && data.client.name !== "Игрок Vence" ? `${data.client.name}, ` : ""}
               <a href={`tel:${data.client.phone}`} className="hover:text-foreground">{phone(data.client.phone)}</a>, в клубе с {day(data.client.firstSeenAt)}
             </p>
           </header>

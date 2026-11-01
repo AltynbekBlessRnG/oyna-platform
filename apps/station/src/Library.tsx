@@ -356,7 +356,7 @@ function GameDialog({ game, session, onClose, onPlay }: { game: InstalledGame; s
             {ownAccount && (
               <div className="info">
                 <span className="info-title">Войдите в свой {launcher}</span>
-                <span className="muted small">Ваши скины, друзья и звание — с вами. После сессии Zen выйдет из аккаунта и сотрёт данные входа с этого компьютера.</span>
+                <span className="muted small">Ваши скины, друзья и звание — с вами. После сессии Vence выйдет из аккаунта и сотрёт данные входа с этого компьютера.</span>
               </div>
             )}
             <div className="info">
@@ -402,7 +402,7 @@ function Help() {
     <div className="page help">
       <section>
         <h2>Как продлить время</h2>
-        <p className="muted">Пополните баланс на кассе или в приложении Zen. Время продлится само, выходить из игры не нужно. Пакеты вроде ночного оформляет касса.</p>
+        <p className="muted">Пополните баланс на кассе или в приложении Vence. Время продлится само, выходить из игры не нужно. Пакеты вроде ночного оформляет касса.</p>
       </section>
       <section>
         <h2>Как заказать еду и напитки</h2>
@@ -414,7 +414,7 @@ function Help() {
       </section>
       <section>
         <h2>Ваши аккаунты в безопасности</h2>
-        <p className="muted">Когда сессия закончится, Zen закроет игры, выйдет из ваших аккаунтов Steam, Riot и других и сотрёт данные входа с этого компьютера.</p>
+        <p className="muted">Когда сессия закончится, Vence закроет игры, выйдет из ваших аккаунтов Steam, Riot и других и сотрёт данные входа с этого компьютера.</p>
       </section>
     </div>
   );

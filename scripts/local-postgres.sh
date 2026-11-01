@@ -13,11 +13,11 @@
 # Для клуба и production нужен managed PostgreSQL, а не этот вариант.
 set -eu
 
-ROOT="${OYNA_PG_HOME:-$HOME/.local/share/oyna}"
+ROOT="${VENCE_PG_HOME:-$HOME/.local/share/oyna}"
 BIN="$ROOT/pgsql/bin"
 DATA="$ROOT/data"
 LOG="$ROOT/postgres.log"
-PORT="${OYNA_PG_PORT:-5432}"
+PORT="${VENCE_PG_PORT:-5432}"
 USER_NAME=oyna
 PASSWORD=oyna
 

@@ -1,4 +1,4 @@
-# OYNA
+# Vence
 
 Единая платформа для поиска и бронирования компьютерных клубов Казахстана.
 
@@ -130,7 +130,7 @@ API_URL=http://localhost:4000/api CLUB_ADMIN_KEY=... ./scripts/pilot-smoke.sh
 
 Скрипт проходит весь сценарий: каталог → вход игрока → бронь → защита кабинета → решение клуба →
 уведомление игроку, и отменяет тестовую бронь в конце. Проверки правки клуба включаются через
-`OYNA_SMOKE_MUTATE=1`. Для Windows остался `scripts/pilot-smoke.ps1`.
+`VENCE_SMOKE_MUTATE=1`. Для Windows остался `scripts/pilot-smoke.ps1`.
 
 Перед встречей с клубом см. [чек-лист пилота](docs/PILOT_CHECKLIST.md) и [вопросы по интеграции](docs/INTEGRATION_QUESTIONS.md).
 

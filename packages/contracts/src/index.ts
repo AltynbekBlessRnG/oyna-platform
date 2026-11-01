@@ -277,7 +277,7 @@ export interface SeatMapSeat {
   occupiedUntil?: string;
   /** Для забронированного места — во сколько придёт игрок. */
   reservedFrom?: string;
-  /** На компьютере стоит клиент Zen, и он сейчас на связи. Нет — клиента нет. */
+  /** На компьютере стоит клиент Vence, и он сейчас на связи. Нет — клиента нет. */
   stationOnline?: boolean;
 }
 
@@ -343,7 +343,7 @@ export interface ClubAccount {
   joinedAt: string;
 }
 
-/** Компьютер в зале с установленным клиентом Zen. Привязан к месту на карте зала. */
+/** Компьютер в зале с установленным клиентом Vence. Привязан к месту на карте зала. */
 export interface ClubStation {
   id: string;
   clubId: string;
@@ -394,7 +394,7 @@ export interface EnrollStationRequest {
 }
 
 /**
- * Версия программы Zen для компьютеров зала. Подпись Ed25519 над `zen-station:<version>:<sha256>`
+ * Версия программы Vence для компьютеров зала. Подпись Ed25519 над `zen-station:<version>:<sha256>`
  * ставится ключом, который есть только у разработчика; компьютер без верной подписи обновление не ставит.
  */
 export interface StationRelease {
@@ -402,7 +402,7 @@ export interface StationRelease {
   sha256: string;
   signature: string;
   size: number;
-  /** Путь на этом же сервере, откуда скачать Zen.exe. */
+  /** Путь на этом же сервере, откуда скачать Vence.exe. */
   url: string;
 }
 

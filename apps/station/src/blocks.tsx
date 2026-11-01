@@ -94,7 +94,7 @@ export function TournamentCard({ tournament, gameName }: { tournament: Tournamen
               </div>
             )}
           </dl>
-          {registering && <p className="tourney-cta">Запись в приложении Zen до {clubDay(tournament.registrationEndsAt)}</p>}
+          {registering && <p className="tourney-cta">Запись в приложении Vence до {clubDay(tournament.registrationEndsAt)}</p>}
         </div>
       </div>
     </article>

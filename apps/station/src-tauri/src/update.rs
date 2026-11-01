@@ -1,4 +1,4 @@
-//! Обновление Zen на компьютере зала. Запускает его задача Windows от имени SYSTEM
+//! Обновление Vence на компьютере зала. Запускает его задача Windows от имени SYSTEM
 //! (см. install.rs): раз в 30 минут и при включении.
 //!
 //! Новая версия ставится, только если подпись Ed25519 сходится с ключом, вшитым ниже.
@@ -60,16 +60,20 @@ fn check_and_install() -> Result<String, String> {
         return Err(format!("подпись версии {} неверна — не ставим", release.version));
     }
 
-    install_binary(Path::new(crate::install::INSTALL_DIR), &binary)?;
+    // Ставим туда, где лежит запущенный exe: у старых установок это Program Files\Zen\Zen.exe,
+    // у новых — Program Files\Vence\Vence.exe.
+    let current = std::env::current_exe().map_err(|error| error.to_string())?;
+    install_binary(&current, &binary)?;
     Ok(format!("поставлена версия {}, заработает после перезагрузки", release.version))
 }
 
-/// Запущенный Zen.exe не перезаписать, но переименовать можно: новая версия заработает после
-/// перезагрузки. На любом сбое Zen.exe остаётся на месте — иначе Windows загрузится в чёрный экран.
-pub fn install_binary(dir: &Path, binary: &[u8]) -> Result<(), String> {
-    let current = dir.join("Zen.exe");
-    let old = dir.join("Zen.old.exe");
-    let fresh = dir.join("Zen.new.exe");
+/// Запущенный exe не перезаписать, но переименовать можно: новая версия заработает после
+/// перезагрузки. На любом сбое exe остаётся на месте — иначе Windows загрузится в чёрный экран.
+pub fn install_binary(current: &Path, binary: &[u8]) -> Result<(), String> {
+    let stem = current.file_stem().map(|stem| stem.to_string_lossy().into_owned()).unwrap_or_else(|| "Vence".into());
+    let old = current.with_file_name(format!("{stem}.old.exe"));
+    let fresh = current.with_file_name(format!("{stem}.new.exe"));
+    let current = current.to_path_buf();
     // Прошлое обновление ещё ждёт перезагрузки: старый файл занят, поверх него не ставим.
     if old.exists() && std::fs::remove_file(&old).is_err() {
         return Err("прошлое обновление ещё ждёт перезагрузки".into());
@@ -156,23 +160,24 @@ mod tests {
 
     #[test]
     fn keeps_the_working_exe_when_an_update_cannot_be_placed() {
-        let dir = std::env::temp_dir().join(format!("zen-update-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("vence-update-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("Zen.exe"), b"v1").unwrap();
+        let exe = dir.join("Vence.exe");
+        std::fs::write(&exe, b"v1").unwrap();
 
-        install_binary(&dir, b"v2").unwrap();
-        assert_eq!(std::fs::read(dir.join("Zen.exe")).unwrap(), b"v2");
-        assert_eq!(std::fs::read(dir.join("Zen.old.exe")).unwrap(), b"v1");
+        install_binary(&exe, b"v2").unwrap();
+        assert_eq!(std::fs::read(&exe).unwrap(), b"v2");
+        assert_eq!(std::fs::read(dir.join("Vence.old.exe")).unwrap(), b"v1");
 
         // Старая версия «занята», как запущенный exe: открыта без права удаления — обновление ждёт.
         let mut options = std::fs::OpenOptions::new();
         options.read(true);
         #[cfg(windows)]
         std::os::windows::fs::OpenOptionsExt::share_mode(&mut options, 0);
-        let held = options.open(dir.join("Zen.old.exe")).unwrap();
-        assert!(install_binary(&dir, b"v3").is_err());
-        assert_eq!(std::fs::read(dir.join("Zen.exe")).unwrap(), b"v2");
+        let held = options.open(dir.join("Vence.old.exe")).unwrap();
+        assert!(install_binary(&exe, b"v3").is_err());
+        assert_eq!(std::fs::read(&exe).unwrap(), b"v2");
         drop(held);
         let _ = std::fs::remove_dir_all(&dir);
     }

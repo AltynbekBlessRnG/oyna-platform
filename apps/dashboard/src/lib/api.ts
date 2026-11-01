@@ -130,7 +130,7 @@ export async function loadSeatMap(clubId: string): Promise<ClubSeatMap> {
   return (await response.json()) as ClubSeatMap;
 }
 
-/** Зал для кассы: карта мест, компьютеры с клиентом Zen и идущие сессии. */
+/** Зал для кассы: карта мест, компьютеры с клиентом Vence и идущие сессии. */
 export async function loadHall(clubId: string): Promise<HallSnapshot> {
   const [seatMap, stations, sessions, shift, packages, orders, layout] = await Promise.all([
     loadSeatMap(clubId),

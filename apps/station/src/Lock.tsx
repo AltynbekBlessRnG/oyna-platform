@@ -85,7 +85,7 @@ export function Lock({
               </div>
               <span className="code-perforation" aria-hidden="true" />
               <ol className="steps">
-                <li>Откройте приложение Zen</li>
+                <li>Откройте приложение Vence</li>
                 <li>Нажмите «Я в клубе»</li>
                 <li>Введите этот код</li>
               </ol>

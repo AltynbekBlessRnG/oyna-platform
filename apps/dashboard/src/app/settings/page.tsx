@@ -30,7 +30,7 @@ export default async function SettingsPage() {
       ) : (
         <Card className="max-w-xl">
           <CardHeader><CardTitle>Клуб недоступен</CardTitle></CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{error}. Проверьте, что сервер Zen запущен и у вас есть доступ к этому клубу.</CardContent>
+          <CardContent className="text-sm text-muted-foreground">{error}. Проверьте, что сервер Vence запущен и у вас есть доступ к этому клубу.</CardContent>
         </Card>
       )}
     </AppShell>

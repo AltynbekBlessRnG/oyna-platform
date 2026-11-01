@@ -79,7 +79,7 @@ function Station({ config, onRejected }: { config: StationConfig; onRejected: (m
   const restartAt = useRestartAfter(session?.id);
 
   const locked = !session;
-  // Пока висит сообщение из кабинета, Zen держится поверх игры; закрыли — возвращаем как было.
+  // Пока висит сообщение из кабинета, Vence держится поверх игры; закрыли — возвращаем как было.
   useEffect(() => {
     void (notice ? platform.bringToFront() : platform.setLocked(locked));
   }, [locked, notice]);

@@ -64,9 +64,9 @@ export function Icon({ name, size = 22 }: { name: keyof typeof ICONS; size?: num
 
 export function Logo() {
   return (
-    <svg className="logo" width="36" height="36" viewBox="0 0 28 28" aria-label="Zen">
+    <svg className="logo" width="36" height="36" viewBox="0 0 28 28" aria-label="Vence">
       <circle cx="14" cy="14" r="12" fill="none" stroke="var(--accent)" strokeWidth="2.5" />
-      <path d="M9 10h10l-10 8h10" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M9 9.5l5 9 5-9" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

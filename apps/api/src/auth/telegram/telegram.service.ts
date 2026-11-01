@@ -35,7 +35,7 @@ export class TelegramService {
   async requestPhoneContact(chatId: string, phone: string): Promise<boolean> {
     return this.send({
       chat_id: chatId,
-      text: `Подтверди номер для входа в Zen.\n\nДля входа указан номер: ${phone}\n\nНажми кнопку ниже — Telegram отправит твой номер сам.`,
+      text: `Подтверди номер для входа в Vence.\n\nДля входа указан номер: ${phone}\n\nНажми кнопку ниже — Telegram отправит твой номер сам.`,
       reply_markup: {
         keyboard: [[{ text: "Поделиться номером", request_contact: true }]],
         resize_keyboard: true,

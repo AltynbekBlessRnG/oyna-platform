@@ -39,7 +39,7 @@ export default async function OverviewPage() {
 
       {offline ? (
         <p role="status" className="mb-6 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
-          Сервер Zen не отвечает, поэтому показаны демонстрационные данные. Проверьте, что API запущен.
+          Сервер Vence не отвечает, поэтому показаны демонстрационные данные. Проверьте, что API запущен.
         </p>
       ) : null}
 

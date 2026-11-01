@@ -264,7 +264,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
   const cell = variant === "cell";
   const left = session && now !== null ? minutesUntil(session.endsAt, now) : null;
   const player = session ? playerLabel(session.playerName, session.playerPhoneTail) : "";
-  // Полоса под монитором: у идущей сессии — сколько времени осталось, у свободного места — что Zen на связи.
+  // Полоса под монитором: у идущей сессии — сколько времени осталось, у свободного места — что Vence на связи.
   const bar = session ? (now !== null ? remainingShare(session, now) : 1) : state === "reserved" ? 1 : station?.online ? 1 : 0;
   const caption = state === "lost" ? "офлайн" : left !== null ? shortLeft(left) : session ? `до ${clock(session.endsAt)}` : state === "reserved" && seat.reservedFrom ? `бронь ${clock(seat.reservedFrom)}` : state === "booked" ? "по брони" : "";
   const describe = session
@@ -308,7 +308,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
             aria-hidden
           />
         ) : (
-          <span className={cn("absolute text-[9px] font-semibold leading-none opacity-35", cell ? "right-1.5 top-1" : "bottom-1 right-1.5")} title="Клиент Zen не установлен" aria-hidden>?</span>
+          <span className={cn("absolute text-[9px] font-semibold leading-none opacity-35", cell ? "right-1.5 top-1" : "bottom-1 right-1.5")} title="Клиент Vence не установлен" aria-hidden>?</span>
         )}
       </span>
       {cell ? null : (
@@ -351,7 +351,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
           <span className="block text-muted-foreground">{describe}</span>
         )}
         <span className={cn("block", station?.online ? "text-success" : state === "lost" ? "text-danger" : "text-muted-foreground")}>
-          {station ? (station.online ? "Zen на связи" : state === "lost" ? "Компьютер не отвечает" : "Zen не на связи") : "Zen не установлен"}
+          {station ? (station.online ? "Vence на связи" : state === "lost" ? "Компьютер не отвечает" : "Vence не на связи") : "Vence не установлен"}
         </span>
       </span>
     </button>
@@ -368,8 +368,8 @@ function Legend() {
       <li className={item}><span className={cn(swatch, "bg-warning")} />≤ {ENDING_SOON_MIN} мин</li>
       <li className={item}><span className={cn(swatch, "seat-hatch bg-[#1c2430] text-reserved ring-1 ring-reserved/60")} />бронь</li>
       <li className={item}><span className="grid size-3 place-items-center rounded-full bg-danger text-[8px] font-bold text-[#2b0a10]">!</span>ПК пропал</li>
-      <li className={item}><span className="size-1.5 rounded-full bg-success" />Zen на связи</li>
-      <li className={item}><span className="text-[10px] font-semibold opacity-60">?</span>без Zen</li>
+      <li className={item}><span className="size-1.5 rounded-full bg-success" />Vence на связи</li>
+      <li className={item}><span className="text-[10px] font-semibold opacity-60">?</span>без Vence</li>
     </ul>
   );
 }

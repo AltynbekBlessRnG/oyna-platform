@@ -6,7 +6,7 @@ const onest = Onest({ variable: "--font-onest", subsets: ["latin", "cyrillic"] }
 const unbounded = Unbounded({ variable: "--font-unbounded", subsets: ["latin", "cyrillic"], weight: ["500", "600", "700"] });
 
 export const metadata: Metadata = {
-  title: "Zen — кабинет клуба",
+  title: "Vence — кабинет клуба",
   description: "Зал, касса, клиенты и выручка компьютерного клуба"
 };
 

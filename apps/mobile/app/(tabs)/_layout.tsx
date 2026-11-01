@@ -12,7 +12,7 @@ export default function TabsLayout() {
   if (!ready) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: colors.muted, fontFamily: fonts.body }}>Загружаем Zen…</Text>
+        <Text style={{ color: colors.muted, fontFamily: fonts.body }}>Загружаем Vence…</Text>
       </View>
     );
   }

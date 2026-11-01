@@ -158,7 +158,7 @@ CREATE INDEX IF NOT EXISTS auth_challenges_phone_idx ON auth_challenges (phone, 
 ALTER TABLE auth_challenges ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
 ALTER TABLE auth_challenges ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
 
--- Компьютеры с клиентом Zen и игровые сессии за ними.
+-- Компьютеры с клиентом Vence и игровые сессии за ними.
 CREATE TABLE IF NOT EXISTS club_stations (
   id TEXT PRIMARY KEY,
   club_id TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
@@ -171,7 +171,7 @@ CREATE TABLE IF NOT EXISTS club_stations (
 
 CREATE INDEX IF NOT EXISTS club_stations_club_idx ON club_stations (club_id);
 
--- Версии Zen.exe для компьютеров зала. Файл хранится здесь же: ~4 МБ на версию.
+-- Версии Vence.exe для компьютеров зала. Файл хранится здесь же: ~4 МБ на версию.
 CREATE TABLE IF NOT EXISTS station_releases (
   version TEXT PRIMARY KEY,
   sha256 TEXT NOT NULL,
@@ -308,4 +308,11 @@ CREATE TABLE IF NOT EXISTS club_hall_layouts (
   items JSONB NOT NULL DEFAULT '[]',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Программа раньше называлась Zen: безымянные игроки получили имя «Игрок Zen». Переименовываем,
+-- запрос безопасно повторяется при каждом запуске (после первого раза ничего не находит).
+UPDATE users SET name = 'Игрок Vence' WHERE name = 'Игрок Zen';
+UPDATE club_accounts SET nickname = 'Игрок Vence' WHERE nickname = 'Игрок Zen';
+UPDATE play_sessions SET player_name = 'Игрок Vence' WHERE player_name = 'Игрок Zen';
+UPDATE bookings SET player_name = 'Игрок Vence' WHERE player_name = 'Игрок Zen';
 `;

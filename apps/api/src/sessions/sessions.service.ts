@@ -114,7 +114,7 @@ const SESSION_COLUMNS =
   "id, club_id, seat_id, seat_label, zone_id, zone_name, user_id, player_name, player_phone_tail, price_per_hour, started_at, ends_at, status, ended_at, end_reason, charged, limit_minutes, package_id, package_name, package_price";
 
 /**
- * Компьютеры с клиентом Zen и игровые сессии за ними.
+ * Компьютеры с клиентом Vence и игровые сессии за ними.
  * Время оплачивается с клубного баланса: сессия идёт, пока его хватает, и списывается по факту при завершении.
  */
 @Injectable()
@@ -410,7 +410,7 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
 
   /** Запуск с кассы: администратор садит игрока за компьютер по номеру телефона. */
   async startForPlayer(clubId: string, seatId: string, phone: string, minutes?: number, packageId?: string): Promise<PlaySession> {
-    const player = await this.auth.ensureUser(phone, "Игрок Zen");
+    const player = await this.auth.ensureUser(phone, "Игрок Vence");
     return this.start(clubId, seatId, player, minutes, Date.now(), packageId);
   }
 
@@ -596,7 +596,7 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     if (!PAYMENT_METHODS.includes(method)) throw new BadRequestException("Способ оплаты: наличные, Kaspi или карта");
     await this.clubs.findOne(clubId);
     await this.shifts.requireOpen(clubId);
-    return this.credit(clubId, await this.auth.ensureUser(phone, "Игрок Zen"), amount, admin, method);
+    return this.credit(clubId, await this.auth.ensureUser(phone, "Игрок Vence"), amount, admin, method);
   }
 
   /**

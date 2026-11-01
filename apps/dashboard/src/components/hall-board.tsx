@@ -31,7 +31,7 @@ const inputClass = "h-11 w-full rounded-xl border border-border bg-background px
 const REFRESH_MS = 15_000;
 /** Кассир берёт с гостя деньги, а не минуты: быстрые суммы для посадки. */
 const SEAT_AMOUNTS = [300, 500, 1000, 2000];
-const PAGE_TITLE = "Зал и касса — Zen";
+const PAGE_TITLE = "Зал и касса — Vence";
 
 /** Час клуба по Алматы (UTC+5): пакеты продаются в свои часы, как их проверяет сервер. */
 function clubMinuteOfDay(now: number): number {
@@ -190,7 +190,7 @@ function HallSummary({ hall, stationBySeat, now }: {
         label="ПК на связи"
         tone={lost ? "danger" : undefined}
         value={hall.stations.length ? <>{online}<span className={lost ? "opacity-60" : "text-muted-foreground"}>/{hall.stations.length}</span></> : "—"}
-        sub={lost ? `${lost} не ${plural(lost, "отвечает", "отвечают", "отвечают")} во время игры` : hall.stations.length ? "клиент Zen запущен" : "компьютеры не подключены"}
+        sub={lost ? `${lost} не ${plural(lost, "отвечает", "отвечают", "отвечают")} во время игры` : hall.stations.length ? "клиент Vence запущен" : "компьютеры не подключены"}
       />
       <Stat
         label="Принято за смену"
@@ -480,7 +480,7 @@ function SeatPanel(props: {
         )}
 
         <div className="grid gap-3 border-t border-border pt-4">
-          <p className="font-medium">Клиент Zen на компьютере</p>
+          <p className="font-medium">Клиент Vence на компьютере</p>
           {station ? (
             <>
               <p className="text-muted-foreground">
