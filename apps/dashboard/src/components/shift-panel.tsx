@@ -37,6 +37,13 @@ export function ShiftPanel({ clubId, shift, owner = true }: { clubId: string; sh
       const result = await closeShift(clubId, Number(cash), note);
       if (!result.ok) return setMessage({ ok: false, text: result.message });
       const difference = result.data.difference ?? 0;
+      if (result.data.blind) {
+        setMessage({ ok: true, text: "Смена закрыта. Итог по кассе получит владелец клуба." });
+        setClosing(false);
+        setCash("");
+        setNote("");
+        return;
+      }
       setMessage({
         ok: difference >= 0,
         text: difference === 0 ? "Смена закрыта, касса сошлась" : difference < 0 ? `Смена закрыта. Недостача ${money(-difference)}` : `Смена закрыта. Излишек ${money(difference)}`
@@ -82,10 +89,12 @@ export function ShiftPanel({ clubId, shift, owner = true }: { clubId: string; sh
           {shift.totals.adjustmentCount > 0 ? `, корректировок ${shift.totals.adjustmentCount} на ${money(shift.totals.adjustments)}` : ""}
         </span>
         <span className="ml-auto flex items-center gap-4">
-          <span className="text-right">
-            <span className="block text-[11px] leading-tight text-muted-foreground">В кассе должно быть</span>
-            <span className="font-display text-lg font-semibold tabular-nums">{money(shift.expectedCash)}</span>
-          </span>
+          {shift.blind ? null : (
+            <span className="text-right">
+              <span className="block text-[11px] leading-tight text-muted-foreground">В кассе должно быть</span>
+              <span className="font-display text-lg font-semibold tabular-nums">{money(shift.expectedCash)}</span>
+            </span>
+          )}
           {closing ? null : (
             <Button size="sm" variant="secondary" className="h-9" onClick={() => setClosing(true)}>Закрыть смену</Button>
           )}
@@ -96,7 +105,9 @@ export function ShiftPanel({ clubId, shift, owner = true }: { clubId: string; sh
         <div className="grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_2fr_auto] md:items-start">
           <div className="grid gap-1">
             <input className={inputClass} inputMode="numeric" autoFocus aria-label="Пересчитанные наличные" placeholder="Пересчитали наличных, ₸" value={cash} onChange={(event) => setCash(event.target.value.replace(/\D/g, ""))} />
-            {difference !== null ? (
+            {shift.blind ? (
+              <span className="text-xs text-muted-foreground">Пересчитайте все наличные в кассе. Сверку сделает владелец.</span>
+            ) : difference !== null ? (
               <span className={cn("text-sm", difference < 0 ? "text-danger" : difference > 0 ? "text-primary" : "text-success")}>
                 {difference === 0 ? "Сходится" : difference < 0 ? `Недостача ${money(-difference)}` : `Излишек ${money(difference)}`}
               </span>

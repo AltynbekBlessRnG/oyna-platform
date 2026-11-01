@@ -196,12 +196,13 @@ function HallSummary({ hall, stationBySeat, now }: {
         sub={lost ? `${lost} не ${plural(lost, "отвечает", "отвечают", "отвечают")} во время игры` : hall.stations.length ? "клиент Vence запущен" : "компьютеры не подключены"}
       />
       <Stat
-        label="Принято за смену"
+        label={hall.shift?.blind ? "Kaspi и карта за смену" : "Принято за смену"}
         value={totals ? money(taken) : "—"}
         sub={
           totals ? (
             <span className="flex flex-wrap gap-x-2.5">
-              <span>нал {number(totals.cash)}</span>
+              {/* У кассира наличные скрыты: их сверяет владелец («слепая» касса). */}
+              {hall.shift?.blind ? null : <span>нал {number(totals.cash)}</span>}
               <span>Kaspi {number(totals.kaspi)}</span>
               <span>карта {number(totals.card)}</span>
             </span>
