@@ -258,6 +258,15 @@ export interface AddClubMemberRequest {
   role?: ClubMemberRole;
 }
 
+/** Новый клуб на платформе: заводит владелец платформы, владелец клуба потом настраивает сам. */
+export interface CreateClubRequest {
+  name: string;
+  city: string;
+  address?: string;
+  ownerPhone: string;
+  ownerName?: string;
+}
+
 export interface ManagedClub {
   id: string;
   name: string;

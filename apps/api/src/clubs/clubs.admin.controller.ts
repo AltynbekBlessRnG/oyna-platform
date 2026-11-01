@@ -1,6 +1,6 @@
 import { OwnerAlertsService } from "../alerts/owner-alerts.service";
 import { TelegramService } from "../auth/telegram/telegram.service";
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import type {
   AddClubMemberRequest,
   AuthUser,
@@ -14,8 +14,7 @@ import type {
   SaveHallLayoutRequest,
   UpdateClubRequest,
   UpsertPackageRequest,
-  UpsertZoneRequest
-} from "@oyna/contracts";
+  UpsertZoneRequest, CreateClubRequest } from "@oyna/contracts";
 import { AdminIdentityGuard, ClubAdminGuard, ClubStaffGuard, PlatformAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { ClubAccessService } from "./club-access.service";
@@ -47,6 +46,24 @@ export class ClubsAdminController {
   @UseGuards(AdminIdentityGuard)
   managedClubs(@CurrentUser() user: AuthUser): Promise<ManagedClub[]> {
     return this.access.listManagedClubs(user);
+  }
+
+  /** Владелец платформы заводит клуб и сразу даёт доступ его владельцу по номеру телефона. */
+  @Post("clubs")
+  @UseGuards(PlatformAdminGuard)
+  async createClub(@Body() request: CreateClubRequest): Promise<ManagedClub> {
+    if (!request?.ownerPhone || request.ownerPhone.replace(/\D/g, "").length < 10) throw new BadRequestException("Укажите телефон владельца клуба");
+    const id = await this.clubs.createClub(request);
+    await this.access.addMember(id, { phone: request.ownerPhone, name: request.ownerName?.trim() || "Владелец клуба", role: "admin" });
+    const club = await this.clubs.findOne(id);
+    return { id, name: club.name, city: club.city, role: "admin" };
+  }
+
+  /** Кто вошёл в кабинет: кабинет показывает владельцу платформы раздел «Новый клуб». */
+  @Get("me")
+  @UseGuards(AdminIdentityGuard)
+  me(@CurrentUser() user: AuthUser): { role: AuthUser["role"]; name: string } {
+    return { role: user.role, name: user.name };
   }
 
   /** Загрузка каталога клубов владельцем платформы: нужна там, где нет прямого доступа к базе. */

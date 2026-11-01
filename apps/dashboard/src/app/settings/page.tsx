@@ -4,6 +4,7 @@ import { ClubSettingsForm } from "@/components/club-settings-form";
 import { PackagesEditor } from "@/components/packages-editor";
 import { StaffManager } from "@/components/staff-manager";
 import { TelegramAlertsCard } from "@/components/telegram-alerts-card";
+import { NewClubCard } from "@/components/new-club-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { adminFetch, loadActiveClub, requireSession, requireOwner } from "@/lib/api";
 
@@ -15,15 +16,19 @@ export default async function SettingsPage() {
   let packages: ClubPackage[] = [];
   let members: ClubMember[] = [];
   let telegram: { linked: boolean; url?: string } = { linked: false };
+  let platformOwner = false;
   let error = "";
   try {
-    [view, packages, members, telegram] = await Promise.all([
+    let me: { role: string } | undefined;
+    [view, packages, members, telegram, me] = await Promise.all([
       adminFetch<ClubAdminView>(`/admin/clubs/${club.id}`),
       adminFetch<ClubPackage[]>(`/admin/clubs/${club.id}/packages`),
       // Без базы данных (локальная демонстрация) сотрудников нет — страница всё равно открывается.
       adminFetch<ClubMember[]>(`/admin/clubs/${club.id}/members`).catch(() => []),
-      adminFetch<{ linked: boolean; url?: string }>("/admin/me/telegram").catch(() => ({ linked: false }))
+      adminFetch<{ linked: boolean; url?: string }>("/admin/me/telegram").catch(() => ({ linked: false })),
+      adminFetch<{ role: string }>("/admin/me").catch(() => undefined)
     ]);
+    platformOwner = me?.role === "platform_admin";
   } catch (loadError) {
     error = loadError instanceof Error ? loadError.message : "Не удалось загрузить клуб";
   }
@@ -39,6 +44,7 @@ export default async function SettingsPage() {
           <PackagesEditor clubId={club.id} zones={view.zones} packages={packages} />
           <StaffManager clubId={club.id} members={members} />
           <TelegramAlertsCard linked={telegram.linked} url={telegram.url} />
+          {platformOwner ? <NewClubCard /> : null}
         </div>
       ) : (
         <Card className="max-w-xl">

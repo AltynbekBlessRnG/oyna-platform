@@ -80,3 +80,20 @@ describe("Club staff roles in PostgreSQL", () => {
     expect(await crm.searchPlayers(clubId, "а")).toEqual([]);
   });
 });
+
+describe("New clubs on the platform", () => {
+  it("makes readable ids from Cyrillic names and never reuses one", async () => {
+    const { slugify } = await import("./clubs.service");
+    expect(slugify("Кибер Арена №1")).toBe("kiber-arena-1");
+    expect(slugify("Қазақ Game")).toBe("kazak-game");
+
+    const database = await PgliteDatabase.create();
+    const clubs = new ClubsService(database);
+    const first = await clubs.createClub({ name: "Кибер Арена", city: "Астана" });
+    const second = await clubs.createClub({ name: "Кибер Арена", city: "Алматы" });
+    expect([first, second]).toEqual(["kiber-arena", "kiber-arena-2"]);
+    expect(await clubs.findZones(first)).toEqual([expect.objectContaining({ name: "Standard", seatCount: 10 })]);
+    await expect(clubs.createClub({ name: "X", city: "Алматы" })).rejects.toThrow(/от 2 до 60/);
+    await database.onModuleDestroy?.();
+  }, 120_000);
+});

@@ -5,6 +5,7 @@ import type {
   BookingReceipt,
   ChallengeStatusResponse,
   ClubMember,
+  CreateClubRequest,
   PlayerSuggestion,
   ClubOrder,
   ClubPackage,
@@ -229,6 +230,12 @@ export async function searchPlayers(clubId: string, query: string): Promise<Play
   } catch {
     return [];
   }
+}
+
+export async function createClub(request: CreateClubRequest): Promise<HallResult<ManagedClub>> {
+  const result = await hallAction(() => adminFetch<ManagedClub>("/admin/clubs", { method: "POST", body: JSON.stringify(request) }), "Не удалось завести клуб");
+  revalidatePath("/", "layout");
+  return result;
 }
 
 export async function addClubMember(clubId: string, phone: string, name: string, role: "admin" | "cashier"): Promise<HallResult<ClubMember>> {

@@ -106,7 +106,7 @@ export class ClubAccessService {
     const result = await this.database.query("DELETE FROM club_memberships WHERE club_id = $1 AND user_id = $2", [clubId, userId]);
     if (!result.rowCount) throw new NotFoundException("Membership not found");
     const remaining = await this.database.query("SELECT 1 FROM club_memberships WHERE user_id = $1 LIMIT 1", [userId]);
-    if (!remaining.rowCount) await this.auth.grantRole(userId, "player");
+    if (remaining.rows.length === 0) await this.auth.grantRole(userId, "player");
   }
 
   private async assertNotLastAdmin(clubId: string, userId: string): Promise<void> {

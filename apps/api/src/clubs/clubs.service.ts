@@ -160,6 +160,29 @@ export class ClubsService {
    * Загружает каталог клубов в базу: используется и seed-скриптом, и владельцем платформы
    * через API, когда прямого доступа к базе нет. Идемпотентно: обновляет, ничего не удаляя.
    */
+  /**
+   * Новый клуб с одной зоной по умолчанию: владелец клуба потом поправит зоны, цены и меню в настройках.
+   * Адрес в каталоге — id из названия латиницей; если такой уже есть, добавляем номер.
+   */
+  async createClub(request: { name: string; city: string; address?: string }): Promise<string> {
+    if (!this.database.configured) throw new ServiceUnavailableException("Новый клуб можно завести только с подключённой базой данных");
+    const name = request?.name?.trim() ?? "";
+    const city = request?.city?.trim() ?? "";
+    if (name.length < 2 || name.length > 60) throw new BadRequestException("Название клуба от 2 до 60 символов");
+    if (city.length < 2 || city.length > 40) throw new BadRequestException("Укажите город");
+    const base = slugify(name) || "club";
+    let id = base;
+    // rows.length, а не rowCount: у SELECT в некоторых драйверах rowCount не заполняется.
+    for (let attempt = 2; (await this.database.query("SELECT 1 FROM clubs WHERE id = $1", [id])).rows.length > 0; attempt += 1) id = `${base}-${attempt}`;
+    await this.upsertCatalog([
+      {
+        club: { id, name, city, address: request.address?.trim() ?? "", status: "available", tags: [], equipment: "", accent: "#FFC83D" },
+        zones: [{ id: "standard", name: "Standard", description: "", pricePerHour: 600, seatCount: 10 }]
+      } as unknown as ClubCatalogEntry
+    ]);
+    return id;
+  }
+
   async upsertCatalog(catalog: ClubCatalogEntry[]): Promise<string[]> {
     if (!this.database.configured) throw new ServiceUnavailableException("Загрузка каталога доступна только с подключённой базой данных");
     if (!Array.isArray(catalog) || catalog.length === 0) throw new BadRequestException("Каталог пуст");
@@ -328,4 +351,20 @@ export class ClubsService {
   private mapZone(row: ZoneRow): ClubZone {
     return { id: row.id, clubId: row.club_id, name: row.name, description: row.description, pricePerHour: row.price_per_hour, seatCount: row.seat_count };
   }
+}
+
+const CYRILLIC: Record<string, string> = {
+  а: "a", б: "b", в: "v", г: "g", ғ: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i", й: "y", і: "i", к: "k", қ: "k", л: "l", м: "m",
+  н: "n", ң: "n", о: "o", ө: "o", п: "p", р: "r", с: "s", т: "t", у: "u", ұ: "u", ү: "u", ф: "f", х: "h", һ: "h", ц: "ts", ч: "ch",
+  ш: "sh", щ: "sch", ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya", ә: "a"
+};
+
+/** «Кибер Арена» → «kiber-arena»: id клуба в адресах и ссылках. */
+export function slugify(name: string): string {
+  return [...name.toLowerCase()]
+    .map((char) => CYRILLIC[char] ?? char)
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
 }
