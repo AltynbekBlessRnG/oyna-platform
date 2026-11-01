@@ -596,7 +596,23 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     if (!PAYMENT_METHODS.includes(method)) throw new BadRequestException("Способ оплаты: наличные, Kaspi или карта");
     await this.clubs.findOne(clubId);
     await this.shifts.requireOpen(clubId);
-    const player = await this.auth.ensureUser(phone, "Игрок Zen");
+    return this.credit(clubId, await this.auth.ensureUser(phone, "Игрок Zen"), amount, admin, method);
+  }
+
+  /**
+   * Пополнение по месту: игрок говорит «15-й компьютер, плюс 500» — кассиру не нужно знать его номер,
+   * сессия и так знает, кто сидит.
+   */
+  async topUpSession(clubId: string, sessionId: string, amount: number, admin: AuthUser, method: PaymentMethod = "cash"): Promise<TopUpResult> {
+    if (!Number.isInteger(amount) || amount < 1 || amount > MAX_TOP_UP) throw new BadRequestException(`Сумма пополнения от 1 до ${MAX_TOP_UP} ₸`);
+    if (!PAYMENT_METHODS.includes(method)) throw new BadRequestException("Способ оплаты: наличные, Kaspi или карта");
+    const session = await this.findStoredActive((item) => item.clubId === clubId && item.id === sessionId, "club_id = $1 AND id = $2", [clubId, sessionId]);
+    if (!session) throw new NotFoundException("Сессия уже закончилась");
+    await this.shifts.requireOpen(clubId);
+    return this.credit(clubId, { id: session.userId, name: session.playerName }, amount, admin, method);
+  }
+
+  private async credit(clubId: string, player: Pick<AuthUser, "id" | "name">, amount: number, admin: AuthUser, method: PaymentMethod): Promise<TopUpResult> {
     const entry = { kind: "top_up" as const, createdBy: admin.id, createdByName: admin.name, paymentMethod: method };
     // В базе смену держим заблокированной до записи пополнения: если её как раз закрывают,
     // пополнение дождётся закрытия и получит отказ, а не попадёт задним числом в закрытый отчёт.

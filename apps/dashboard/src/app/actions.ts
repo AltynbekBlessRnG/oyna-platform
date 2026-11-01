@@ -4,6 +4,7 @@ import type {
   AuthSession,
   BookingReceipt,
   ChallengeStatusResponse,
+  ClubClientsResponse,
   ClubOrder,
   ClubPackage,
   ClubShift,
@@ -201,6 +202,32 @@ export async function endPlaySession(clubId: string, sessionId: string): Promise
 
 export async function topUpBalance(clubId: string, phone: string, amount: number, method: PaymentMethod = "cash"): Promise<HallResult<TopUpResult>> {
   return hallAction(() => adminFetch<TopUpResult>(`/admin/clubs/${clubId}/top-ups`, { method: "POST", body: JSON.stringify({ phone, amount, method }) }), "Не удалось пополнить баланс");
+}
+
+/** Пополнение по месту: кассиру хватает номера компьютера, игрока сервер знает по сессии. */
+export async function topUpSeatSession(clubId: string, sessionId: string, amount: number, method: PaymentMethod = "cash"): Promise<HallResult<TopUpResult>> {
+  return hallAction(
+    () => adminFetch<TopUpResult>(`/admin/clubs/${clubId}/sessions/${sessionId}/top-ups`, { method: "POST", body: JSON.stringify({ amount, method }) }),
+    "Не удалось пополнить баланс"
+  );
+}
+
+export interface PlayerSuggestion {
+  name: string;
+  phone: string;
+  balance: number;
+}
+
+/** Подсказки постоянных игроков по имени, нику или цифрам номера — чтобы кассир не помнил телефоны. */
+export async function searchPlayers(clubId: string, query: string): Promise<PlayerSuggestion[]> {
+  const search = query.trim();
+  if (search.length < 2) return [];
+  try {
+    const result = await adminFetch<ClubClientsResponse>(`/admin/clubs/${clubId}/clients?search=${encodeURIComponent(search)}&sort=lastVisit`);
+    return result.clients.slice(0, 6).map((client) => ({ name: client.nickname || client.name, phone: client.phone, balance: client.balance }));
+  } catch {
+    return [];
+  }
 }
 
 export async function openShift(clubId: string, openingCash: number): Promise<HallResult<ClubShift>> {

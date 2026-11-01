@@ -4,12 +4,13 @@ import type { ClubPackage, ClubStation, ClubZone, PaymentMethod, PlaySession, Se
 import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from "react";
-import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance } from "@/app/actions";
+import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance, topUpSeatSession } from "@/app/actions";
 import { BarOrders } from "@/components/bar-orders";
 import { endingSoon, HallMap, pcLost, shortLeft } from "@/components/hall-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { PlayerPhoneInput } from "@/components/player-phone-input";
 import { PAYMENT_LABELS, PaymentMethodPicker } from "@/components/payment-method";
 import type { HallSnapshot } from "@/lib/api";
 import { clock, duration, minutesUntil, money, number, playerLabel, plural } from "@/lib/format";
@@ -153,6 +154,7 @@ export function HallBoard({ clubId, hall, apiUrl }: HallBoardProps) {
           message={message}
           credentials={credentials}
           initialPhone={lastPhone}
+          shiftOpen={Boolean(hall.shift)}
           packages={hall.packages.filter((pack) => pack.zoneIds.length === 0 || pack.zoneIds.includes(selected.zone.id))}
           isPending={isPending}
           run={run}
@@ -347,13 +349,14 @@ function SeatPanel(props: {
   message: { ok: boolean; text: string } | null;
   credentials: StationCredentials | null;
   initialPhone: string;
+  shiftOpen: boolean;
   packages: ClubPackage[];
   isPending: boolean;
   run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
   onCredentials: (credentials: StationCredentials | null) => void;
   onClose: () => void;
 }) {
-  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, packages, isPending, run, onCredentials, onClose } = props;
+  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, shiftOpen, packages, isPending, run, onCredentials, onClose } = props;
   const [phone, setPhone] = useState(initialPhone);
   const [amount, setAmount] = useState("");
   const [packageId, setPackageId] = useState<string | null>(null);
@@ -412,6 +415,7 @@ function SeatPanel(props: {
                 <p className="mt-2 text-danger">Компьютер не отвечает. Время идёт: проверьте ПК или завершите сессию, чтобы не списывать лишнее.</p>
               ) : null}
             </div>
+            <SeatTopUp clubId={clubId} session={session} shiftOpen={shiftOpen} isPending={isPending} run={run} />
             <Button variant="secondary" disabled={isPending} onClick={() => end(session)}>
               <Square className="size-4" />{confirmEnd ? "Нажмите ещё раз, чтобы завершить" : "Завершить сессию"}
             </Button>
@@ -422,8 +426,8 @@ function SeatPanel(props: {
               <p className="rounded-xl bg-secondary px-3 py-2">Бронь с {clock(seat.reservedFrom)}. Посадить сейчас можно только того, кто бронировал.</p>
             ) : null}
             <label className="grid gap-1.5">
-              <span className="text-muted-foreground">Телефон игрока</span>
-              <input className={inputClass} inputMode="tel" autoComplete="off" placeholder="+7 7XX XXX XX XX" value={phone} onChange={(event) => setPhone(event.target.value)} />
+              <span className="text-muted-foreground">Игрок</span>
+              <PlayerPhoneInput clubId={clubId} className={inputClass} label="Телефон игрока" value={phone} onChange={setPhone} />
             </label>
             {packages.length > 0 ? (
               <div className="grid gap-1.5">
@@ -574,6 +578,43 @@ function StationControls({ clubId, station, session, isPending, run }: {
   );
 }
 
+/** «15-й компьютер, плюс 500»: пополнение прямо из окна места, без номера телефона. */
+function SeatTopUp({ clubId, session, shiftOpen, isPending, run }: {
+  clubId: string;
+  session: PlaySession;
+  shiftOpen: boolean;
+  isPending: boolean;
+  run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [method, setMethod] = useState<PaymentMethod>("cash");
+
+  function submit(): void {
+    run(() => topUpSeatSession(clubId, session.id, Number(amount), method), (result) => {
+      setAmount("");
+      const more = session.packageName ? "деньги остались на балансе, пакет не продлевается" : "время продлено";
+      return `Место ${session.seatLabel}: +${money(result.amount)} (${PAYMENT_LABELS[method].toLowerCase()}), на балансе ${money(result.balance)}, ${more}`;
+    });
+  }
+
+  if (!shiftOpen) return <p className="text-xs text-muted-foreground">Чтобы пополнить баланс, откройте смену вверху страницы.</p>;
+  return (
+    <div className="grid gap-2 rounded-xl border border-border bg-background/40 p-3">
+      <span className="flex items-center gap-2 font-medium"><Wallet className="size-4" />Пополнить этому игроку</span>
+      <div className="grid grid-cols-4 gap-2">
+        {[500, 1000, 2000, 5000].map((value) => (
+          <Button key={value} size="sm" variant={amount === String(value) ? "default" : "secondary"} onClick={() => setAmount(String(value))}>
+            {value.toLocaleString("ru-KZ")}
+          </Button>
+        ))}
+      </div>
+      <input className={inputClass} inputMode="numeric" aria-label="Сумма пополнения, ₸" placeholder="Другая сумма, ₸" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} />
+      <PaymentMethodPicker value={method} onChange={setMethod} />
+      <Button disabled={isPending || !amount} onClick={submit}>Пополнить{amount ? ` на ${money(Number(amount))}` : ""}</Button>
+    </div>
+  );
+}
+
 function TopUpCard({ clubId, run, isPending, onToppedUp, shiftOpen }: {
   clubId: string;
   shiftOpen: boolean;
@@ -597,7 +638,7 @@ function TopUpCard({ clubId, run, isPending, onToppedUp, shiftOpen }: {
     <Card>
       <CardHeader><CardTitle className="flex items-center gap-2"><Wallet className="size-4" />Пополнить баланс</CardTitle></CardHeader>
       <CardContent className="grid gap-3 text-sm">
-        <input className={inputClass} inputMode="tel" autoComplete="off" aria-label="Телефон игрока" placeholder="Телефон игрока" value={phone} onChange={(event) => setPhone(event.target.value)} />
+        <PlayerPhoneInput clubId={clubId} className={inputClass} label="Телефон игрока" value={phone} onChange={setPhone} />
         <input className={inputClass} inputMode="numeric" aria-label="Сумма в тенге" placeholder="Сумма, ₸" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} />
         <div className="grid grid-cols-4 gap-2">
           {[500, 1000, 2000, 5000].map((value) => (

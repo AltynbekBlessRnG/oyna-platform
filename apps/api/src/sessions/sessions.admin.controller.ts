@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { ClubHallService } from "../clubs/club-hall.service";
-import type { AuthUser, ClubOrder, ClubOrderStatus, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCommand, StationCommandResult, StationCredentials, StationEnrollmentCode, TopUpRequest, TopUpResult } from "@oyna/contracts";
+import type { AuthUser, ClubOrder, ClubOrderStatus, ClubStation, PlaySession, RegisterStationRequest, StartSessionRequest, StationCommand, StationCommandResult, StationCredentials, StationEnrollmentCode, PaymentMethod, TopUpRequest, TopUpResult } from "@oyna/contracts";
 import { ClubAdminGuard } from "../auth/club-admin.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { SessionsService } from "./sessions.service";
@@ -74,6 +74,16 @@ export class SessionsAdminController {
   @Post("orders/:orderId/status")
   setOrderStatus(@Param("clubId") clubId: string, @Param("orderId") orderId: string, @Body() request: { status: ClubOrderStatus }): Promise<ClubOrder> {
     return this.hall.setOrderStatus(clubId, orderId, request?.status);
+  }
+
+  @Post("sessions/:sessionId/top-ups")
+  topUpSession(
+    @Param("clubId") clubId: string,
+    @Param("sessionId") sessionId: string,
+    @CurrentUser() admin: AuthUser,
+    @Body() request: { amount: number; method?: PaymentMethod }
+  ): Promise<TopUpResult> {
+    return this.sessions.topUpSession(clubId, sessionId, request?.amount, admin, request?.method);
   }
 
   @Post("top-ups")

@@ -130,6 +130,17 @@ describe.each([
     expect(await hall.findOpenOrders(clubId)).toEqual([]);
   });
 
+  it("tops up by seat without the phone and extends the time", async () => {
+    const player = await playerWithBalance("+77010000306", pricePerHour);
+    const session = await sessions.start(clubId, seatId, player, undefined, Date.now());
+    const result = await sessions.topUpSession(clubId, session.id, pricePerHour, admin, "kaspi");
+    expect(result).toMatchObject({ userId: player.id, amount: pricePerHour, balance: pricePerHour * 2 });
+    const current = (await sessions.findCurrent(clubId, player.id))!;
+    expect(Date.parse(current.endsAt)).toBeGreaterThan(Date.parse(session.endsAt));
+    await sessions.end(session.id, "admin");
+    await expect(sessions.topUpSession(clubId, session.id, 500, admin)).rejects.toThrow(/закончилась/);
+  });
+
   it("tells the station the player's balance during a session", async () => {
     const player = await playerWithBalance("+77010000304", pricePerHour * 2);
     const credentials = await sessions.registerStation(clubId, seatId);
