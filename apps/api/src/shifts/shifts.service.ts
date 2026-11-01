@@ -1,7 +1,8 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import type { AuthUser, ClubShift, ShiftStaffTotals, ShiftTotals } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
+import { OwnerAlertsService } from "../alerts/owner-alerts.service";
 import { ClubHallService } from "../clubs/club-hall.service";
 import { ClubsService } from "../clubs/clubs.service";
 import { DatabaseService } from "../database/database.service";
@@ -48,7 +49,8 @@ export class ShiftsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly clubs: ClubsService,
-    private readonly hall: ClubHallService
+    private readonly hall: ClubHallService,
+    @Optional() private readonly alerts?: OwnerAlertsService
   ) {}
 
   async open(clubId: string, openingCash: number, admin: AuthUser): Promise<ClubShift> {
@@ -79,7 +81,9 @@ export class ShiftsService {
         throw error;
       }
     }
-    return this.withTotals(record);
+    const shift = await this.withTotals(record);
+    if (this.alerts) this.alerts.shiftOpened(clubId, (await this.clubs.findOne(clubId)).name, shift);
+    return shift;
   }
 
   async close(clubId: string, countedCash: number, note: string | undefined, admin: AuthUser): Promise<ClubShift> {
@@ -99,7 +103,9 @@ export class ShiftsService {
       );
       if (result.rowCount === 0) throw new ConflictException("Смену уже закрыл другой сотрудник: обновите страницу");
     }
-    return this.withTotals(closed);
+    const shift = await this.withTotals(closed);
+    if (this.alerts) this.alerts.shiftClosed(clubId, (await this.clubs.findOne(clubId)).name, shift);
+    return shift;
   }
 
   async current(clubId: string): Promise<ClubShift | null> {

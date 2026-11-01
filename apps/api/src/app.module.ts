@@ -1,3 +1,4 @@
+import { OwnerAlertsService } from "./alerts/owner-alerts.service";
 import { Module } from "@nestjs/common";
 import { HealthController } from "./health/health.controller";
 import { ClubsController } from "./clubs/clubs.controller";
@@ -42,6 +43,6 @@ import { CrmService } from "./crm/crm.service";
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: ["../../.env", ".env"] })],
   controllers: [HealthController, ClubsController, ClubsAdminController, BookingsController, AuthController, ProfilesController, ChatController, TournamentsController, NotificationsController, SessionsController, SessionsAdminController, StationsEnrollmentController, StationReleasesController, ShiftsController, CrmController, PlayersController],
-  providers: [DatabaseService, ClubsService, ClubPackagesService, HallLayoutService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, ClubStaffGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
+  providers: [OwnerAlertsService, DatabaseService, ClubsService, ClubPackagesService, HallLayoutService, ClubAccessService, ClubHallService, AuthService, SmsService, TelegramService, AuthGuard, ClubAdminGuard, ClubStaffGuard, AdminIdentityGuard, PlatformAdminGuard, BookingsService, ProfilesService, ChatService, ChatGateway, TournamentsService, NotificationsService, SessionsService, StationsGateway, CrmService, StationReleasesService, ShiftsService],
 })
 export class AppModule {}

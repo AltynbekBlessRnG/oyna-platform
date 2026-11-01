@@ -318,4 +318,11 @@ UPDATE users SET name = 'Игрок Vence' WHERE name = 'Игрок Zen';
 UPDATE club_accounts SET nickname = 'Игрок Vence' WHERE nickname = 'Игрок Zen';
 UPDATE play_sessions SET player_name = 'Игрок Vence' WHERE player_name = 'Игрок Zen';
 UPDATE bookings SET player_name = 'Игрок Vence' WHERE player_name = 'Игрок Zen';
+
+-- Чаты Telegram по подтверждённому номеру: туда бот шлёт уведомления владельцам клубов.
+CREATE TABLE IF NOT EXISTS telegram_chats (
+  phone TEXT PRIMARY KEY,
+  chat_id TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 `;

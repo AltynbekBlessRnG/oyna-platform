@@ -1,4 +1,5 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, type OnModuleDestroy, type OnModuleInit } from "@nestjs/common";
+import { OwnerAlertsService } from "../alerts/owner-alerts.service";
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, type OnModuleDestroy, type OnModuleInit, Optional } from "@nestjs/common";
 import type { AuthUser, AvailabilitySnapshot, BookingReceipt, BookingStatus, ClubAvailability, ClubSeatMap, ClubZone, CreateBookingRequest, SeatMapSeat } from "@oyna/contracts";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
@@ -47,7 +48,8 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly clubsService: ClubsService,
     private readonly database: DatabaseService,
-    private readonly notifications: NotificationsService
+    private readonly notifications: NotificationsService,
+    @Optional() private readonly alerts?: OwnerAlertsService
   ) {}
 
   useSessionOccupancy(source: SessionOccupancy): void {
@@ -206,7 +208,11 @@ export class BookingsService implements OnModuleInit, OnModuleDestroy {
       updatedAt: now
     };
 
-    if (this.database.configured) return this.createInDatabase(receipt, user);
+    if (this.database.configured) {
+      const created = await this.createInDatabase(receipt, user);
+      if (this.alerts) this.alerts.bookingCreated((await this.clubsService.findOne(request.clubId)).name, created);
+      return created;
+    }
     const availability = await this.getAvailability(request.clubId, request.zoneId, request.startAt, request.durationHours);
     const availableIds = new Set(availability.seats.filter((seat) => seat.status === "available").map((seat) => seat.id));
     if (uniqueSeatIds.some((seatId) => !availableIds.has(seatId))) throw new ConflictException("One or more seats are no longer available");

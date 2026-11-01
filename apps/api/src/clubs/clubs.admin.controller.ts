@@ -1,3 +1,5 @@
+import { OwnerAlertsService } from "../alerts/owner-alerts.service";
+import { TelegramService } from "../auth/telegram/telegram.service";
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, UseGuards } from "@nestjs/common";
 import type {
   AddClubMemberRequest,
@@ -28,8 +30,17 @@ export class ClubsAdminController {
     private readonly clubs: ClubsService,
     private readonly access: ClubAccessService,
     private readonly packages: ClubPackagesService,
-    private readonly layouts: HallLayoutService
+    private readonly layouts: HallLayoutService,
+    private readonly alerts: OwnerAlertsService,
+    private readonly telegram: TelegramService
   ) {}
+
+  /** Подключён ли Telegram для уведомлений и ссылка на бота, чтобы подключить. */
+  @Get("me/telegram")
+  @UseGuards(AdminIdentityGuard)
+  async telegramStatus(@CurrentUser() user: AuthUser): Promise<{ linked: boolean; url?: string }> {
+    return { linked: await this.alerts.isLinked(user.phone), ...(this.telegram.notifyUrl ? { url: this.telegram.notifyUrl } : {}) };
+  }
 
   /** Клубы, доступные текущему сотруднику: кабинет выбирает активный клуб из этого списка. */
   @Get("me/clubs")

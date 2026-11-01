@@ -44,6 +44,23 @@ export class TelegramService {
     });
   }
 
+  async requestNotifyContact(chatId: string): Promise<boolean> {
+    return this.send({
+      chat_id: chatId,
+      text: "Vence: уведомления о клубе — закрытие смены, недостача, компьютер не отвечает, новая бронь.\n\nНажмите кнопку ниже, чтобы подтвердить свой номер.",
+      reply_markup: {
+        keyboard: [[{ text: "Поделиться номером", request_contact: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true
+      }
+    });
+  }
+
+  /** Ссылка «Подключить Telegram» для кабинета. */
+  get notifyUrl(): string | undefined {
+    return this.configured ? `https://t.me/${this.botUsername}?start=notify` : undefined;
+  }
+
   private async send(payload: Record<string, unknown>): Promise<boolean> {
     if (!this.configured) return false;
     try {

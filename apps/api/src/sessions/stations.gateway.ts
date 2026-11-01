@@ -1,4 +1,5 @@
-import { HttpException, Logger, type OnModuleDestroy, UnauthorizedException } from "@nestjs/common";
+import { HttpException, Logger, type OnModuleDestroy, Optional, UnauthorizedException } from "@nestjs/common";
+import { OwnerAlertsService } from "../alerts/owner-alerts.service";
 import { ConnectedSocket, MessageBody, type OnGatewayConnection, type OnGatewayDisconnect, type OnGatewayInit, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import type { CreateOrderRequest, StationCommand, StationLoginCode, StationOrderResult, StationState } from "@oyna/contracts";
 import type { Server, Socket } from "socket.io";
@@ -7,6 +8,8 @@ import { SessionsService } from "./sessions.service";
 type StationSocket = Socket & { data: { stationId?: string } };
 
 const COMMAND_ACK_MS = 5_000;
+/** Сколько ждать переподключения, прежде чем писать владельцу: короткие обрывы Wi‑Fi не в счёт. */
+const LOST_ALERT_MS = 2 * 60_000;
 
 /**
  * Канал «сервер ↔ компьютер в зале». Клиент подключается с id и ключом компьютера,
@@ -22,7 +25,12 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
   @WebSocketServer() server: Server;
   private unsubscribe?: () => void;
 
-  constructor(private readonly sessions: SessionsService) {}
+  private readonly lostTimers = new Map<string, NodeJS.Timeout>();
+
+  constructor(
+    private readonly sessions: SessionsService,
+    @Optional() private readonly alerts?: OwnerAlertsService
+  ) {}
 
   afterInit(): void {
     this.sessions.useCommandSender(async (stationId: string, command: StationCommand) => {
@@ -41,6 +49,7 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
   onModuleDestroy(): void {
     this.unsubscribe?.();
+    for (const timer of this.lostTimers.values()) clearTimeout(timer);
   }
 
   async handleConnection(client: StationSocket): Promise<void> {
@@ -55,6 +64,8 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         socket.disconnect(true);
       }
       await client.join(this.room(station.id));
+      clearTimeout(this.lostTimers.get(station.id));
+      this.lostTimers.delete(station.id);
       await this.sessions.setStationOnline(station.id, true);
       client.emit("state", await this.sessions.getStationState(station.id));
     } catch (error) {
@@ -70,7 +81,27 @@ export class StationsGateway implements OnGatewayInit, OnGatewayConnection, OnGa
     const stationId = client.data.stationId;
     if (!stationId) return;
     const others = await this.server.in(this.room(stationId)).fetchSockets();
-    if (others.length === 0) await this.sessions.setStationOnline(stationId, false);
+    if (others.length === 0) {
+      await this.sessions.setStationOnline(stationId, false);
+      this.watchLost(stationId);
+    }
+  }
+
+  /** Компьютер пропал посреди игры и не вернулся за 2 минуты — время игрока идёт, владельцу стоит знать. */
+  private watchLost(stationId: string): void {
+    if (!this.alerts || this.lostTimers.has(stationId)) return;
+    const timer = setTimeout(async () => {
+      this.lostTimers.delete(stationId);
+      try {
+        if ((await this.server.in(this.room(stationId)).fetchSockets()).length > 0) return;
+        const state = await this.sessions.getStationState(stationId);
+        if (state.session) this.alerts?.stationLost(state.station.clubId, state.clubName, state.session.seatLabel, state.session.playerName);
+      } catch (error) {
+        this.logger.warn(`Проверка пропавшего компьютера не удалась: ${String(error)}`);
+      }
+    }, LOST_ALERT_MS);
+    timer.unref?.();
+    this.lostTimers.set(stationId, timer);
   }
 
   @SubscribeMessage("login-code")

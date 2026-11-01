@@ -1,10 +1,11 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, HttpException, HttpStatus, Injectable, Optional, UnauthorizedException } from "@nestjs/common";
+import { OwnerAlertsService } from "../alerts/owner-alerts.service";
 import type { AuthSession, AuthUser, ChallengeStatusResponse, RequestCodeResponse } from "@oyna/contracts";
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { DatabaseService } from "../database/database.service";
 import type { TokenPayload } from "./auth.types";
 import { SmsService } from "./sms/sms.service";
-import { phonesMatch } from "./telegram/phone.util";
+import { normalizePhone as telegramDigits, phonesMatch } from "./telegram/phone.util";
 import { TelegramService } from "./telegram/telegram.service";
 
 /** Сколько живёт код из SMS. */
@@ -43,7 +44,8 @@ export class AuthService {
   constructor(
     private readonly database: DatabaseService,
     private readonly sms: SmsService = new SmsService(),
-    private readonly telegram: TelegramService = new TelegramService()
+    private readonly telegram: TelegramService = new TelegramService(),
+    @Optional() private readonly alerts?: OwnerAlertsService
   ) {}
 
   async requestCode(rawPhone: string): Promise<RequestCodeResponse> {
@@ -167,6 +169,12 @@ export class AuthService {
     const chatId = message?.chat?.id?.toString();
     if (!chatId) return;
 
+    // «Подключить Telegram» из кабинета: просим номер, дальше чат запоминается для уведомлений.
+    if (/^\/start(\s+notify)?$/.test(message?.text?.trim() ?? "")) {
+      await this.telegram.requestNotifyContact(chatId);
+      return;
+    }
+
     const start = message?.text?.trim().match(/^\/start\s+otp_(\S+)$/);
     if (start) {
       const phone = await this.bindChat(start[1], chatId);
@@ -189,6 +197,12 @@ export class AuthService {
 
     const pending = await this.findPendingByChat(chatId);
     if (!pending) {
+      // Входа не ждём — значит, человек подключает уведомления: свой номер Telegram подтвердил сам.
+      if (this.alerts && contact.phone_number) {
+        await this.alerts.rememberChat(`+${telegramDigits(contact.phone_number)}`, chatId);
+        await this.telegram.sendText(chatId, "Готово: уведомления Vence о вашем клубе будут приходить сюда. Если вы не сотрудник клуба, ничего приходить не будет.");
+        return;
+      }
       await this.telegram.sendText(chatId, "Активной сессии входа нет. Вернись в Vence и начни вход заново.");
       return;
     }
@@ -198,6 +212,7 @@ export class AuthService {
     }
 
     await this.markVerified(pending.id);
+    await this.alerts?.rememberChat(`+${telegramDigits(pending.phone)}`, chatId);
     await this.telegram.sendText(chatId, "Номер подтверждён. Возвращайся в Vence — вход завершится сам.");
   }
 
