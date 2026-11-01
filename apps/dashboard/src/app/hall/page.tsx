@@ -36,7 +36,7 @@ export default async function HallPage() {
         </div>
         <div className="order-3 flex w-full flex-wrap items-center gap-2 md:order-2 md:ml-auto md:w-auto md:gap-3">
           <HallPower clubId={club.id} />
-          <StationEnrollment clubId={club.id} />
+          <StationEnrollment clubId={club.id} setupUrl="/download/zen-setup" />
         </div>
         {occupancy ? (
           <div className="order-2 ml-auto grid justify-items-end md:order-3 md:ml-0 md:border-l md:border-border md:pl-4" role="group" aria-label={`Загрузка: ${occupancy.busy} из ${occupancy.total}`}>

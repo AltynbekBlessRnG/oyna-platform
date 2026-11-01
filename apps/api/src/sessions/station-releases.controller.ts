@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Header, Param, Post, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
+import { BadRequestException, Controller, NotFoundException, Get, Header, Param, Post, Query, Req, StreamableFile, UseGuards } from "@nestjs/common";
 import type { IncomingMessage } from "node:http";
 import type { StationRelease } from "@oyna/contracts";
 import { PlatformAdminGuard } from "../auth/club-admin.guard";
@@ -12,6 +12,19 @@ export class StationReleasesController {
   @Get("stations/release")
   latest(): Promise<StationRelease | null> {
     return this.releases.latest();
+  }
+
+  /**
+   * Установщик для кабинета: свежий Zen под именем Zen-Setup.exe. По имени файла программа
+   * понимает, что её запустили для установки, — админу клуба нужен только этот файл.
+   */
+  @Get("stations/setup")
+  @Header("Content-Type", "application/octet-stream")
+  @Header("Content-Disposition", 'attachment; filename="Zen-Setup.exe"')
+  async setup(): Promise<StreamableFile> {
+    const release = await this.releases.latest();
+    if (!release) throw new NotFoundException("Программа для компьютеров ещё не выпущена");
+    return new StreamableFile(await this.releases.binary(release.version));
   }
 
   @Get("stations/release/:version/Zen.exe")

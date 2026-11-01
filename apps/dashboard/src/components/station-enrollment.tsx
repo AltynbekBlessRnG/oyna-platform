@@ -1,14 +1,14 @@
 "use client";
 
 import type { StationEnrollmentCode } from "@oyna/contracts";
-import { MonitorUp } from "lucide-react";
+import { Download, MonitorUp } from "lucide-react";
 import { useState, useTransition } from "react";
 import { issueEnrollmentCode } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 
 /** Код клуба для программы Zen на компьютерах: один код на весь зал вместо id и ключа на каждом ПК. */
-export function StationEnrollment({ clubId }: { clubId: string }) {
+export function StationEnrollment({ clubId, setupUrl }: { clubId: string; setupUrl: string }) {
   const [code, setCode] = useState<StationEnrollmentCode | null>(null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
@@ -44,10 +44,23 @@ export function StationEnrollment({ clubId }: { clubId: string }) {
           <div className="grid gap-3">
             <code className="font-display text-3xl font-bold tracking-widest text-primary">{code.code}</code>
             <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
-              <li>Запустите Zen на компьютере зала</li>
+              <li>
+                На компьютере зала скачайте{" "}
+                <a href={setupUrl} className="font-medium text-primary underline underline-offset-2">
+                  Zen-Setup.exe
+                </a>
+                , запустите и перезагрузите компьютер
+              </li>
               <li>Введите этот код и выберите номер места</li>
               <li>Задайте PIN администратора — им вы выходите из Zen в Windows</li>
             </ol>
+            <a
+              href={setupUrl}
+              className="inline-flex h-10 items-center justify-center gap-2 justify-self-start rounded-xl bg-secondary px-4 text-sm font-medium hover:bg-secondary/80"
+            >
+              <Download className="size-4" />
+              Скачать Zen-Setup.exe
+            </a>
             <p className="text-xs text-muted-foreground">Один код подходит для всех компьютеров. Новый код отменяет этот.</p>
             {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
             <Button variant="ghost" size="sm" onClick={issue} disabled={isPending} className="justify-self-start">
