@@ -69,7 +69,15 @@ export default function ClubDetailsScreen() {
           ) : (
             <Monitor color={colors.muted} size={64} strokeWidth={1.2} style={styles.heroIcon} />
           )}
-          <Pressable accessibilityLabel="Назад" onPress={() => router.back()} style={styles.back} hitSlop={8}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Назад"
+            // Кнопка ниже строки состояния: под «чёлкой» iPhone нажатия до неё не доходили.
+            // Если клуб открыт по ссылке и возвращаться некуда, ведём на главную.
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
+            style={[styles.back, { top: insets.top + 8 }]}
+            hitSlop={12}
+          >
             <ChevronLeft color={colors.text} size={22} />
           </Pressable>
         </View>
@@ -211,7 +219,7 @@ const styles = StyleSheet.create({
   heroIcon: { opacity: 0.45 },
   // Затемнение под кнопкой «назад»: на светлом снимке её не видно.
   heroScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(20,20,20,0.25)" },
-  back: { position: "absolute", left: 16, top: 0, marginTop: 12, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(20,20,20,0.72)", alignItems: "center", justifyContent: "center" },
+  back: { position: "absolute", left: 16, zIndex: 2, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(20,20,20,0.72)", alignItems: "center", justifyContent: "center" },
   body: { padding: 18 },
   heading: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
   headingText: { flex: 1 },

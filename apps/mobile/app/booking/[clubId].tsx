@@ -150,7 +150,7 @@ export default function BookingScreen() {
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 14 }]}>
-        <Pressable accessibilityLabel="Назад" onPress={() => step === 0 ? router.back() : setStep((current) => current - 1)} style={styles.backButton}><ChevronLeft color={colors.text} size={22} /></Pressable>
+        <Pressable accessibilityLabel="Назад" onPress={() => (step > 0 ? setStep((current) => current - 1) : router.canGoBack() ? router.back() : router.replace("/"))} style={styles.backButton}><ChevronLeft color={colors.text} size={22} /></Pressable>
         <Pressable disabled={!canContinue || booking.isPending} onPress={step === 2 ? confirm : () => setStep((current) => current + 1)} style={[styles.nextButton, (!canContinue || booking.isPending) && styles.nextDisabled]}><Text style={[styles.nextText, (!canContinue || booking.isPending) && styles.nextTextDisabled]}>{booking.isPending ? "Бронируем…" : step === 2 ? `Подтвердить за ${total.toLocaleString("ru-KZ")} ₸` : "Продолжить"}</Text></Pressable>
       </View>
     </View>
