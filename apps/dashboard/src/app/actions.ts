@@ -214,6 +214,10 @@ export async function topUpBalance(clubId: string, phone: string, amount: number
 }
 
 /** Пополнение по месту: кассиру хватает номера компьютера, игрока сервер знает по сессии. */
+export async function refundGuest(clubId: string, sessionId: string): Promise<HallResult<{ amount: number }>> {
+  return hallAction(() => adminFetch<{ amount: number }>(`/admin/clubs/${clubId}/sessions/${sessionId}/refund-guest`, { method: "POST" }), "Не удалось выдать остаток");
+}
+
 export async function topUpSeatSession(clubId: string, sessionId: string, amount: number, method: PaymentMethod = "cash"): Promise<HallResult<TopUpResult>> {
   return hallAction(
     () => adminFetch<TopUpResult>(`/admin/clubs/${clubId}/sessions/${sessionId}/top-ups`, { method: "POST", body: JSON.stringify({ amount, method }) }),

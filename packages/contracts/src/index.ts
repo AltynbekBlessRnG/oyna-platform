@@ -448,6 +448,8 @@ export interface PlaySession {
   endReason?: PlaySessionEndReason;
   /** Списано с баланса по факту, только у завершённой сессии. */
   charged?: number;
+  /** Сколько осталось на балансе игрока сразу после завершения: гостю это можно вернуть наличными. */
+  balanceLeft?: number;
   /** Сессия по пакету: оплачена целиком при посадке, пополнение её не продлевает. */
   packageId?: string;
   packageName?: string;

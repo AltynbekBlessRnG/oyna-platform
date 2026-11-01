@@ -291,6 +291,12 @@ export class AuthService {
     return `+${normalized}`;
   }
 
+  async isGuest(userId: string): Promise<boolean> {
+    if (!this.database.configured) return [...this.users.values()].some((user) => user.id === userId && user.phone.startsWith(GUEST_PHONE_PREFIX));
+    const result = await this.database.query<{ phone: string }>("SELECT phone FROM users WHERE id = $1", [userId]);
+    return Boolean(result.rows[0]?.phone.startsWith(GUEST_PHONE_PREFIX));
+  }
+
   /**
    * Разовый гость: заплатил на кассе и сел без телефона. Отдельная запись на каждую посадку —
    * ни баланс, ни история между гостями не смешиваются. Телефон-заглушка начинается с `guest:`.

@@ -4,7 +4,7 @@ import type { ClubPackage, ClubStation, ClubZone, PaymentMethod, PlaySession, Se
 import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from "react";
-import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance, topUpSeatSession } from "@/app/actions";
+import { endPlaySession, type HallResult, refundGuest, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance, topUpSeatSession } from "@/app/actions";
 import { BarOrders } from "@/components/bar-orders";
 import { endingSoon, HallMap, pcLost, shortLeft } from "@/components/hall-map";
 import { Button } from "@/components/ui/button";
@@ -370,6 +370,7 @@ function SeatPanel(props: {
   const [packageId, setPackageId] = useState<string | null>(null);
   const chosenPackage = packages.find((pack) => pack.id === packageId);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [refund, setRefund] = useState<{ sessionId: string; amount: number } | null>(null);
   const [confirmUnbind, setConfirmUnbind] = useState(false);
   const { seat, zone } = entry;
 
@@ -402,7 +403,20 @@ function SeatPanel(props: {
   function end(current: PlaySession): void {
     if (!confirmEnd) return setConfirmEnd(true);
     setConfirmEnd(false);
-    run(() => endPlaySession(clubId, current.id), (ended) => `Сессия завершена, списано ${money(ended.charged ?? 0)}`);
+    run(() => endPlaySession(clubId, current.id), (ended) => {
+      const left = ended.balanceLeft ?? 0;
+      // Гость без телефона больше не вернётся за остатком — предлагаем выдать его сразу.
+      if (ended.playerName === "Гость" && !ended.playerPhoneTail && left > 0) setRefund({ sessionId: ended.id, amount: left });
+      return `Сессия завершена, списано ${money(ended.charged ?? 0)}${left > 0 ? `, на балансе осталось ${money(left)}` : ""}`;
+    });
+  }
+
+  function giveRefund(): void {
+    if (!refund) return;
+    run(() => refundGuest(clubId, refund.sessionId), (result) => {
+      setRefund(null);
+      return `Гостю выдано ${money(result.amount)} наличными, касса смены уменьшена`;
+    });
   }
 
   // После отвязки ключ на ПК придётся ставить заново, поэтому, как и завершение сессии, — со второго нажатия.
@@ -424,6 +438,15 @@ function SeatPanel(props: {
     <Modal title={`Место ${seat.label}`} label={`Место ${seat.label}`} subtitle={`${zone.name}, ${money(zone.pricePerHour)} в час`} onClose={onClose}>
       <div className="grid gap-5 text-sm">
         {message ? <Notice message={message} /> : null}
+        {refund ? (
+          <div className="grid gap-2 rounded-xl border border-primary/50 bg-primary/5 p-3">
+            <p>Гость ушёл раньше: у него осталось <strong>{money(refund.amount)}</strong>. Отдайте их наличными или оставьте клубу.</p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" disabled={isPending} onClick={giveRefund}>Выдать {money(refund.amount)} наличными</Button>
+              <Button size="sm" variant="ghost" disabled={isPending} onClick={() => setRefund(null)}>Не возвращать</Button>
+            </div>
+          </div>
+        ) : null}
 
         {session ? (
           <div className={cn("grid gap-3 rounded-xl p-4", pcLost(session, station) ? "bg-danger/10" : "bg-secondary")}>
