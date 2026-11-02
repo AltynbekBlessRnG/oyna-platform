@@ -90,11 +90,6 @@ export class SessionsAdminController {
     return this.sessions.topUpSession(clubId, sessionId, request?.amount, admin, request?.method);
   }
 
-  @Post("sessions/:sessionId/refund-guest")
-  refundGuest(@Param("clubId") clubId: string, @Param("sessionId") sessionId: string, @CurrentUser() admin: AuthUser): Promise<{ amount: number }> {
-    return this.sessions.refundGuest(clubId, sessionId, admin);
-  }
-
   @Post("top-ups")
   topUp(@Param("clubId") clubId: string, @CurrentUser() admin: AuthUser, @Body() request: TopUpRequest): Promise<TopUpResult> {
     return this.sessions.topUp(clubId, request?.phone ?? "", request?.amount, admin, request?.method);

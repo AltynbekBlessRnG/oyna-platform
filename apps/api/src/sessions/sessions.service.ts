@@ -594,32 +594,6 @@ export class SessionsService implements OnModuleInit, OnModuleDestroy {
     return { ...this.toPublic(ended), balanceLeft: balance };
   }
 
-  /**
-   * Гость ушёл раньше: остаток его разового баланса выдаём наличными из кассы.
-   * Только для гостя без телефона — у постоянного игрока деньги остаются на балансе до следующего раза.
-   */
-  async refundGuest(clubId: string, sessionId: string, admin: AuthUser): Promise<{ amount: number }> {
-    const session = await this.findStoredAny(clubId, sessionId);
-    if (!session) throw new NotFoundException("Сессия не найдена");
-    if (session.status === "active") throw new ConflictException("Сначала завершите сессию");
-    if (!(await this.auth.isGuest(session.userId))) throw new BadRequestException("Возврат наличными — только гостю без телефона");
-    await this.shifts.requireOpen(clubId);
-    const player = { id: session.userId, name: session.playerName };
-    const { balance } = await this.hall.getAccount(clubId, player);
-    if (balance <= 0) throw new ConflictException("Возвращать нечего: остаток уже выдан");
-    await this.credit(clubId, player, -balance, admin, "cash");
-    return { amount: balance };
-  }
-
-  private async findStoredAny(clubId: string, sessionId: string): Promise<StoredSession | undefined> {
-    if (!this.database.configured) {
-      const session = this.memorySessions.get(sessionId);
-      return session?.clubId === clubId ? session : undefined;
-    }
-    const result = await this.database.query<SessionRow>(`SELECT ${SESSION_COLUMNS} FROM play_sessions WHERE id = $1 AND club_id = $2`, [sessionId, clubId]);
-    return result.rows[0] ? this.mapSession(result.rows[0]) : undefined;
-  }
-
   /** Сессии, у которых кончилось оплаченное время. Вызывается по таймеру. */
   async expireDue(now = Date.now()): Promise<number> {
     let dueIds: string[];
