@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 /* Палитра Vence — та же, что в приложении игрока (apps/mobile/src/theme.ts):
-   графитовый фон, золото только для действий и свободных мест, розовый — для тревоги. */
+   графитовый фон; сплошное золото — только главная кнопка, тонкое золото — выбор, новый заказ и время
+   занятого места; розовый — тревога. Недоступная кнопка серая, не тусклое золото. */
 :root {
   --background: #141414;
   --foreground: #f2f2f2;
@@ -16,7 +17,7 @@
   --ring: #ffc83d;
   --danger: #ff6b81;
   --success: #6fdc9b;
-  /* Зал: оранжевый — время на исходе, холодный голубой — бронь. Золото остаётся за свободным местом и действием. */
+  /* Зал: оранжевый — время на исходе, холодный голубой — бронь. Занятое место нейтральное с золотой полосой. */
   --warning: #ff9a4d;
   --reserved: #8fb0ff;
   --radius: 0.75rem;
@@ -85,7 +86,7 @@ h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
   background-image: repeating-linear-gradient(135deg, color-mix(in srgb, currentColor 14%, transparent) 0 1.5px, transparent 1.5px 8px);
 }
 
-/* Новый заказ бара пришёл с компьютера игрока: мягкая пульсация, пока его не приняли. */
+/* Новый заказ бара пришёл с компьютера игрока: метка «новый» мягко пульсирует, пока его не приняли. */
 @keyframes order-call {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 55%, transparent); }
   50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 0%, transparent); }

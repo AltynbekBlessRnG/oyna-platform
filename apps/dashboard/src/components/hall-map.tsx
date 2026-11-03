@@ -65,7 +65,8 @@ type TileProps = Omit<HallMapProps, "zones" | "layout">;
 
 /**
  * Карта зала — главное на странице: тёмный «пол» в тонкую сетку и маленькие мониторы мест.
- * Занятое место залито золотом, на исходе — оранжевым, свободное — тёмное; под монитором — сколько осталось.
+ * Свободное место тёмное, занятое — спокойное светлее с золотой полосой времени; кричат только тревоги:
+ * на исходе — оранжевым, ПК пропал — розовым. Под монитором — сколько осталось.
  * Если клуб нарисовал схему, пол повторяет зал: места на своих местах, вокруг — диваны, бар и вход.
  */
 export function HallMap({ zones, layout, editable = true, ...tile }: HallMapProps) {
@@ -272,13 +273,14 @@ function ZoneBlock({ zone, seats, sessionBySeat, stationBySeat, now, selectedId,
   );
 }
 
+/** Золото на карте — только полоса времени у занятого места; заливкой выделяются тревоги. */
 const SCREEN: Record<SeatState, string> = {
-  free: "bg-[#222a33] text-[#c9d2dc] ring-1 ring-inset ring-white/[0.06] group-hover:ring-primary/70",
-  busy: "bg-primary text-primary-foreground",
+  free: "bg-[#1a1f26] text-[#aab4bf] ring-1 ring-inset ring-white/[0.07] group-hover:ring-primary/70",
+  busy: "bg-[#343e4a] text-foreground ring-1 ring-inset ring-white/[0.08]",
   soon: "bg-warning text-[#2e1500]",
-  lost: "bg-[#3a1a22] text-danger ring-1 ring-inset ring-danger/70",
+  lost: "bg-[#41161f] text-danger ring-2 ring-inset ring-danger",
   reserved: "seat-hatch bg-[#1c2430] text-reserved ring-1 ring-inset ring-reserved/60",
-  booked: "bg-primary/55 text-primary-foreground"
+  booked: "bg-[#343e4a] text-foreground/80 ring-1 ring-inset ring-white/[0.08]"
 };
 
 const BAR: Record<SeatState, string> = {
@@ -287,7 +289,7 @@ const BAR: Record<SeatState, string> = {
   soon: "bg-warning",
   lost: "bg-danger",
   reserved: "bg-reserved",
-  booked: "bg-primary/60"
+  booked: "bg-primary/45"
 };
 
 function SeatTile({ seat, session, station, now, selected, onSelect, variant = "flow", tipBelow, zoneName }: {
@@ -336,8 +338,8 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
         <span className={cn("font-display font-semibold leading-none tabular-nums", cell ? "text-[clamp(0.7rem,30cqw,1.2rem)]" : "text-[1.15rem]")}>{seat.label}</span>
         {cell && caption ? <span className="mt-1 whitespace-nowrap text-[clamp(0.625rem,19cqw,0.75rem)] font-semibold leading-none tabular-nums opacity-85">{caption}</span> : null}
         {cell ? (
-          <span className="absolute inset-x-[12%] bottom-[7%] block h-[3px] overflow-hidden rounded-full bg-black/25" aria-hidden>
-            <span className={cn("block h-full rounded-full", state === "busy" || state === "booked" ? "bg-primary-foreground/60" : BAR[state])} style={{ width: `${bar * 100}%` }} />
+          <span className="absolute inset-x-[12%] bottom-[8%] block h-1 overflow-hidden rounded-full bg-black/30" aria-hidden>
+            <span className={cn("block h-full rounded-full", state === "soon" ? "bg-[#2e1500]/55" : BAR[state])} style={{ width: `${bar * 100}%` }} />
           </span>
         ) : null}
         {session?.packageName && !cell ? (
@@ -408,8 +410,8 @@ function Legend() {
   const swatch = "size-3 rounded-[3px]";
   return (
     <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground" aria-label="Обозначения">
-      <li className={item}><span className={cn(swatch, "bg-[#222a33] ring-1 ring-white/10")} />свободно</li>
-      <li className={item}><span className={cn(swatch, "bg-primary")} />играют</li>
+      <li className={item}><span className={cn(swatch, "bg-[#1a1f26] ring-1 ring-white/15")} />свободно</li>
+      <li className={item}><span className={cn(swatch, "relative overflow-hidden bg-[#343e4a] ring-1 ring-white/10")}><span className="absolute inset-x-0 bottom-0 h-[3px] bg-primary" /></span>играют</li>
       <li className={item}><span className={cn(swatch, "bg-warning")} />≤ {ENDING_SOON_MIN} мин</li>
       <li className={item}><span className={cn(swatch, "seat-hatch bg-[#1c2430] text-reserved ring-1 ring-reserved/60")} />бронь</li>
       <li className={item}><span className="grid size-3 place-items-center rounded-full bg-danger text-[8px] font-bold text-[#2b0a10]">!</span>ПК пропал</li>

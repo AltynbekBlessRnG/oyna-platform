@@ -57,6 +57,16 @@ export function clientName(nickname: string, phoneNumber: string): string {
   return playerLabel(nickname, phoneNumber.replace(/\D/g, "").slice(-4));
 }
 
+/** Давность события в очереди: «только что», «7 мин назад», «3 ч назад», «вчера», «2 ноября». */
+export function since(iso: string, now: number): string {
+  const minutes = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
+  if (minutes < 1) return "только что";
+  if (minutes < 60) return `${minutes} мин назад`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)} ч назад`;
+  if (minutes < 48 * 60) return "вчера";
+  return day(iso);
+}
+
 /** «сегодня», «вчера», «5 дней назад», «12 марта» — для давности визита. */
 export function ago(iso: string | undefined, now: number): string {
   if (!iso) return "ещё не был";

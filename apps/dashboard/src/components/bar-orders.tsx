@@ -4,20 +4,23 @@ import type { ClubOrder } from "@oyna/contracts";
 import { Check, CookingPot, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type HallResult, setOrderStatus } from "@/app/actions";
-import { money, plural } from "@/lib/format";
+import { money, plural, since } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Run = <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
 
-function age(createdAt: string, now: number | null): string {
-  if (now === null) return "";
-  const minutes = Math.max(0, Math.floor((now - Date.parse(createdAt)) / 60_000));
-  return minutes < 1 ? "только что" : `${minutes} мин назад`;
+/** Через сколько часов непринятый заказ перестаёт звать: скорее всего, про него уже забыли или выдали мимо кассы. */
+const STALE_HOURS = 3;
+
+/** Новый заказ, который ещё ждут: свежее STALE_HOURS. Старый «давно» показываем тихо. */
+export function orderCalling(order: ClubOrder, now: number | null): boolean {
+  return order.status === "new" && (now === null || now - Date.parse(order.createdAt) < STALE_HOURS * 3_600_000);
 }
 
 /**
- * Очередь бара: заказы приходят с компьютеров игроков. Новый — жёлтый и пульсирует, пока его не приняли;
- * принятый спокойнее и ждёт, когда его отнесут. Отмена — со второго нажатия.
+ * Очередь бара: заказы приходят с компьютеров игроков. Новый отмечен золотой кромкой и меткой, пока его
+ * не приняли; принятый ждёт, когда его отнесут; непринятый дольше STALE_HOURS — тихий, с меткой «давно».
+ * Отмена — со второго нажатия.
  */
 export function BarOrders({ clubId, orders, now, isPending, run }: {
   clubId: string;
@@ -26,7 +29,8 @@ export function BarOrders({ clubId, orders, now, isPending, run }: {
   isPending: boolean;
   run: Run;
 }) {
-  const fresh = orders.filter((order) => order.status === "new").length;
+  const fresh = orders.filter((order) => orderCalling(order, now)).length;
+  const stale = orders.filter((order) => order.status === "new").length - fresh;
   return (
     <section aria-label="Заказы бара" className="rounded-2xl border border-border bg-card">
       <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-4">
@@ -35,8 +39,8 @@ export function BarOrders({ clubId, orders, now, isPending, run }: {
           Заказы бара
         </h2>
         {orders.length ? (
-          <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums", fresh ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground")}>
-            {fresh ? `${fresh} ${plural(fresh, "новый", "новых", "новых")}` : `${orders.length} в работе`}
+          <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums", fresh ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground")}>
+            {fresh ? `${fresh} ${plural(fresh, "новый", "новых", "новых")}` : stale ? `${stale} давно ${plural(stale, "ждёт", "ждут", "ждут")}` : `${orders.length} в работе`}
           </span>
         ) : null}
       </header>
@@ -56,6 +60,8 @@ export function BarOrders({ clubId, orders, now, isPending, run }: {
 function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; order: ClubOrder; now: number | null; isPending: boolean; run: Run }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const isNew = order.status === "new";
+  const calling = orderCalling(order, now);
+  const stale = isNew && !calling;
 
   useEffect(() => {
     if (!confirmCancel) return;
@@ -77,14 +83,15 @@ function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; o
   return (
     <li
       className={cn(
-        "grid gap-2.5 rounded-xl p-3",
-        isNew ? "order-call bg-primary text-primary-foreground" : "bg-secondary"
+        "grid gap-2.5 rounded-xl bg-secondary p-3",
+        calling && "shadow-[inset_3px_0_0_var(--primary)]",
+        stale && "bg-secondary/55"
       )}
     >
       <div className="flex items-start gap-3">
-        <div className={cn("grid min-w-12 place-items-center rounded-lg px-2 py-1", isNew ? "bg-primary-foreground/12" : "bg-background")}>
-          <span className={cn("text-[10px] leading-none", isNew ? "text-primary-foreground/70" : "text-muted-foreground")}>место</span>
-          <span className="font-display text-lg font-semibold leading-tight">{order.seatLabel}</span>
+        <div className="grid min-w-12 place-items-center rounded-lg bg-background px-2 py-1">
+          <span className="text-[10px] leading-none text-muted-foreground">место</span>
+          <span className={cn("font-display text-lg font-semibold leading-tight", stale && "text-foreground/70")}>{order.seatLabel}</span>
         </div>
         <div className="min-w-0 flex-1">
           <ul className="text-sm leading-snug">
@@ -95,11 +102,16 @@ function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; o
               </li>
             ))}
           </ul>
-          {order.comment ? <p className={cn("mt-1 text-xs italic", isNew ? "text-primary-foreground/80" : "text-muted-foreground")}>«{order.comment}»</p> : null}
+          {order.comment ? <p className="mt-1 text-xs italic text-muted-foreground">«{order.comment}»</p> : null}
         </div>
-        <div className="text-right">
+        <div className="grid justify-items-end gap-1 text-right">
           <p className="font-display text-sm font-semibold tabular-nums">{money(order.total)}</p>
-          <p className={cn("text-xs", isNew ? "text-primary-foreground/70" : "text-muted-foreground")}>{age(order.createdAt, now)}</p>
+          {isNew ? (
+            <span className={cn("rounded-full px-1.5 py-px text-[11px] font-semibold leading-4", calling ? "order-call bg-primary/15 text-primary" : "bg-background text-muted-foreground")}>
+              {calling ? "новый" : "давно"}
+            </span>
+          ) : null}
+          <p className="text-xs text-muted-foreground">{now === null ? "" : since(order.createdAt, now)}</p>
         </div>
       </div>
       <div className="flex gap-2">
@@ -108,7 +120,10 @@ function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; o
             type="button"
             disabled={isPending}
             onClick={() => move("accepted")}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary-foreground text-sm font-semibold text-primary hover:bg-primary-foreground/90 disabled:opacity-50"
+            className={cn(
+              "inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold disabled:opacity-50",
+              calling ? "bg-primary text-primary-foreground hover:bg-primary/90" : "bg-background text-foreground hover:bg-background/70"
+            )}
           >
             <Check className="size-4" />Принять
           </button>
@@ -117,7 +132,7 @@ function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; o
             type="button"
             disabled={isPending}
             onClick={() => move("delivered")}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-background text-sm font-semibold text-foreground hover:bg-background/70 disabled:opacity-50"
           >
             <Check className="size-4" />Выдан
           </button>
@@ -130,9 +145,7 @@ function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; o
             "inline-flex h-9 items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium disabled:opacity-50",
             confirmCancel
               ? "bg-danger text-[#2b0a10]"
-              : isNew
-                ? "text-primary-foreground/80 hover:bg-primary-foreground/10"
-                : "text-muted-foreground hover:bg-background hover:text-foreground"
+              : "text-muted-foreground hover:bg-background hover:text-foreground"
           )}
         >
           <X className="size-4" />{confirmCancel ? "Точно отменить?" : "Отменить"}

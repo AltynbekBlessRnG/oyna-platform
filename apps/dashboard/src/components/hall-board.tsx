@@ -5,7 +5,7 @@ import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, W
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from "react";
 import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance, topUpSeatSession } from "@/app/actions";
-import { BarOrders } from "@/components/bar-orders";
+import { BarOrders, orderCalling } from "@/components/bar-orders";
 import { endingSoon, HallMap, pcLost, shortLeft } from "@/components/hall-map";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +34,8 @@ const REFRESH_MS = 15_000;
 /** Кассир берёт с гостя деньги, а не минуты: быстрые суммы для посадки. */
 const SEAT_AMOUNTS = [300, 500, 1000, 2000];
 const PAGE_TITLE = "Зал и касса — Vence";
+/** Выбранный вариант (пакет, сумма): золотая обводка, а не заливка — заливка только у главной кнопки. */
+const CHOSEN = "bg-primary/12 text-primary ring-1 ring-inset ring-primary/60 hover:bg-primary/15";
 
 /** Час клуба по Алматы (UTC+5): пакеты продаются в свои часы, как их проверяет сервер. */
 function clubMinuteOfDay(now: number): number {
@@ -172,7 +174,7 @@ export function HallBoard({ clubId, hall, apiUrl, owner = true }: HallBoardProps
 
 /**
  * Сводка над залом: пять чисел, на которые касса смотрит весь день. Ячейка, где нужно действие,
- * загорается своим цветом: оранжевым — время на исходе, жёлтым — новый заказ, розовым — ПК пропал.
+ * отмечена своим цветом: оранжевым — время на исходе, золотой кромкой — новый заказ, розовым — ПК пропал.
  */
 function HallSummary({ hall, stationBySeat, now }: {
   hall: HallSnapshot;
@@ -184,7 +186,9 @@ function HallSummary({ hall, stationBySeat, now }: {
   const players = new Set(hall.sessions.map((session) => session.userId)).size;
   const onPackage = hall.sessions.filter((session) => session.packageName).length;
   const soon = hall.sessions.filter((session) => endingSoon(session, now)).sort((a, b) => a.endsAt.localeCompare(b.endsAt));
-  const freshOrders = hall.orders.filter((order) => order.status === "new").length;
+  const waiting = hall.orders.filter((order) => order.status === "new");
+  const freshOrders = waiting.filter((order) => orderCalling(order, now)).length;
+  const staleOrders = waiting.length - freshOrders;
   const totals = hall.shift?.totals;
   const taken = totals ? totals.cash + totals.kaspi + totals.card : 0;
 
@@ -230,7 +234,11 @@ function HallSummary({ hall, stationBySeat, now }: {
         className="col-span-2 xl:col-span-1"
         tone={freshOrders ? "call" : undefined}
         value={hall.orders.length}
-        sub={freshOrders ? `${freshOrders} ${plural(freshOrders, "новый ждёт", "новых ждут", "новых ждут")} принятия` : hall.orders.length ? "все приняты" : "очередь пуста"}
+        sub={
+          freshOrders ? (
+            <span><span className="mr-1.5 rounded-full bg-primary/15 px-1.5 py-px font-semibold text-primary">{freshOrders} {plural(freshOrders, "новый", "новых", "новых")}</span>{plural(freshOrders, "ждёт", "ждут", "ждут")} принятия</span>
+          ) : staleOrders ? `${staleOrders} давно ${plural(staleOrders, "ждёт", "ждут", "ждут")} принятия` : hall.orders.length ? "все приняты" : "очередь пуста"
+        }
       />
     </section>
   );
@@ -248,13 +256,14 @@ function Stat({ label, value, aside, sub, note, tone, href, className: extra }: 
 }) {
   const body = (
     <>
-      <span className={cn("block text-[11px] font-medium uppercase tracking-[0.06em]", tone === "call" ? "text-primary-foreground/75" : "text-muted-foreground")}>{label}</span>
+      <span className="block text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">{label}</span>
       <span className="mt-1 flex items-baseline gap-2">
         <span
           className={cn(
             "font-display text-[1.65rem] font-semibold leading-none tabular-nums",
             tone === "warning" && "text-warning",
-            tone === "danger" && "text-danger"
+            tone === "danger" && "text-danger",
+            tone === "call" && "text-primary"
           )}
         >
           {value}
@@ -262,13 +271,13 @@ function Stat({ label, value, aside, sub, note, tone, href, className: extra }: 
         {aside ? <span className="text-sm font-medium tabular-nums text-muted-foreground">{aside}</span> : null}
       </span>
       {note}
-      {sub ? <span className={cn("mt-1.5 block text-xs", tone === "call" ? "text-primary-foreground/80" : tone === "danger" ? "text-danger" : "text-muted-foreground")}>{sub}</span> : null}
+      {sub ? <span className={cn("mt-1.5 block text-xs", tone === "danger" ? "text-danger" : "text-muted-foreground")}>{sub}</span> : null}
     </>
   );
   const className = cn(
     "block min-w-0 px-4 py-3",
     extra,
-    tone === "call" ? "bg-primary text-primary-foreground" : tone === "warning" ? "bg-[color-mix(in_srgb,var(--warning)_7%,var(--card))]" : tone === "danger" ? "bg-[color-mix(in_srgb,var(--danger)_8%,var(--card))]" : "bg-card"
+    tone === "call" ? "bg-card shadow-[inset_3px_0_0_var(--primary)]" : tone === "warning" ? "bg-[color-mix(in_srgb,var(--warning)_7%,var(--card))]" : tone === "danger" ? "bg-[color-mix(in_srgb,var(--danger)_8%,var(--card))]" : "bg-card"
   );
   return href ? (
     <a href={href} className={cn(className, "transition-colors hover:brightness-110")}>{body}</a>
@@ -482,14 +491,15 @@ function SeatPanel(props: {
               <div className="grid gap-1.5">
                 <span className="text-muted-foreground">Пакет</span>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant={chosenPackage ? "secondary" : "default"} aria-pressed={!chosenPackage} onClick={() => setPackageId(null)}>{guest ? "На сумму" : "По балансу"}</Button>
+                  <Button size="sm" variant="secondary" className={cn(!chosenPackage && CHOSEN)} aria-pressed={!chosenPackage} onClick={() => setPackageId(null)}>{guest ? "На сумму" : "По балансу"}</Button>
                   {packages.map((pack) => {
                     const open = now === null || packageOpen(pack, now);
                     return (
                       <Button
                         key={pack.id}
                         size="sm"
-                        variant={pack.id === packageId ? "default" : "secondary"}
+                        variant="secondary"
+                        className={cn(pack.id === packageId && CHOSEN)}
                         aria-pressed={pack.id === packageId}
                         disabled={!open}
                         title={open ? undefined : `Продаётся с ${pack.availableFrom} до ${pack.availableTo}`}
@@ -514,7 +524,7 @@ function SeatPanel(props: {
                 </label>
                 <div className="grid grid-cols-4 gap-2">
                   {SEAT_AMOUNTS.map((value) => (
-                    <Button key={value} size="sm" variant="secondary" aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
+                    <Button key={value} size="sm" variant="secondary" className={cn(amount === String(value) && CHOSEN)} aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -669,7 +679,7 @@ function SeatTopUp({ clubId, session, shiftOpen, isPending, run }: {
       <span className="flex items-center gap-2 font-medium"><Wallet className="size-4" />Пополнить этому игроку</span>
       <div className="grid grid-cols-4 gap-2">
         {[500, 1000, 2000, 5000].map((value) => (
-          <Button key={value} size="sm" variant={amount === String(value) ? "default" : "secondary"} onClick={() => setAmount(String(value))}>
+          <Button key={value} size="sm" variant="secondary" className={cn(amount === String(value) && CHOSEN)} aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>
             {value.toLocaleString("ru-KZ")}
           </Button>
         ))}
@@ -708,7 +718,7 @@ function TopUpCard({ clubId, run, isPending, onToppedUp, shiftOpen }: {
         <input className={inputClass} inputMode="numeric" aria-label="Сумма в тенге" placeholder="Сумма, ₸" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} />
         <div className="grid grid-cols-4 gap-2">
           {[500, 1000, 2000, 5000].map((value) => (
-            <Button key={value} size="sm" variant="secondary" onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
+            <Button key={value} size="sm" variant="secondary" className={cn(amount === String(value) && CHOSEN)} aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
           ))}
         </div>
         <PaymentMethodPicker value={method} onChange={setMethod} />
