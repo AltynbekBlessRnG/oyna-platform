@@ -1,7 +1,7 @@
 "use client";
 
 import type { ClubPackage, ClubStation, ClubZone, PaymentMethod, PlaySession, SeatMapSeat, StationCommandResult, StationCredentials } from "@oyna/contracts";
-import { KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Square, Unplug, Wallet } from "lucide-react";
+import { ChevronRight, CircleStop, KeyRound, MessageSquare, Play, Plug, Power, RotateCw, Unplug, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useState, useTransition } from "react";
 import { endPlaySession, type HallResult, registerStation, removeStation, rotateStationKey, sendStationCommand, startPlaySession, topUpBalance, topUpSeatSession } from "@/app/actions";
@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 interface HallBoardProps {
   clubId: string;
   hall: HallSnapshot;
-  apiUrl: string;
   /** Владелец: подключает компьютеры и рисует схему. Кассиру эти кнопки не показываем. */
   owner?: boolean;
 }
@@ -31,8 +30,8 @@ interface SelectedSeat {
 
 const inputClass = "h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-primary";
 const REFRESH_MS = 15_000;
-/** Кассир берёт с гостя деньги, а не минуты: быстрые суммы для посадки. */
-const SEAT_AMOUNTS = [300, 500, 1000, 2000];
+/** Кассир берёт деньги, а не минуты: одни и те же быстрые суммы при посадке и пополнении. */
+const QUICK_AMOUNTS = [500, 1000, 2000, 5000];
 const PAGE_TITLE = "Зал и касса — Vence";
 /** Выбранный вариант (пакет, сумма): золотая обводка, а не заливка — заливка только у главной кнопки. */
 const CHOSEN = "bg-primary/12 text-primary ring-1 ring-inset ring-primary/60 hover:bg-primary/15";
@@ -59,6 +58,14 @@ function packageTerms(pack: ClubPackage): string {
   return pack.kind === "duration" ? duration(pack.durationMinutes ?? 0) : `до ${pack.endsAt}`;
 }
 
+/** Сколько спишется, если завершить сейчас: как считает сервер — начатая минута целиком, пакет по своей цене. */
+function chargeIfEnded(session: PlaySession, now: number): number {
+  if (session.packagePrice !== undefined) return session.packagePrice;
+  const end = Math.min(now, Date.parse(session.endsAt));
+  const minutes = Math.max(0, Math.ceil((end - Date.parse(session.startedAt)) / 60_000));
+  return Math.ceil((minutes * session.pricePerHour) / 60);
+}
+
 /** Сколько минут покупает сумма по цене зоны. Бесплатная зона — без ограничения (undefined). */
 function minutesFor(amount: number, pricePerHour: number): number | undefined {
   if (!amount || pricePerHour <= 0) return undefined;
@@ -69,7 +76,7 @@ function minutesFor(amount: number, pricePerHour: number): number | undefined {
  * Касса: сводка зала, карта мест с живыми сессиями, очередь бара, посадка игрока и пополнение.
  * Карта мест — в hall-map.tsx; здесь сводка, правая колонка и окно места.
  */
-export function HallBoard({ clubId, hall, apiUrl, owner = true }: HallBoardProps) {
+export function HallBoard({ clubId, hall, owner = true }: HallBoardProps) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
@@ -155,7 +162,6 @@ export function HallBoard({ clubId, hall, apiUrl, owner = true }: HallBoardProps
           session={sessionBySeat.get(selected.seat.id)}
           station={stationBySeat.get(selected.seat.id)}
           now={now}
-          apiUrl={apiUrl}
           message={message}
           credentials={credentials}
           initialPhone={lastPhone}
@@ -184,6 +190,10 @@ function HallSummary({ hall, stationBySeat, now }: {
   const online = hall.stations.filter((station) => station.online).length;
   const lost = hall.sessions.filter((session) => pcLost(session, stationBySeat.get(session.seatId))).length;
   const players = new Set(hall.sessions.map((session) => session.userId)).size;
+  // Гость — без телефона, платил на кассе; у постоянного игрока есть номер и баланс.
+  const guests = hall.sessions.filter((session) => isGuest(session)).length;
+  const regulars = hall.sessions.length - guests;
+  const offline = hall.stations.length - online;
   const onPackage = hall.sessions.filter((session) => session.packageName).length;
   const soon = hall.sessions.filter((session) => endingSoon(session, now)).sort((a, b) => a.endsAt.localeCompare(b.endsAt));
   const waiting = hall.orders.filter((order) => order.status === "new");
@@ -198,7 +208,7 @@ function HallSummary({ hall, stationBySeat, now }: {
         label="ПК на связи"
         tone={lost ? "danger" : undefined}
         value={hall.stations.length ? <>{online}<span className={lost ? "opacity-60" : "text-muted-foreground"}>/{hall.stations.length}</span></> : "—"}
-        sub={lost ? `${lost} не ${plural(lost, "отвечает", "отвечают", "отвечают")} во время игры` : hall.stations.length ? "клиент Vence запущен" : "компьютеры не подключены"}
+        sub={lost ? `${lost} не ${plural(lost, "отвечает", "отвечают", "отвечают")} во время игры` : !hall.stations.length ? "компьютеры не подключены" : offline ? `${offline} не на связи` : "клиент Vence запущен"}
       />
       <Stat
         label={hall.shift?.blind ? "Kaspi и карта за смену" : "Принято за смену"}
@@ -219,7 +229,15 @@ function HallSummary({ hall, stationBySeat, now }: {
       <Stat
         label="Играют"
         value={players}
-        sub={hall.sessions.length ? (onPackage ? `по пакету: ${onPackage}` : "все по балансу") : "в зале никого"}
+        sub={
+          hall.sessions.length
+            ? [
+                regulars ? `${regulars} ${plural(regulars, "постоянный", "постоянных", "постоянных")}` : "",
+                guests ? `${guests} ${plural(guests, "гость", "гостя", "гостей")}` : "",
+                onPackage ? `по пакету ${onPackage}` : ""
+              ].filter(Boolean).join(", ")
+            : "в зале никого"
+        }
       />
       <Stat
         label="Заканчивают за 15 мин"
@@ -284,6 +302,10 @@ function Stat({ label, value, aside, sub, note, tone, href, className: extra }: 
   ) : (
     <div className={className}>{body}</div>
   );
+}
+
+function isGuest(session: { playerName: string; playerPhoneTail?: string }): boolean {
+  return session.playerName === "Гость" && !session.playerPhoneTail;
 }
 
 /** Кто играет: сначала те, у кого время на исходе, — к ним кассир подойдёт первым. */
@@ -359,7 +381,6 @@ function SeatPanel(props: {
   session?: PlaySession;
   station?: ClubStation;
   now: number | null;
-  apiUrl: string;
   message: { ok: boolean; text: string } | null;
   credentials: StationCredentials | null;
   initialPhone: string;
@@ -371,7 +392,7 @@ function SeatPanel(props: {
   onCredentials: (credentials: StationCredentials | null) => void;
   onClose: () => void;
 }) {
-  const { clubId, entry, session, station, now, apiUrl, message, credentials, initialPhone, shiftOpen, owner, packages, isPending, run, onCredentials, onClose } = props;
+  const { clubId, entry, session, station, now, message, credentials, initialPhone, shiftOpen, owner, packages, isPending, run, onCredentials, onClose } = props;
   const [phone, setPhone] = useState(initialPhone);
   // По умолчанию гость: пришёл, заплатил, сел. Телефон — для постоянных, у кого копится баланс.
   const [mode, setMode] = useState<"guest" | "player">(initialPhone ? "player" : "guest");
@@ -416,7 +437,7 @@ function SeatPanel(props: {
     run(() => endPlaySession(clubId, current.id), (ended) => {
       const left = ended.balanceLeft ?? 0;
       // У гостя без телефона остаток сгорает; постоянный игрок доиграет его в следующий раз.
-      const guest = ended.playerName === "Гость" && !ended.playerPhoneTail;
+      const guest = isGuest(ended);
       const rest = left > 0 ? (guest ? `, остаток гостя ${money(left)} сгорел` : `, на балансе игрока осталось ${money(left)}`) : "";
       return `Сессия завершена, списано ${money(ended.charged ?? 0)}${rest}`;
     });
@@ -456,8 +477,18 @@ function SeatPanel(props: {
               ) : null}
             </div>
             <SeatTopUp clubId={clubId} session={session} shiftOpen={shiftOpen} isPending={isPending} run={run} />
-            <Button variant="secondary" disabled={isPending} onClick={() => end(session)}>
-              <Square className="size-4" />{confirmEnd ? "Нажмите ещё раз, чтобы завершить" : "Завершить сессию"}
+            <Button
+              variant="secondary"
+              disabled={isPending}
+              onClick={() => end(session)}
+              className={cn(confirmEnd ? "bg-danger text-[#2b0a10] hover:bg-danger/90" : "bg-transparent text-danger ring-1 ring-inset ring-danger/45 hover:bg-danger/10")}
+            >
+              <CircleStop className="size-4" />
+              {confirmEnd
+                ? now === null
+                  ? "Нажмите ещё раз, чтобы завершить"
+                  : `Нажмите ещё раз — спишется ${session.packagePrice !== undefined ? "" : "~"}${money(chargeIfEnded(session, now))}`
+                : "Завершить сессию"}
             </Button>
           </div>
         ) : (
@@ -523,7 +554,7 @@ function SeatPanel(props: {
                   <input className={inputClass} inputMode="numeric" placeholder="Сумма, ₸" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} />
                 </label>
                 <div className="grid grid-cols-4 gap-2">
-                  {SEAT_AMOUNTS.map((value) => (
+                  {QUICK_AMOUNTS.map((value) => (
                     <Button key={value} size="sm" variant="secondary" className={cn(amount === String(value) && CHOSEN)} aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
                   ))}
                 </div>
@@ -549,55 +580,107 @@ function SeatPanel(props: {
               <Play className="size-4" />
               {taking && price > 0 ? `Принять ${money(price)} и посадить` : "Посадить за компьютер"}
             </Button>
-            {blocker ? <p className="text-center text-xs text-muted-foreground">{blocker}</p> : null}
+            {blocker ? <p className="text-balance text-center text-xs text-muted-foreground">{blocker}</p> : null}
           </div>
         )}
 
-        <div className="grid gap-3 border-t border-border pt-4">
-          <p className="font-medium">Клиент Vence на компьютере</p>
-          {station ? (
-            <>
-              <p className="text-muted-foreground">
-                {station.name},{" "}
-                {station.online ? (
-                  <span className="text-success">на связи</span>
-                ) : station.lastSeenAt ? (
-                  <><span className="text-danger">не отвечает</span>, был в {clock(station.lastSeenAt)}</>
-                ) : (
-                  "ещё не подключался"
-                )}
-              </p>
-              {station.online ? <StationControls clubId={clubId} station={station} session={session} isPending={isPending} run={run} /> : null}
-              {owner ? <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" disabled={isPending} onClick={() => issueKey(() => rotateStationKey(clubId, station.id), "Новый ключ выпущен, старый больше не работает")}>
-                  <KeyRound className="size-4" />Новый ключ
-                </Button>
-                <Button size="sm" variant="secondary" disabled={isPending} onClick={() => unbind(station)}>
-                  <Unplug className="size-4" />{confirmUnbind ? "Нажмите ещё раз, чтобы отвязать" : "Отвязать"}
-                </Button>
-              </div> : null}
-            </>
-          ) : !owner ? (
-            <p className="text-muted-foreground">Vence на этом компьютере не установлен. Подключает компьютеры владелец клуба.</p>
-          ) : (
-            <Button size="sm" variant="secondary" disabled={isPending} onClick={() => issueKey(() => registerStation(clubId, seat.id), "Компьютер подключён к месту")}>
-              <Plug className="size-4" />Подключить компьютер
-            </Button>
-          )}
-          {credentials ? (
-            <div className="grid gap-2 rounded-xl border border-primary/50 bg-primary/5 p-3 text-xs">
-              <strong className="text-primary">Ключ показывается один раз, сохраните его сейчас</strong>
-              <span>ID: <code className="break-all">{credentials.station.id}</code></span>
-              <span>Ключ: <code className="break-all">{credentials.token}</code></span>
-              <span className="text-muted-foreground">Проверка без Windows:</span>
-              <code className="break-all rounded-lg bg-background p-2">
-                pnpm --filter @oyna/api station -- --api {apiUrl} --station {credentials.station.id} --token {credentials.token}
-              </code>
-            </div>
-          ) : null}
-        </div>
+        <ComputerSection
+          clubId={clubId}
+          seatId={seat.id}
+          station={station}
+          session={session}
+          owner={owner}
+          credentials={credentials}
+          confirmUnbind={confirmUnbind}
+          isPending={isPending}
+          run={run}
+          onIssueKey={issueKey}
+          onUnbind={unbind}
+        />
       </div>
     </Modal>
+  );
+}
+
+/**
+ * Компьютер за местом одной строкой: имя и связь видны сразу, остальное — под раскрытием «Компьютер».
+ * Сообщение, перезагрузка и выключение — всем, когда ПК на связи; ключи и привязка — только владельцу.
+ */
+function ComputerSection({ clubId, seatId, station, session, owner, credentials, confirmUnbind, isPending, run, onIssueKey, onUnbind }: {
+  clubId: string;
+  seatId: string;
+  station?: ClubStation;
+  session?: PlaySession;
+  owner: boolean;
+  credentials: StationCredentials | null;
+  confirmUnbind: boolean;
+  isPending: boolean;
+  run: <T>(action: () => Promise<HallResult<T>>, onSuccess: (data: T) => string) => void;
+  onIssueKey: (action: () => Promise<HallResult<StationCredentials>>, text: string) => void;
+  onUnbind: (station: ClubStation) => void;
+}) {
+  const status = station ? (
+    <>
+      {station.name},{" "}
+      {station.online ? (
+        <span className="text-success">на связи</span>
+      ) : station.lastSeenAt ? (
+        <><span className="text-danger">не отвечает</span>, был в {clock(station.lastSeenAt)}</>
+      ) : (
+        "ещё не подключался"
+      )}
+    </>
+  ) : (
+    "Vence не установлен"
+  );
+  const hasTools = owner || Boolean(station?.online);
+
+  if (!hasTools) {
+    return (
+      <div className="grid gap-1 border-t border-border pt-4">
+        <p className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <span className="font-medium">Компьютер</span>
+          <span className="text-muted-foreground">{status}</span>
+        </p>
+        {station ? null : <p className="text-xs text-muted-foreground">Подключает компьютеры владелец клуба.</p>}
+      </div>
+    );
+  }
+
+  return (
+    <details className="group/pc border-t border-border pt-3" open={Boolean(credentials)}>
+      <summary className="-mx-2 flex cursor-pointer list-none items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-secondary [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open/pc:rotate-90" aria-hidden />
+        <span className="font-medium">Компьютер</span>
+        <span className="ml-auto min-w-0 truncate text-right text-muted-foreground">{status}</span>
+      </summary>
+      <div className="mt-3 grid gap-3">
+        {station?.online ? <StationControls clubId={clubId} station={station} session={session} isPending={isPending} run={run} /> : null}
+        {owner ? (
+          station ? (
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" disabled={isPending} onClick={() => onIssueKey(() => rotateStationKey(clubId, station.id), "Новый ключ выпущен, старый больше не работает")}>
+                <KeyRound className="size-4" />Новый ключ
+              </Button>
+              <Button size="sm" variant="secondary" disabled={isPending} onClick={() => onUnbind(station)} className={cn(confirmUnbind && "text-danger")}>
+                <Unplug className="size-4" />{confirmUnbind ? "Нажмите ещё раз, чтобы отвязать" : "Отвязать"}
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="secondary" className="justify-self-start" disabled={isPending} onClick={() => onIssueKey(() => registerStation(clubId, seatId), "Компьютер подключён к месту")}>
+              <Plug className="size-4" />Подключить компьютер
+            </Button>
+          )
+        ) : null}
+        {owner && credentials ? (
+          <div className="grid gap-1.5 rounded-xl border border-primary/50 bg-primary/5 p-3 text-xs">
+            <strong className="text-primary">Ключ показывается один раз, сохраните его сейчас</strong>
+            <span>ID: <code className="break-all">{credentials.station.id}</code></span>
+            <span>Ключ: <code className="break-all">{credentials.token}</code></span>
+          </div>
+        ) : null}
+      </div>
+    </details>
   );
 }
 
@@ -678,7 +761,7 @@ function SeatTopUp({ clubId, session, shiftOpen, isPending, run }: {
     <div className="grid gap-2 rounded-xl border border-border bg-background/40 p-3">
       <span className="flex items-center gap-2 font-medium"><Wallet className="size-4" />Пополнить этому игроку</span>
       <div className="grid grid-cols-4 gap-2">
-        {[500, 1000, 2000, 5000].map((value) => (
+        {QUICK_AMOUNTS.map((value) => (
           <Button key={value} size="sm" variant="secondary" className={cn(amount === String(value) && CHOSEN)} aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>
             {value.toLocaleString("ru-KZ")}
           </Button>
@@ -717,13 +800,13 @@ function TopUpCard({ clubId, run, isPending, onToppedUp, shiftOpen }: {
         <PlayerPhoneInput clubId={clubId} className={inputClass} label="Телефон игрока" value={phone} onChange={setPhone} />
         <input className={inputClass} inputMode="numeric" aria-label="Сумма в тенге" placeholder="Сумма, ₸" value={amount} onChange={(event) => setAmount(event.target.value.replace(/\D/g, ""))} />
         <div className="grid grid-cols-4 gap-2">
-          {[500, 1000, 2000, 5000].map((value) => (
+          {QUICK_AMOUNTS.map((value) => (
             <Button key={value} size="sm" variant="secondary" className={cn(amount === String(value) && CHOSEN)} aria-pressed={amount === String(value)} onClick={() => setAmount(String(value))}>{value.toLocaleString("ru-KZ")}</Button>
           ))}
         </div>
         <PaymentMethodPicker value={method} onChange={setMethod} />
         <Button disabled={isPending || !shiftOpen || phone.replace(/\D/g, "").length < 10 || !amount} onClick={submit}>Пополнить</Button>
-        <p className="text-xs text-muted-foreground">{shiftOpen ? "Если игрок уже за компьютером, его время сразу продлится." : "Откройте смену вверху страницы, чтобы принимать деньги."}</p>
+        <p className="text-pretty text-xs text-muted-foreground">{shiftOpen ? "Если игрок уже за компьютером, его время сразу продлится." : "Откройте смену вверху страницы, чтобы принимать деньги."}</p>
       </CardContent>
     </Card>
   );

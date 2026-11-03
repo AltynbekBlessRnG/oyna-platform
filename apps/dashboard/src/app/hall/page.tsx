@@ -5,7 +5,7 @@ import { LiveClock } from "@/components/live-clock";
 import { ShiftPanel } from "@/components/shift-panel";
 import { StationEnrollment } from "@/components/station-enrollment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiUrl, type HallSnapshot, loadActiveClub, loadHall, requireSession } from "@/lib/api";
+import { type HallSnapshot, loadActiveClub, loadHall, requireSession } from "@/lib/api";
 
 export default async function HallPage() {
   await requireSession();
@@ -53,7 +53,7 @@ export default async function HallPage() {
       {hall ? (
         <div className="grid gap-4">
           <ShiftPanel clubId={club.id} shift={hall.shift} owner={owner} />
-          <HallBoard clubId={club.id} hall={hall} apiUrl={apiUrl.replace(/\/api\/?$/, "")} owner={owner} />
+          <HallBoard clubId={club.id} hall={hall} owner={owner} />
         </div>
       ) : (
         <Card className="max-w-xl">

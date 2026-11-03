@@ -1,6 +1,6 @@
 const MONEY = new Intl.NumberFormat("ru-KZ");
 const TIME_ZONE = "Asia/Almaty";
-/** Имя, которое касса ставит гостю без имени: такого игрока различаем по номеру. */
+/** Имя, которое касса ставит игроку с телефоном, но без имени: такого игрока различаем по номеру. */
 export const DEFAULT_PLAYER_NAME = "Игрок Vence";
 
 export function money(amount: number): string {
@@ -46,9 +46,12 @@ export function phone(value: string): string {
   return `+${digits[0]} ${digits.slice(1, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 9)} ${digits.slice(9)}`;
 }
 
-/** Гость без имени показывается по хвосту номера, гость с именем — именем. */
+/**
+ * Игрок с телефоном, но без имени — «Игрок ··0701»: у него баланс и история, это не гость.
+ * Гость без телефона приходит с именем «Гость»; игрок с именем — своим именем.
+ */
 export function playerLabel(name: string, phoneTail?: string): string {
-  if (name === DEFAULT_PLAYER_NAME || !name.trim()) return phoneTail ? `Гость ··${phoneTail}` : "Гость";
+  if (name === DEFAULT_PLAYER_NAME || !name.trim()) return phoneTail ? `Игрок ··${phoneTail}` : "Игрок";
   return name;
 }
 
