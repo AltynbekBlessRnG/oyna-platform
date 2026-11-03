@@ -126,13 +126,14 @@ export function HallBoard({ clubId, hall, apiUrl, owner = true }: HallBoardProps
     <div className="grid gap-4">
       <HallSummary hall={hall} stationBySeat={stationBySeat} now={now} />
 
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_23rem] xl:grid-rows-[auto_auto_1fr] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_21rem] xl:grid-rows-[auto_auto_1fr] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
         <div id="bar-orders" className="grid scroll-mt-4 gap-3 xl:col-start-2 xl:row-start-1">
           {message && !selected ? <Notice message={message} /> : null}
           <BarOrders clubId={clubId} orders={hall.orders} now={now} isPending={isPending} run={run} />
         </div>
 
-        <div className="xl:col-start-1 xl:row-span-3 xl:row-start-1 xl:self-stretch">
+        {/* Карта по своей высоте и на виду, пока правую колонку листают: пустого пола под схемой нет. */}
+        <div className="xl:sticky xl:top-4 xl:col-start-1 xl:row-span-3 xl:row-start-1 xl:self-start">
           <HallMap zones={hall.seatMap.zones} sessionBySeat={sessionBySeat} stationBySeat={stationBySeat} now={now} selectedId={selectedId} onSelect={select} layout={hall.layout} editable={owner} />
         </div>
 

@@ -28,6 +28,11 @@ export function shortLeft(minutes: number): string {
   return `${Math.floor(minutes / 60)} ч ${String(minutes % 60).padStart(2, "0")}`;
 }
 
+/** Остаток на плитке места: «0:47», «2:05» — всегда четыре знака, в плитку влезает без обрезки. */
+function tileLeft(minutes: number): string {
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
 /** Доля оставшегося времени сессии: полоса под местом тает от посадки до конца. */
 function remainingShare(session: PlaySession, now: number): number {
   const total = Date.parse(session.endsAt) - Date.parse(session.startedAt);
@@ -66,19 +71,27 @@ type TileProps = Omit<HallMapProps, "zones" | "layout">;
 export function HallMap({ zones, layout, editable = true, ...tile }: HallMapProps) {
   const drawn = Boolean(layout && layout.items.some((item) => item.kind === "seat"));
   return (
-    <section aria-label="Карта зала" className="hall-floor h-full rounded-2xl border border-[#262d36]">
-      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 rounded-t-2xl border-b border-[#262d36] bg-[#12161b]/80 px-4 py-2.5">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Карта зала</h2>
+    <section aria-label="Карта зала" className="hall-floor rounded-2xl border border-[#262d36]">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-t-2xl border-b border-[#262d36] bg-[#12161b]/80 px-4 py-2.5 md:flex-nowrap">
+        <h2 className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Карта зала</h2>
         <Legend />
         {editable ? (
-          <Link href="/hall/layout" className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-white/[0.04] hover:text-foreground">
+          <Link href="/hall/layout" className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-white/[0.04] hover:text-foreground">
             <PencilRuler className="size-3.5" aria-hidden />
             {layout ? "Редактировать схему" : "Схема зала"}
           </Link>
         ) : null}
       </div>
       {layout && drawn ? (
-        <LayoutFloor layout={layout} zones={zones} {...tile} />
+        <>
+          {/* На телефоне схему не сжимаем и не прокручиваем вбок: те же места списком по зонам. */}
+          <LayoutFloor layout={layout} zones={zones} {...tile} />
+          <div className="grid gap-5 p-4 md:hidden">
+            {zones.map(({ zone, seats }) => (
+              <ZoneBlock key={zone.id} zone={zone} seats={seats} {...tile} />
+            ))}
+          </div>
+        </>
       ) : (
         <div className="grid gap-5 p-4 md:p-5">
           {zones.map(({ zone, seats }) => (
@@ -106,7 +119,35 @@ const FURNITURE_LOOK: Partial<Record<HallLayoutItemKind, string>> = {
   entrance: "rounded-md border border-primary/25 bg-primary/[0.04] text-primary/60"
 };
 
-/** Пол по схеме: клетки растягиваются на ширину карты, на узком экране карту прокручивают вбок. */
+/** Клетка без мест — проход, стена, диван — уже клетки с местами: зал читается, а места крупнее. */
+const AISLE = 0.5;
+
+/**
+ * Дорожки схемы после обрезки по краям нарисованного: сколько весит каждая колонка и строка.
+ * Колонка или строка, через которую проходит хоть одно место, весит 1, остальные — AISLE.
+ */
+function floorTracks(items: HallLayoutItem[]) {
+  const minX = Math.min(...items.map((item) => item.x));
+  const minY = Math.min(...items.map((item) => item.y));
+  const maxX = Math.max(...items.map((item) => item.x + item.w));
+  const maxY = Math.max(...items.map((item) => item.y + item.h));
+  const seatCols = new Set<number>();
+  const seatRows = new Set<number>();
+  for (const item of items) {
+    if (item.kind !== "seat") continue;
+    for (let x = item.x; x < item.x + item.w; x++) seatCols.add(x);
+    for (let y = item.y; y < item.y + item.h; y++) seatRows.add(y);
+  }
+  const cols = Array.from({ length: maxX - minX }, (_, i) => (seatCols.has(minX + i) ? 1 : AISLE));
+  const rows = Array.from({ length: maxY - minY }, (_, i) => (seatRows.has(minY + i) ? 1 : AISLE));
+  return { minX, minY, cols, rows };
+}
+
+/**
+ * Пол по схеме: обрезан по нарисованному и растянут на всю ширину колонки, высота следует за шириной.
+ * Единица --u — ширина колонки с местом; строки меряются ею же, чтобы место оставалось квадратным.
+ * На телефоне схему заменяет список по зонам (см. HallMap).
+ */
 function LayoutFloor({ layout, zones, ...tile }: TileProps & { layout: HallLayout; zones: SeatMapZone[] }) {
   const seats = new Map<string, { seat: SeatMapSeat; zone: ClubZone }>();
   for (const { zone, seats: list } of zones) for (const seat of list) seats.set(seat.id, { seat, zone });
@@ -114,24 +155,23 @@ function LayoutFloor({ layout, zones, ...tile }: TileProps & { layout: HallLayou
   const unplaced = zones.map(({ zone, seats: list }) => ({ zone, seats: list.filter((seat) => !placed.has(seat.id)) })).filter((group) => group.seats.length);
   const furniture = layout.items.filter((item) => item.kind !== "seat");
   const seatItems = layout.items.filter((item) => item.kind === "seat" && item.seatId && seats.has(item.seatId));
-  const area = (item: HallLayoutItem): CSSProperties => ({ gridColumn: `${item.x + 1} / span ${item.w}`, gridRow: `${item.y + 1} / span ${item.h}` });
+  const { minX, minY, cols, rows } = floorTracks(layout.items);
+  const width = cols.reduce((sum, weight) => sum + weight, 0);
+  const area = (item: HallLayoutItem): CSSProperties => ({ gridColumn: `${item.x - minX + 1} / span ${item.w}`, gridRow: `${item.y - minY + 1} / span ${item.h}` });
+  // Подсказка у верхнего края открывается вниз: над местом мало пола, а окно браузера может начинаться сразу над картой.
+  const above = (item: HallLayoutItem) => rows.slice(0, item.y - minY).reduce((sum, weight) => sum + weight, 0);
 
   return (
-    <div className="grid gap-4 p-3 md:p-4">
-      <div className="overflow-x-auto">
+    <div className="hidden gap-4 p-3 md:grid md:p-4">
+      <div className="@container">
         <ul
-          className="layout-floor grid rounded-lg"
+          className="grid"
           aria-label="Схема зала"
           style={{
-            gridTemplateColumns: `repeat(${layout.columns}, minmax(0, 1fr))`,
-            gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
-            aspectRatio: `${layout.columns} / ${layout.rows}`,
-            // Весь зал — в один экран: ширину ограничивает высота окна за вычетом шапки и сводки.
-            maxWidth: `max(36rem, calc((100vh - 26rem) * ${layout.columns / layout.rows}))`,
-            marginInline: "auto",
-            minWidth: `${layout.columns * 1.4}rem`,
-            ["--cols" as string]: layout.columns,
-            ["--rows" as string]: layout.rows
+            ["--u" as string]: `calc(100cqw / ${width})`,
+            gridTemplateColumns: cols.map((weight) => `${weight}fr`).join(" "),
+            // Узкий проход не тоньше строки подписи: вход и подписи зон должны читаться.
+            gridTemplateRows: rows.map((weight) => (weight === 1 ? "var(--u)" : `max(1.125rem, calc(var(--u) * ${weight}))`)).join(" ")
           }}
         >
           {furniture.map((item) => {
@@ -155,10 +195,10 @@ function LayoutFloor({ layout, zones, ...tile }: TileProps & { layout: HallLayou
           {seatItems.map((item) => {
             const { seat, zone } = seats.get(item.seatId!)!;
             return (
-              <li key={item.id} style={area(item)} className="relative z-[1] min-w-0 p-[3px] hover:z-30 focus-within:z-30">
+              <li key={item.id} style={area(item)} className="relative z-[1] min-w-0 p-[2px] hover:z-30 focus-within:z-30">
                 <SeatTile
                   variant="cell"
-                  tipBelow={item.y < 3}
+                  tipBelow={above(item) < 4}
                   zoneName={zone.name}
                   seat={seat}
                   session={tile.sessionBySeat.get(seat.id)}
@@ -270,7 +310,8 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
   const player = session ? playerLabel(session.playerName, session.playerPhoneTail) : "";
   // Полоса под монитором: у идущей сессии — сколько времени осталось, у свободного места — что Vence на связи.
   const bar = session ? (now !== null ? remainingShare(session, now) : 1) : state === "reserved" ? 1 : station?.online ? 1 : 0;
-  const caption = state === "lost" ? "офлайн" : left !== null ? shortLeft(left) : session ? `до ${clock(session.endsAt)}` : state === "reserved" && seat.reservedFrom ? `бронь ${clock(seat.reservedFrom)}` : state === "booked" ? "по брони" : "";
+  // Подпись короткая, чтобы не обрезалась в плитке: полностью — в подсказке и для диктора.
+  const caption = state === "lost" ? "офлайн" : left !== null ? tileLeft(left) : session ? `до ${clock(session.endsAt)}` : state === "reserved" && seat.reservedFrom ? `с ${clock(seat.reservedFrom)}` : state === "booked" ? "по брони" : "";
   const describe = session
     ? `${player}, ${state === "lost" ? "компьютер не отвечает" : left !== null ? `осталось ${duration(left)}` : `до ${clock(session.endsAt)}`}${session.packageName ? `, пакет «${session.packageName}»` : ""}`
     : state === "reserved" ? `бронь${seat.reservedFrom ? ` с ${clock(seat.reservedFrom)}` : ""}` : state === "booked" ? "занято по брони" : "свободно";
@@ -293,7 +334,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
         )}
       >
         <span className={cn("font-display font-semibold leading-none tabular-nums", cell ? "text-[clamp(0.7rem,30cqw,1.2rem)]" : "text-[1.15rem]")}>{seat.label}</span>
-        {cell && caption ? <span className="mt-1 max-w-full truncate px-1 text-[clamp(0.55rem,15cqw,0.7rem)] font-semibold leading-none tabular-nums opacity-80">{caption}</span> : null}
+        {cell && caption ? <span className="mt-1 whitespace-nowrap text-[clamp(0.625rem,19cqw,0.75rem)] font-semibold leading-none tabular-nums opacity-85">{caption}</span> : null}
         {cell ? (
           <span className="absolute inset-x-[12%] bottom-[7%] block h-[3px] overflow-hidden rounded-full bg-black/25" aria-hidden>
             <span className={cn("block h-full rounded-full", state === "busy" || state === "booked" ? "bg-primary-foreground/60" : BAR[state])} style={{ width: `${bar * 100}%` }} />
@@ -323,7 +364,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
           </span>
           <span
             className={cn(
-              "mt-1 block h-3.5 truncate text-center text-[11px] font-semibold leading-3.5 tabular-nums",
+              "mt-1 block h-3.5 whitespace-nowrap text-center text-[11px] font-semibold leading-3.5 tabular-nums",
               state === "lost" ? "text-danger" : state === "soon" ? "text-warning" : state === "reserved" ? "text-reserved" : "text-foreground/80"
             )}
           >
