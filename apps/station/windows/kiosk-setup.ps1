@@ -41,6 +41,12 @@ function Set-GuestPolicies([string]$hive) {
   Set-ItemProperty $system -Name DisableChangePassword -Value 1 -Type DWord
   Set-ItemProperty $explorer -Name NoLogoff -Value 1 -Type DWord
   Set-ItemProperty $explorer -Name NoRun -Value 1 -Type DWord
+  # Жесты тачпада тремя и четырьмя пальцами («показать рабочий стол», переключение окон) — на ноутбуках клуба.
+  $touchpad = "Registry::$hive\Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad"
+  New-Item -Path $touchpad -Force | Out-Null
+  foreach ($gesture in "ThreeFingerSlideEnabled", "FourFingerSlideEnabled", "ThreeFingerTapEnabled", "FourFingerTapEnabled") {
+    Set-ItemProperty $touchpad -Name $gesture -Value 0 -Type DWord
+  }
 }
 
 function With-Hive([string]$file, [scriptblock]$action) {

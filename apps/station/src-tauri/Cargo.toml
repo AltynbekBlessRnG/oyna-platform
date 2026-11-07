@@ -1,6 +1,6 @@
 [package]
 name = "vence-station"
-version = "0.1.7"
+version = "0.1.8"
 description = "Vence на компьютере в зале клуба"
 edition = "2021"
 
@@ -21,7 +21,7 @@ sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp", "Win32_System_RemoteDesktop", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse"] }
 
 [features]
 # Сборка для клубов берёт экраны из dist внутри exe, а не с dev-сервера.

@@ -107,6 +107,7 @@ fn admin_exit(app: tauri::AppHandle) {
 
 pub fn run() {
     kiosk::install_keyboard_hook();
+    kiosk::start_escape_watch();
     tauri::Builder::default()
         .on_window_event(|_window, event| {
             // Alt+F4 и прочие попытки закрыть окно: выйти из Vence можно только через PIN админа.

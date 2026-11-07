@@ -10,6 +10,7 @@ reg load HKU\VenceHive "C:\Users\Default\NTUSER.DAT" | Out-Null
 try {
   Remove-Item "Registry::HKEY_USERS\VenceHive\Software\Microsoft\Windows\CurrentVersion\Policies\System" -Recurse -ErrorAction SilentlyContinue
   Remove-Item "Registry::HKEY_USERS\VenceHive\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Recurse -ErrorAction SilentlyContinue
+  Remove-ItemProperty "Registry::HKEY_USERS\VenceHive\Software\Microsoft\Windows\CurrentVersion\PrecisionTouchPad" -Name ThreeFingerSlideEnabled, FourFingerSlideEnabled, ThreeFingerTapEnabled, FourFingerTapEnabled -ErrorAction SilentlyContinue
 } finally { [gc]::Collect(); reg unload HKU\VenceHive | Out-Null }
 
 Write-Output "Готово. Гостевой пользователь (vence-player или zen-player) остался; удалить: Remove-LocalUser <имя>"

@@ -74,12 +74,98 @@ pub fn shutdown_if_guest() -> Result<(), String> {
     power_if_guest("/s")
 }
 
+/// Vence запущен под гостем клуба, а не у админа, который открыл его для проверки.
+fn is_guest() -> bool {
+    std::env::var("USERNAME").is_ok_and(|user| GUEST_USERS.iter().any(|guest| user.eq_ignore_ascii_case(guest)))
+}
+
+/// Программы, через которые гость уходит мимо Vence в Windows. Проводник откроет, например,
+/// Steam («Просмотреть локальные файлы»): без него сторож показал бы гостю рабочий стол и «Пуск».
+/// Только то, что игре не нужно: conhost, браузеры и лаунчеры не трогаем.
+const ESCAPE_TOOLS: [&str; 11] = [
+    "explorer.exe",
+    "taskmgr.exe",
+    "cmd.exe",
+    "powershell.exe",
+    "powershell_ise.exe",
+    "pwsh.exe",
+    "wt.exe",
+    "regedit.exe",
+    "mmc.exe",
+    "control.exe",
+    "systemsettings.exe",
+];
+
+pub fn is_escape_tool(exe_name: &str) -> bool {
+    ESCAPE_TOOLS.iter().any(|tool| exe_name.eq_ignore_ascii_case(tool))
+}
+
+/// Под гостем раз в секунду закрываем проводник, диспетчер задач, консоли и настройки
+/// в сессии гостя. Работает, пока жив Vence: после выхода админа по PIN сторож открывает
+/// обычную Windows, и там всё снова доступно для обслуживания.
+#[cfg(windows)]
+pub fn start_escape_watch() {
+    if !is_guest() {
+        return;
+    }
+    std::thread::spawn(|| loop {
+        close_escape_tools();
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    });
+}
+
+#[cfg(not(windows))]
+pub fn start_escape_watch() {}
+
+#[cfg(windows)]
+fn close_escape_tools() {
+    use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::System::Diagnostics::ToolHelp::{CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS};
+    use windows_sys::Win32::System::RemoteDesktop::ProcessIdToSessionId;
+    use windows_sys::Win32::System::Threading::{GetCurrentProcessId, OpenProcess, TerminateProcess, PROCESS_TERMINATE};
+
+    unsafe {
+        let own_pid = GetCurrentProcessId();
+        let mut own_session = 0u32;
+        if ProcessIdToSessionId(own_pid, &mut own_session) == 0 {
+            return;
+        }
+        let snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if snapshot == INVALID_HANDLE_VALUE {
+            return;
+        }
+        let mut entry: PROCESSENTRY32W = std::mem::zeroed();
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut more = Process32FirstW(snapshot, &mut entry) != 0;
+        while more {
+            let length = entry.szExeFile.iter().position(|&c| c == 0).unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..length]);
+            let mut session = u32::MAX;
+            // Свой PowerShell не трогаем: им Vence сам закрывает игры после сессии.
+            // Только в своей сессии: чужие и системные процессы гостю всё равно не закрыть.
+            if is_escape_tool(&name)
+                && entry.th32ParentProcessID != own_pid
+                && ProcessIdToSessionId(entry.th32ProcessID, &mut session) != 0
+                && session == own_session
+            {
+                let process = OpenProcess(PROCESS_TERMINATE, 0, entry.th32ProcessID);
+                if !process.is_null() {
+                    TerminateProcess(process, 1);
+                    CloseHandle(process);
+                }
+            }
+            more = Process32NextW(snapshot, &mut entry) != 0;
+        }
+        CloseHandle(snapshot);
+    }
+}
+
 /// Только под гостем: компьютер админа, где Vence открыли для проверки, не перезагружаем и не выключаем.
 #[cfg(windows)]
 fn power_if_guest(action: &str) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    if !std::env::var("USERNAME").is_ok_and(|user| GUEST_USERS.iter().any(|guest| user.eq_ignore_ascii_case(guest))) {
+    if !is_guest() {
         return Err("Перезагрузка и выключение только под гостевым пользователем".into());
     }
     std::process::Command::new("shutdown")
@@ -123,6 +209,18 @@ mod tests {
         assert!(should_block(0x73, true, false, true), "Alt+F4 на блокировке");
         assert!(should_block(0x5B, false, false, false), "Win всегда");
         assert!(should_block(0x1B, false, true, false), "Ctrl+Esc всегда");
+    }
+
+    #[test]
+    fn closes_ways_out_but_not_games() {
+        use super::is_escape_tool;
+        assert!(is_escape_tool("explorer.exe"), "проводник из Steam");
+        assert!(is_escape_tool("Taskmgr.exe"), "диспетчер задач, регистр не важен");
+        assert!(is_escape_tool("cmd.exe"));
+        assert!(!is_escape_tool("dota2.exe"));
+        assert!(!is_escape_tool("steam.exe"));
+        assert!(!is_escape_tool("conhost.exe"), "консоль игровых серверов");
+        assert!(!is_escape_tool("explorer.exe.bak"));
     }
 
     #[test]
