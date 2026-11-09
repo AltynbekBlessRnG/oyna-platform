@@ -21,6 +21,14 @@
   --warning: #ff9a4d;
   --reserved: #8fb0ff;
   --radius: 0.75rem;
+  /* Движение: уверенное замедление без отскоков. Быстро — отклик, средне — смена состояния, дольше — окно. */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 150ms;
+  --dur: 220ms;
+  --dur-slow: 320ms;
+  /* Насколько элементы сдвигаются при появлении; при «уменьшить движение» — нисколько. */
+  --rise: 6px;
+  --settle: 0.97;
 }
 
 @theme inline {
@@ -48,6 +56,58 @@
 body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
 h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+/* Браузерные мелочи — в цветах Vence, а не по умолчанию. */
+::selection { background: color-mix(in srgb, var(--primary) 32%, transparent); color: var(--foreground); }
+input, textarea { caret-color: var(--primary); }
+* { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #3a3a3a; border: 3px solid transparent; border-radius: 999px; background-clip: padding-box; }
+*::-webkit-scrollbar-thumb:hover { background-color: #4a4a4a; }
+
+/* Всё, на что наводят и нажимают, меняет цвет плавно. В базовом слое: классы Tailwind на элементе важнее. */
+@layer base {
+  a, button, summary, label, [role="button"] {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: var(--dur);
+    transition-timing-function: var(--ease-out);
+  }
+  input, select, textarea {
+    transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+  }
+  input:hover:not(:focus):not(:disabled), select:hover:not(:focus):not(:disabled), textarea:hover:not(:focus):not(:disabled) { border-color: #474747; }
+  /* Поле в фокусе: золотая рамка и мягкий ореол — видно, куда печатаешь. */
+  input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent); }
+  input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: none; }
+}
+
+/* Переход между разделами: содержимое проявляется и чуть поднимается. Видно по умолчанию — без скриптов. */
+@keyframes page-in { from { opacity: 0; transform: translateY(var(--rise)); } }
+.anim-page { animation: page-in var(--dur-slow) var(--ease-out) both; }
+
+/* Окно: затемнение проявляется, само окно собирается из лёгкой дымки. */
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes modal-in { from { opacity: 0; transform: translateY(var(--rise)) scale(var(--settle)); filter: blur(3px); } }
+.anim-backdrop { animation: fade-in var(--dur) var(--ease-out) both; }
+.anim-modal { animation: modal-in var(--dur-slow) var(--ease-out) both; }
+
+/* Новая строка в очереди (заказ, заявка) въезжает сверху — понятно, что пришло только что. */
+@keyframes row-in { from { opacity: 0; transform: translateY(calc(var(--rise) * -1.5)); } }
+.anim-row { animation: row-in var(--dur-slow) var(--ease-out) both; }
+
+/* Подсказка у места появляется, а не выскакивает. */
+.tip { opacity: 0; visibility: hidden; transition: opacity var(--dur-fast) var(--ease-out), translate var(--dur-fast) var(--ease-out), visibility 0s linear var(--dur-fast); }
+.tip-above { --tw-translate-y: 4px; }
+.tip-below { --tw-translate-y: -4px; }
+/* Сдвиг — через переменную Tailwind: так не сбивается центровка подсказки по горизонтали. */
+.group:hover > .tip, .group:focus-visible > .tip { opacity: 1; visibility: visible; --tw-translate-y: 0px; transition-delay: 80ms, 80ms, 0s; }
+
+/* Нажатие кнопки — короткое «вдавливание». */
+.press:active:not(:disabled) { transform: scale(0.97); transition-duration: 90ms; }
+
+/* Полоса оставшегося времени и экран места меняются плавно, когда сессия идёт, продлевается или кончается. */
+.seat-screen { transition: background-color var(--dur-slow) var(--ease-out), color var(--dur-slow) var(--ease-out), box-shadow var(--dur) var(--ease-out); }
+.time-fill { transform-origin: left; transition: transform 700ms var(--ease-out), background-color var(--dur-slow) var(--ease-out); }
 
 /* Пол зала: графит с холодным отливом и тонкая сетка — на ней потом встанет планировка из редактора. */
 .hall-floor {
@@ -93,6 +153,13 @@ h1, h2 { font-family: var(--font-display); letter-spacing: -0.01em; }
 }
 .order-call { animation: order-call 1.8s ease-in-out infinite; }
 
+/* «Уменьшить движение»: ничего не сдвигается и не пульсирует, но цвета и проявления остаются —
+   они говорят, что нажатие сработало и что изменилось. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  :root { --rise: 0px; --settle: 1; }
+  .order-call { animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent); }
+  .press:active:not(:disabled) { transform: none; }
+  .tip-above, .tip-below { --tw-translate-y: 0px; }
+  .time-fill { transition-duration: var(--dur); }
+  @keyframes modal-in { from { opacity: 0; } }
 }

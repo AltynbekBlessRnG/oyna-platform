@@ -83,8 +83,8 @@ function OrderTicket({ clubId, order, now, isPending, run }: { clubId: string; o
   return (
     <li
       className={cn(
-        "grid gap-2.5 rounded-xl bg-secondary p-3",
-        calling && "shadow-[inset_3px_0_0_var(--primary)]",
+        "anim-row grid gap-2.5 rounded-xl bg-secondary p-3 ring-1 ring-inset ring-transparent transition-[background-color,box-shadow] duration-300",
+        calling && "ring-primary/35",
         stale && "bg-secondary/55"
       )}
     >

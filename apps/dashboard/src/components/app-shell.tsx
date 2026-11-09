@@ -44,7 +44,7 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
               href={href}
               aria-current={key === active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "press flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium",
                 key === active ? "bg-primary/12 text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
@@ -71,7 +71,7 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
             </button>
           </form>
         </header>
-        <main className="min-w-0 flex-1 p-4 pb-28 md:p-8 lg:pb-8">{children}</main>
+        <main key={active} className="anim-page min-w-0 flex-1 p-4 pb-28 md:p-8 lg:pb-8">{children}</main>
       </div>
 
       <nav style={{ gridTemplateColumns: `repeat(${navigation.length}, minmax(0, 1fr))` }}
@@ -81,7 +81,7 @@ export function AppShell({ active, club, clubs, children }: AppShellProps) {
             key={key}
             href={href}
             aria-current={key === active ? "page" : undefined}
-            className={cn("flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium", key === active ? "text-primary" : "text-muted-foreground")}
+            className={cn("press flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium", key === active ? "text-primary" : "text-muted-foreground")}
           >
             <Icon className="size-5" />
             {short}

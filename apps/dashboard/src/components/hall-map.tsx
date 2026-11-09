@@ -329,7 +329,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
       {/* Монитор: номер места крупно по центру. */}
       <span
         className={cn(
-          "relative w-full rounded-lg transition-shadow",
+          "seat-screen relative w-full rounded-lg",
           cell ? "flex size-full flex-col items-center justify-center overflow-hidden rounded-md" : "grid aspect-square place-items-center",
           SCREEN[state],
           selected ? "shadow-[0_0_0_2px_var(--background),0_0_0_4px_var(--foreground)]" : "group-hover:shadow-[0_0_0_2px_var(--background),0_0_0_3px_color-mix(in_srgb,var(--foreground)_55%,transparent)] group-focus-visible:shadow-[0_0_0_2px_var(--background),0_0_0_4px_var(--ring)]"
@@ -339,7 +339,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
         {cell && caption ? <span className="mt-1 whitespace-nowrap text-[clamp(0.625rem,19cqw,0.75rem)] font-semibold leading-none tabular-nums opacity-85">{caption}</span> : null}
         {cell ? (
           <span className="absolute inset-x-[12%] bottom-[8%] block h-1 overflow-hidden rounded-full bg-black/30" aria-hidden>
-            <span className={cn("block h-full rounded-full", state === "soon" ? "bg-[#2e1500]/55" : BAR[state])} style={{ width: `${bar * 100}%` }} />
+            <span className={cn("time-fill block h-full w-full rounded-full", state === "soon" ? "bg-[#2e1500]/55" : BAR[state])} style={{ transform: `scaleX(${bar})` }} />
           </span>
         ) : null}
         {session?.packageName && !cell ? (
@@ -362,7 +362,7 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
         <>
           {/* Подставка монитора и полоса статуса. */}
           <span className="mx-auto mt-[3px] block h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]" aria-hidden>
-            <span className={cn("block h-full rounded-full", BAR[state])} style={{ width: `${bar * 100}%` }} />
+            <span className={cn("time-fill block h-full w-full rounded-full", BAR[state])} style={{ transform: `scaleX(${bar})` }} />
           </span>
           <span
             className={cn(
@@ -380,8 +380,8 @@ function SeatTile({ seat, session, station, now, selected, onSelect, variant = "
       <span
         role="presentation"
         className={cn(
-          "pointer-events-none absolute left-1/2 z-20 hidden w-max max-w-[15rem] -translate-x-1/2 rounded-lg border border-border bg-[#0d1014] px-3 py-2 text-xs shadow-xl group-hover:block group-focus-visible:block",
-          tipBelow ? "top-full mt-2" : "bottom-full mb-2"
+          "tip pointer-events-none absolute left-1/2 z-20 w-max max-w-[15rem] -translate-x-1/2 rounded-lg border border-border bg-[#0d1014] px-3 py-2 text-xs shadow-xl",
+          tipBelow ? "tip-below top-full mt-2" : "tip-above bottom-full mb-2"
         )}
       >
         <span className="block font-semibold text-foreground">Место {seat.label}{zoneName ? <span className="font-normal text-muted-foreground">, {zoneName}</span> : null}</span>

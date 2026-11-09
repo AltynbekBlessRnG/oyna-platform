@@ -67,7 +67,7 @@ export function Modal({ title, label, subtitle, onClose, className, children }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[2px]" onClick={onClose}>
+    <div className="anim-backdrop fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/60 p-4 backdrop-blur-[2px]" onClick={onClose}>
       <section
         ref={dialog}
         role="dialog"
@@ -75,7 +75,7 @@ export function Modal({ title, label, subtitle, onClose, className, children }: 
         aria-label={label}
         onClick={(event) => event.stopPropagation()}
         onKeyDown={trap}
-        className={cn("max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl", className)}
+        className={cn("anim-modal max-h-[calc(100dvh-2rem)] w-full max-w-[420px] overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-2xl", className)}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
