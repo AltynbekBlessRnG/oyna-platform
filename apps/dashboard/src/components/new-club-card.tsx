@@ -33,7 +33,7 @@ export function NewClubCard() {
     <Card className="border-primary/40">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Building2 className="size-4" />Новый клуб на платформе</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">Видно только вам как владельцу платформы. Клуб появится с одной зоной Standard на 10 мест — владелец поправит.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Видно только вам. Клуб создаётся с зоной Standard на 10 мест.</p>
       </CardHeader>
       <CardContent className="grid gap-3">
         <div className="grid gap-3 sm:grid-cols-2">

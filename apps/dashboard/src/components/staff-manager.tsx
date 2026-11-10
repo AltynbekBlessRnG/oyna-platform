@@ -51,7 +51,6 @@ export function StaffManager({ clubId, members }: { clubId: string; members: Clu
     <Card>
       <CardHeader>
         <CardTitle>Сотрудники</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">Кто может входить в кабинет этого клуба. Вход — по номеру телефона через Telegram.</p>
       </CardHeader>
       <CardContent className="grid gap-4">
         <ul className="grid gap-2">

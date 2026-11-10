@@ -349,7 +349,7 @@ function ActiveSessions({ sessions, stationBySeat, now, onSelect, showZone }: {
         {sorted.length ? <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-semibold tabular-nums text-muted-foreground">{sorted.length}</span> : null}
       </header>
       {sorted.length === 0 ? (
-        <p className="px-4 pb-4 text-sm text-muted-foreground">В зале никого. Нажмите на свободное место, чтобы посадить игрока.</p>
+        <p className="px-4 pb-4 text-sm text-muted-foreground">В зале никого.</p>
       ) : (
         <div className="grid gap-1 px-2 pb-2 xl:max-h-[24rem] xl:overflow-y-auto">
           {soon.length ? (
@@ -513,7 +513,7 @@ function SeatPanel(props: {
                 ))}
               </div>
               {guest ? (
-                <p className="text-xs text-muted-foreground">Платит сейчас и садится. Баланс и история не сохраняются.</p>
+                <p className="text-xs text-muted-foreground">Без баланса и истории.</p>
               ) : (
                 <PlayerPhoneInput clubId={clubId} className={inputClass} label="Телефон игрока" value={phone} onChange={setPhone} />
               )}
@@ -756,7 +756,7 @@ function SeatTopUp({ clubId, session, shiftOpen, isPending, run }: {
     });
   }
 
-  if (!shiftOpen) return <p className="text-xs text-muted-foreground">Чтобы пополнить баланс, откройте смену вверху страницы.</p>;
+  if (!shiftOpen) return <p className="text-xs text-muted-foreground">Откройте смену, чтобы пополнять.</p>;
   return (
     <div className="grid gap-2 rounded-xl border border-border bg-background/40 p-3">
       <span className="flex items-center gap-2 font-medium"><Wallet className="size-4" />Пополнить этому игроку</span>
@@ -806,7 +806,7 @@ function TopUpCard({ clubId, run, isPending, onToppedUp, shiftOpen }: {
         </div>
         <PaymentMethodPicker value={method} onChange={setMethod} />
         <Button disabled={isPending || !shiftOpen || phone.replace(/\D/g, "").length < 10 || !amount} onClick={submit}>Пополнить</Button>
-        <p className="text-pretty text-xs text-muted-foreground">{shiftOpen ? "Если игрок уже за компьютером, его время сразу продлится." : "Откройте смену вверху страницы, чтобы принимать деньги."}</p>
+        <p className="text-pretty text-xs text-muted-foreground">{shiftOpen ? "Время за компьютером продлится сразу." : "Откройте смену, чтобы принимать деньги."}</p>
       </CardContent>
     </Card>
   );

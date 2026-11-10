@@ -23,7 +23,6 @@ export default async function ShiftsPage() {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold md:text-3xl">Смены кассы</h1>
-          <p className="text-sm text-muted-foreground">Последние 30 смен: сколько пробили, как заплатили и сошлась ли касса.</p>
         </div>
         {shortage < 0 ? <p className="rounded-xl bg-danger/10 px-4 py-2 text-sm text-danger">Недостачи за период: {money(-shortage)}</p> : null}
       </header>
@@ -33,7 +32,7 @@ export default async function ShiftsPage() {
           <CardContent className="text-sm text-muted-foreground">{error}</CardContent>
         </Card>
       ) : shifts.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Смен ещё не было. Откройте первую в разделе «Зал и касса».</p>
+        <p className="text-sm text-muted-foreground">Смен ещё не было.</p>
       ) : (
         <div className="grid gap-3">
           {shifts.map((shift) => (

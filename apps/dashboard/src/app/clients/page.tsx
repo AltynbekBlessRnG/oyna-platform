@@ -41,7 +41,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold md:text-3xl">Клиенты</h1>
-          {data ? <p className="mt-1 text-sm text-muted-foreground">Всего {data.total}: все, кто бронировал, играл или заказывал в баре</p> : null}
+          {data ? <p className="mt-1 text-sm text-muted-foreground">Всего {data.total}</p> : null}
         </div>
         {data ? (
           <a href={`/clients/export?${exportQuery}`} className="inline-flex h-10 items-center gap-2 rounded-xl bg-secondary px-4 text-sm font-semibold hover:bg-secondary/80">

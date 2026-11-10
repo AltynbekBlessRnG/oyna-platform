@@ -86,7 +86,7 @@ export function HallPulse({ hall, now }: { hall?: HallSnapshot; now: number }) {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Все компьютеры на связи, ближайшие полчаса никто не уходит.</p>
+            <p className="text-sm text-muted-foreground">Всё спокойно.</p>
           )}
         </div>
       </CardContent>

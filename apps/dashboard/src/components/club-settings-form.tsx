@@ -78,7 +78,7 @@ export function ClubSettingsForm({ clubId, club, zones }: ClubSettingsFormProps)
   return (
     <div className="grid gap-6 xl:grid-cols-2">
       <Card>
-        <CardHeader><CardTitle>Карточка клуба</CardTitle><p className="text-sm text-muted-foreground">Как клуб выглядит в приложении игрока</p></CardHeader>
+        <CardHeader><CardTitle>Карточка клуба</CardTitle></CardHeader>
         <CardContent className="grid gap-3">
           <label className="text-sm font-medium" htmlFor="club-name">Название</label>
           <input id="club-name" className={inputClass} value={profile.name} onChange={(event) => setProfile({ ...profile, name: event.target.value })} />
@@ -117,7 +117,7 @@ export function ClubSettingsForm({ clubId, club, zones }: ClubSettingsFormProps)
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <div><CardTitle>Зоны, цены и места</CardTitle><p className="mt-1 text-sm text-muted-foreground">Из этих зон игрок выбирает ПК</p></div>
+          <CardTitle>Зоны, цены и места</CardTitle>
           <Badge>{totalSeats} мест, от {priceFrom.toLocaleString("ru-KZ")} ₸/ч</Badge>
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -161,9 +161,6 @@ export function ClubSettingsForm({ clubId, club, zones }: ClubSettingsFormProps)
           <Button variant="secondary" className="justify-self-start" onClick={() => setRows((current) => [...current, { id: "", name: "", description: "", pricePerHour: 800, seatCount: 10, isNew: true }])}>
             <Plus className="size-4" />Добавить зону
           </Button>
-          <p className="text-xs text-muted-foreground">
-            Код зоны после создания не меняется: на него ссылаются брони и компьютеры. Зону с будущими бронями нельзя удалить или уменьшить.
-          </p>
           {zoneResult ? <p role="status" className="rounded-xl bg-secondary px-4 py-3 text-sm text-muted-foreground">{zoneResult}</p> : null}
           <Button className="justify-self-start" disabled={isPending || rows.length === 0} onClick={submitZones}><Save className="size-4" />Сохранить зоны</Button>
         </CardContent>

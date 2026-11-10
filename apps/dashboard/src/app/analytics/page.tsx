@@ -70,7 +70,6 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           <Card>
             <CardHeader>
               <CardTitle>Когда зал загружен</CardTitle>
-              <p className="text-sm text-muted-foreground">Доля занятых мест по дням недели и часам, по времени клуба. Пустые часы — повод для акции.</p>
             </CardHeader>
             <CardContent><OccupancyHeatmap cells={analytics.heatmap} /></CardContent>
           </Card>

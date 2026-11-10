@@ -45,7 +45,7 @@ export function BarOrders({ clubId, orders, now, isPending, run }: {
         ) : null}
       </header>
       {orders.length === 0 ? (
-        <p className="px-4 pb-4 text-sm text-muted-foreground">Заказов нет. Новые появятся здесь, как только игрок закажет с компьютера.</p>
+        <p className="px-4 pb-4 text-sm text-muted-foreground">Заказов нет.</p>
       ) : (
         <ol className="grid gap-2 px-2 pb-2">
           {orders.map((order) => (

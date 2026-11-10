@@ -82,7 +82,6 @@ export function LoginForm() {
       <CardHeader>
         <VenceMark size={48} className="mb-2" />
         <CardTitle className="text-xl">Кабинет клуба Vence</CardTitle>
-        <p className="text-sm text-muted-foreground">Вход по номеру телефона администратора клуба</p>
       </CardHeader>
       <CardContent>
         <form className="grid gap-3" onSubmit={submit}>
@@ -97,7 +96,7 @@ export function LoginForm() {
                       Подтвердить в Telegram
                     </a>
                   </Button>
-                  <p className="text-sm text-muted-foreground">В боте нажмите «Поделиться номером». Кабинет откроется здесь сам.</p>
+                  <p className="text-sm text-muted-foreground">В боте нажмите «Поделиться номером».</p>
                 </div>
               ) : null}
               {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}

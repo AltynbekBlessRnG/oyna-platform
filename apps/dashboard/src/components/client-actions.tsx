@@ -132,7 +132,7 @@ export function ClientTags({ clubId, userId, tags }: { clubId: string; userId: s
             ))}
           </ul>
         ) : (
-          <p className="text-muted-foreground">Тегов нет. Тег VIP сразу переводит клиента в сегмент VIP.</p>
+          <p className="text-muted-foreground">Тегов нет.</p>
         )}
         <form onSubmit={(event) => { event.preventDefault(); add(draft); }} className="flex gap-2">
           <input className={inputClass} aria-label="Новый тег" placeholder="Новый тег" maxLength={24} value={draft} onChange={(event) => setDraft(event.target.value)} />

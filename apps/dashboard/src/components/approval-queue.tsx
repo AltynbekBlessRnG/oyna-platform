@@ -46,7 +46,7 @@ export function ApprovalQueue({ clubId, initialBookings }: ApprovalQueueProps) {
       </CardHeader>
       <CardContent>
         {error ? <p role="alert" className="mb-4 rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">{error}</p> : null}
-        {pendingBookings.length === 0 ? <p className="text-sm text-muted-foreground">Новых заявок нет. Когда игрок забронирует место в приложении, заявка появится здесь.</p> : <div className="grid gap-3">
+        {pendingBookings.length === 0 ? <p className="text-sm text-muted-foreground">Новых заявок нет.</p> : <div className="grid gap-3">
           {pendingBookings.map((booking) => {
             const start = new Date(booking.startAt);
             const busy = isPending && pendingId === booking.id;

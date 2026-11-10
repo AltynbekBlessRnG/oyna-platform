@@ -57,9 +57,6 @@ export function PackagesEditor({ clubId, zones, packages }: PackagesEditorProps)
     <Card>
       <CardHeader>
         <CardTitle>Пакеты</CardTitle>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Время по фиксированной цене. Касса выбирает пакет при посадке, цена сразу списывается с баланса игрока.
-        </p>
       </CardHeader>
       <CardContent className="grid gap-4">
         {rows.length === 0 ? <p className="text-sm text-muted-foreground">Пакетов пока нет. Начните с готового:</p> : null}
@@ -183,7 +180,7 @@ export function PackagesEditor({ clubId, zones, packages }: PackagesEditorProps)
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          «До определённого времени» заканчивается в ближайший такой час: ночь до 08:00, купленная в 01:00, всё равно закончится в 08:00. Время — по Алматы.
+          Время — по Алматы.
         </p>
         {result ? <p role="status" className="rounded-xl bg-secondary px-4 py-3 text-sm text-muted-foreground">{result}</p> : null}
         <Button className="justify-self-start" disabled={isPending} onClick={submit}><Save className="size-4" />Сохранить пакеты</Button>
